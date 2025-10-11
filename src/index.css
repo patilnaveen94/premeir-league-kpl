@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #f8fafc;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Mobile optimizations */
+  @media (max-width: 768px) {
+    body {
+      font-size: 14px;
+    }
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-corporate-primary hover:bg-blue-700 active:bg-blue-800 text-white px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-semibold transition-all duration-200 touch-manipulation shadow-sm;
+  }
+  
+  .btn-secondary {
+    @apply bg-corporate-secondary hover:bg-sky-600 active:bg-sky-700 text-white px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-semibold transition-all duration-200 touch-manipulation shadow-sm;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg sm:rounded-xl shadow-md hover:shadow-lg p-4 sm:p-6 border border-gray-100 transition-shadow duration-200;
+  }
+  
+  .mobile-card {
+    @apply bg-white rounded-lg shadow-sm p-3 border border-gray-100;
+  }
+  
+  .gradient-bg {
+    @apply bg-gradient-to-br from-corporate-primary via-corporate-secondary to-corporate-dark;
+  }
+  
+  .loading-spinner {
+    @apply animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-cricket-navy mx-auto;
+  }
+  
+  .mobile-menu {
+    @apply fixed inset-0 z-50 bg-white transform transition-transform duration-300 ease-in-out;
+  }
+  
+  .mobile-menu.open {
+    @apply translate-x-0;
+  }
+  
+  .mobile-menu.closed {
+    @apply translate-x-full;
+  }
+  
+  /* Touch-friendly buttons */
+  .touch-btn {
+    @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+  }
+  
+  /* Responsive text */
+  .responsive-text {
+    @apply text-sm sm:text-base;
+  }
+  
+  .responsive-heading {
+    @apply text-xl sm:text-2xl lg:text-3xl;
+  }
+  
+  .responsive-hero {
+    @apply text-2xl sm:text-4xl lg:text-6xl;
+  }
+  
+  /* Mobile-specific optimizations */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  .mobile-safe-area {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Reduce motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .card {
+      @apply border-2 border-gray-400;
+    }
+    
+    .btn-primary {
+      @apply border-2 border-white;
+    }
+  }
+  
+  /* Dark mode support preparation */
+  @media (prefers-color-scheme: dark) {
+    /* Future dark mode styles can be added here */
+  }
+}

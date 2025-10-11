@@ -1,0 +1,56 @@
+import React, { Suspense, lazy } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AdminProvider } from './context/AdminContext';
+import { SeasonProvider } from './context/SeasonContext';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import LoadingSpinner from './components/LoadingSpinner';
+
+// Lazy load pages for better performance
+const Home = lazy(() => import('./pages/Home'));
+const Teams = lazy(() => import('./pages/Teams'));
+const News = lazy(() => import('./pages/News'));
+const Contact = lazy(() => import('./pages/Contact'));
+const Sponsors = lazy(() => import('./pages/Sponsors'));
+const PlayerRegistration = lazy(() => import('./pages/PlayerRegistration'));
+const AdminPanel = lazy(() => import('./pages/AdminPanel'));
+const CricHeroesStats = lazy(() => import('./pages/CricHeroesStats'));
+const CricHeroesHome = lazy(() => import('./pages/CricHeroesHome'));
+
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-[50vh]">
+    <LoadingSpinner size="lg" />
+  </div>
+);
+
+function App() {
+  return (
+    <SeasonProvider>
+      <AdminProvider>
+        <Router>
+          <div className="App flex flex-col min-h-screen">
+            <Navbar />
+            <main className="flex-1">
+              <Suspense fallback={<LoadingFallback />}>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/teams" element={<Teams />} />
+                  <Route path="/stats" element={<CricHeroesStats />} />
+                  <Route path="/cricheroes" element={<CricHeroesHome />} />
+                  <Route path="/news" element={<News />} />
+                  <Route path="/sponsors" element={<Sponsors />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/player-registration" element={<PlayerRegistration />} />
+                  <Route path="/admin" element={<AdminPanel />} />
+                </Routes>
+              </Suspense>
+            </main>
+            <Footer />
+          </div>
+        </Router>
+      </AdminProvider>
+    </SeasonProvider>
+  );
+}
+
+export default App;
