@@ -1,66 +1,95 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Trophy, Users, TrendingUp, Clock, MapPin, ChevronLeft, ChevronRight, Target } from 'lucide-react';
-import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
+import { Calendar, Trophy, Users, TrendingUp, Clock, MapPin, ChevronLeft, ChevronRight, Target, Star } from 'lucide-react';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
 import { formatMatchDate } from '../utils/dateUtils';
 import { getMatchWinMessage } from '../utils/matchUtils';
+import { useTournamentData } from '../hooks/useTournamentData';
 
 const Home = () => {
   const [upcomingMatches, setUpcomingMatches] = useState([]);
   const [recentMatches, setRecentMatches] = useState([]);
-  const [standings, setStandings] = useState([]);
-  const [topPerformers, setTopPerformers] = useState({ topRunScorers: [], topWicketTakers: [] });
   const [carouselImages, setCarouselImages] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [teams, setTeams] = useState([]);
+  const [totalMatches, setTotalMatches] = useState(0);
+  const [sponsors, setSponsors] = useState([]);
+  const [playerRegistrations, setPlayerRegistrations] = useState([]);
+  
+  // Use centralized tournament data hook for consistent data
+  const { topPerformers, standings, playerStats, loading: tournamentLoading } = useTournamentData();
+
+  // Helper function to get player photo by name
+  const getPlayerPhoto = (playerName) => {
+    const player = playerRegistrations.find(p => 
+      p.fullName?.toLowerCase() === playerName?.toLowerCase()
+    );
+    return player?.photoBase64 || null;
+  };
+
+  // Helper function to generate initials from full name
+  const getPlayerInitials = (fullName) => {
+    if (!fullName) return '??';
+    const names = fullName.trim().split(' ');
+    if (names.length === 1) {
+      return names[0].charAt(0).toUpperCase();
+    }
+    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+  };
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchHomeData();
   }, []);
 
+  // Refresh home data when tournament data updates
+  useEffect(() => {
+    if (!tournamentLoading && topPerformers && standings) {
+      // Refresh basic data when tournament data changes
+      fetchHomeData();
+    }
+  }, [topPerformers, standings, tournamentLoading]);
+
   const fetchHomeData = async () => {
     try {
-      // Fetch all data in parallel
-      const [upcomingSnapshot, recentSnapshot, statsSnapshot, standingsSnapshot, carouselSnapshot, teamsSnapshot] = await Promise.all([
-        getDocs(query(collection(db, 'matches'), where('status', '==', 'upcoming'), orderBy('date', 'asc'), limit(3))),
-        getDocs(query(collection(db, 'matches'), where('status', '==', 'completed'), orderBy('date', 'desc'), limit(3))),
-        getDocs(collection(db, 'playerStats')),
-        getDocs(collection(db, 'standings')),
+      // Fetch basic data that doesn't need sync
+      const [carouselSnapshot, teamsSnapshot, allMatchesSnapshot, sponsorsSnapshot, playersSnapshot] = await Promise.all([
         getDocs(collection(db, 'carouselImages')),
-        getDocs(collection(db, 'teams'))
+        getDocs(collection(db, 'teams')),
+        getDocs(collection(db, 'matches')),
+        getDocs(collection(db, 'sponsors')),
+        getDocs(collection(db, 'playerRegistrations'))
       ]);
+      
+      const playersData = playersSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
 
-      // Process data
-      const upcomingData = upcomingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const recentData = recentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const statsData = statsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const standingsData = standingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Process basic data
       const carouselData = carouselSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const teamsData = teamsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const allMatchesData = allMatchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const sponsorsData = sponsorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Filter matches manually and sort by date
+      const sortedMatches = allMatchesData.sort((a, b) => {
+        const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
+        const dateB = new Date(`${b.date}T${b.time || '00:00'}`);
+        return dateB - dateA; // Most recent first
+      });
+      
+      const upcomingData = sortedMatches.filter(match => match.status === 'upcoming').slice(0, 3);
+      const recentData = sortedMatches.filter(match => match.status === 'completed').slice(0, 3);
       
       setUpcomingMatches(upcomingData);
       setRecentMatches(recentData);
-      
-      const topRunScorers = statsData
-        .filter(player => player.runs > 0)
-        .sort((a, b) => b.runs - a.runs)
-        .slice(0, 5);
-      
-      const topWicketTakers = statsData
-        .filter(player => player.wickets > 0)
-        .sort((a, b) => b.wickets - a.wickets)
-        .slice(0, 5);
-      
-      setTopPerformers({ topRunScorers, topWicketTakers });
-
-      // Filter standings to only include existing teams
-      const teamNames = teamsData.map(team => team.name);
-      const filteredStandings = standingsData
-        .filter(standing => teamNames.includes(standing.team))
-        .sort((a, b) => b.points - a.points)
-        .slice(0, 5);
-      setStandings(filteredStandings);
+      setTeams(teamsData);
+      setTotalMatches(allMatchesData.length);
+      setSponsors(sponsorsData);
+      setPlayerRegistrations(playersData);
 
       const sortedCarousel = carouselData.sort((a, b) => (a.order || 0) - (b.order || 0));
       setCarouselImages(sortedCarousel);
@@ -195,66 +224,253 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Previous Winners Cards */}
-      <section className="py-16 bg-gray-50">
+      {/* Tournament Info Section */}
+      <section className="py-12 sm:py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">Previous Season Winners</h2>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Tournament 2025</h2>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+              Experience the thrill of cricket at its finest. 7 teams, unlimited passion, one champion.
+            </p>
+          </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="card text-center hover:shadow-xl transition-shadow border-2 border-corporate-secondary/20">
-              <div className="flex justify-center mb-4">
-                <Trophy className="w-16 h-16 text-corporate-secondary" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 text-center">
+              <Users className="w-12 h-12 text-blue-600 mx-auto mb-3" />
+              <h3 className="text-2xl font-bold text-blue-900">{loading ? '...' : teams.length}</h3>
+              <p className="text-blue-700 font-medium">Teams</p>
+            </div>
+            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 text-center">
+              <Calendar className="w-12 h-12 text-green-600 mx-auto mb-3" />
+              <h3 className="text-2xl font-bold text-green-900">{loading ? '...' : totalMatches}</h3>
+              <p className="text-green-700 font-medium">Matches</p>
+            </div>
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-6 text-center">
+              <Target className="w-12 h-12 text-orange-600 mx-auto mb-3" />
+              <h3 className="text-2xl font-bold text-orange-900">{loading || tournamentLoading ? '...' : playerStats.filter(p => p.matches > 0).length}</h3>
+              <p className="text-orange-700 font-medium">Active Players</p>
+            </div>
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 text-center">
+              <Trophy className="w-12 h-12 text-purple-600 mx-auto mb-3" />
+              <h3 className="text-2xl font-bold text-purple-900">{loading || tournamentLoading ? '...' : playerStats.reduce((sum, p) => sum + (p.runs || 0), 0)}</h3>
+              <p className="text-purple-700 font-medium">Total Runs</p>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-cricket-navy to-cricket-blue rounded-2xl p-8 text-white text-center">
+            <h3 className="text-2xl font-bold mb-4">Tournament Format</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+              <div className="bg-white/10 rounded-lg p-4">
+                <h4 className="font-semibold mb-2">League Stage</h4>
+                <p className="text-white/90">Round-robin format with each team playing others</p>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Season 2023</h3>
-              <p className="text-lg font-semibold text-corporate-primary mb-2">Mumbai Warriors</p>
-              <p className="text-gray-600">Champions with 18 points</p>
-              <div className="mt-4 bg-corporate-secondary/10 text-corporate-secondary px-3 py-1 rounded-full text-sm font-medium inline-block">
-                Current Champions
+              <div className="bg-white/10 rounded-lg p-4">
+                <h4 className="font-semibold mb-2">Playoffs</h4>
+                <p className="text-white/90">Top 4 teams qualify for knockout stage</p>
+              </div>
+              <div className="bg-white/10 rounded-lg p-4">
+                <h4 className="font-semibold mb-2">Final</h4>
+                <p className="text-white/90">Winner takes all in the championship match</p>
               </div>
             </div>
-            
-            <div className="card text-center hover:shadow-xl transition-shadow border-2 border-primary-200">
-              <div className="flex justify-center mb-4">
-                <Trophy className="w-16 h-16 text-primary-400" />
+          </div>
+        </div>
+      </section>
+      
+      {/* Live Stats & Recent Matches */}
+      <section className="py-12 sm:py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Recent Matches */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">Recent Matches</h3>
+                <Link to="/schedule" className="text-cricket-blue hover:text-cricket-navy text-sm font-medium">
+                  View All →
+                </Link>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Season 2022</h3>
-              <p className="text-lg font-semibold text-corporate-primary mb-2">Delhi Capitals</p>
-              <p className="text-gray-600">Champions with 16 points</p>
-              <div className="mt-4 bg-primary-100 text-primary-700 px-3 py-1 rounded-full text-sm font-medium inline-block">
-                Runner-up: Chennai SK
-              </div>
+              {loading ? (
+                <div className="space-y-4">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="animate-pulse bg-gray-200 h-16 rounded-lg"></div>
+                  ))}
+                </div>
+              ) : recentMatches.length > 0 ? (
+                <div className="space-y-4">
+                  {recentMatches.map(match => (
+                    <div key={match.id} className="bg-gradient-to-r from-white to-gray-50 border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                          <span className="text-xs font-medium text-green-600 uppercase tracking-wide">Completed</span>
+                        </div>
+                        <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                          {formatMatchDate(match.date)}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex-1 text-center">
+                          <div className="text-sm font-bold text-gray-900">{match.team1}</div>
+                        </div>
+                        <div className="px-3">
+                          <div className="text-xs text-gray-400 font-medium">VS</div>
+                        </div>
+                        <div className="flex-1 text-center">
+                          <div className="text-sm font-bold text-gray-900">{match.team2}</div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-gradient-to-r from-cricket-navy to-cricket-blue text-white text-center py-2 rounded-lg">
+                        <div className="text-sm font-medium">
+                          {getMatchWinMessage(match)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p>No recent matches</p>
+                </div>
+              )}
             </div>
             
-            <div className="card text-center hover:shadow-xl transition-shadow border-2 border-corporate-warning/20">
-              <div className="flex justify-center mb-4">
-                <Trophy className="w-16 h-16 text-corporate-warning" />
+            {/* Top Performers */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">Top Performers</h3>
+                <Link to="/stats" className="text-cricket-blue hover:text-cricket-navy text-sm font-medium">
+                  View Stats →
+                </Link>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Season 2021</h3>
-              <p className="text-lg font-semibold text-corporate-primary mb-2">Chennai Super Kings</p>
-              <p className="text-gray-600">Champions with 20 points</p>
-              <div className="mt-4 bg-corporate-warning/10 text-corporate-warning px-3 py-1 rounded-full text-sm font-medium inline-block">
-                Highest Points
-              </div>
+              {loading || tournamentLoading ? (
+                <div className="space-y-4">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="animate-pulse bg-gray-200 h-12 rounded-lg"></div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Top Run Scorer */}
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl p-4 border border-green-200">
+                    <div className="flex items-center mb-3">
+                      <Trophy className="w-5 h-5 text-green-600 mr-2" />
+                      <h4 className="text-sm font-bold text-green-800">Top Run Scorer</h4>
+                    </div>
+                    {topPerformers?.topRunScorers?.[0] ? (
+                      <div className="flex items-center space-x-3">
+                        {getPlayerPhoto(topPerformers.topRunScorers[0].name) ? (
+                          <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-green-700 rounded-full p-0.5 flex-shrink-0">
+                            <img 
+                              src={getPlayerPhoto(topPerformers.topRunScorers[0].name)} 
+                              alt={topPerformers.topRunScorers[0].name} 
+                              className="w-full h-full object-cover rounded-full" 
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                            {getPlayerInitials(topPerformers.topRunScorers[0].name)}
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900">{topPerformers.topRunScorers[0].name}</div>
+                          <div className="text-sm text-green-700">{topPerformers.topRunScorers[0].team}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xl font-bold text-green-700">{topPerformers.topRunScorers[0].runs}</div>
+                          <div className="text-xs text-green-600">runs</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-green-700 text-sm">No data available</div>
+                    )}
+                  </div>
+                  
+                  {/* Top Wicket Taker */}
+                  <div className="bg-gradient-to-br from-red-50 to-rose-100 rounded-xl p-4 border border-red-200">
+                    <div className="flex items-center mb-3">
+                      <Target className="w-5 h-5 text-red-600 mr-2" />
+                      <h4 className="text-sm font-bold text-red-800">Top Wicket Taker</h4>
+                    </div>
+                    {topPerformers?.topWicketTakers?.[0] ? (
+                      <div className="flex items-center space-x-3">
+                        {getPlayerPhoto(topPerformers.topWicketTakers[0].name) ? (
+                          <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-700 rounded-full p-0.5 flex-shrink-0">
+                            <img 
+                              src={getPlayerPhoto(topPerformers.topWicketTakers[0].name)} 
+                              alt={topPerformers.topWicketTakers[0].name} 
+                              className="w-full h-full object-cover rounded-full" 
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-700 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                            {getPlayerInitials(topPerformers.topWicketTakers[0].name)}
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900">{topPerformers.topWicketTakers[0].name}</div>
+                          <div className="text-sm text-red-700">{topPerformers.topWicketTakers[0].team}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xl font-bold text-red-700">{topPerformers.topWicketTakers[0].wickets}</div>
+                          <div className="text-xs text-red-600">wickets</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-red-700 text-sm">No data available</div>
+                    )}
+                  </div>
+                  
+                  {/* Current Leader */}
+                  <div className="bg-gradient-to-br from-yellow-50 to-amber-100 rounded-xl p-4 border border-yellow-200">
+                    <div className="flex items-center mb-3">
+                      <Trophy className="w-5 h-5 text-yellow-600 mr-2" />
+                      <h4 className="text-sm font-bold text-yellow-800">Current Leader</h4>
+                    </div>
+                    {standings?.[0] ? (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-full flex items-center justify-center">
+                            <span className="text-white font-bold text-sm">1</span>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-gray-900">{standings[0].teamName}</div>
+                            <div className="text-sm text-yellow-700">League Leader</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xl font-bold text-yellow-700">{standings[0].points}</div>
+                          <div className="text-xs text-yellow-600">points</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-yellow-700 text-sm">Tournament not started</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-12 sm:py-16 bg-gray-50">
+      <section className="py-12 sm:py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8 sm:mb-12">
             <h2 className="responsive-heading font-bold text-gray-900 mb-3 sm:mb-4">
-              Everything Khajjidoni Premier League
+              Everything Cricket
             </h2>
             <p className="responsive-text text-gray-600 max-w-2xl mx-auto">
-              Your one-stop destination for all Khajjidoni Premier League content
+              Your complete cricket experience - from live scores to player stats
             </p>
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {features.map((feature, index) => (
-              <div key={index} className="mobile-card sm:card text-center hover:shadow-lg transition-shadow">
+              <div key={index} className="mobile-card sm:card text-center hover:shadow-lg transition-all duration-300 hover:scale-105">
                 <div className="flex justify-center mb-3 sm:mb-4">
                   {feature.icon}
                 </div>
@@ -266,6 +482,151 @@ const Home = () => {
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+      
+      {/* Sponsors Section */}
+      <section className="py-12 sm:py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Our Sponsors</h2>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+              Proud partners supporting Khajjidoni Premier League
+            </p>
+          </div>
+          
+          {loading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="animate-pulse bg-gray-200 h-32 rounded-lg"></div>
+              ))}
+            </div>
+          ) : sponsors.length > 0 ? (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                {sponsors.filter(s => s.type === 'title').map(sponsor => (
+                  <div key={sponsor.id} className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-6 text-center border-2 border-yellow-200">
+                    {sponsor.photoBase64 && (
+                      <img src={sponsor.photoBase64} alt={sponsor.name} className="w-16 h-16 object-contain mx-auto mb-3 rounded" />
+                    )}
+                    <h3 className="font-bold text-yellow-800 mb-1">{sponsor.name}</h3>
+                    <p className="text-xs text-yellow-600 uppercase font-medium">Title Sponsor</p>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+                {sponsors.filter(s => s.type !== 'title').slice(0, 12).map(sponsor => (
+                  <div key={sponsor.id} className="bg-white rounded-lg p-4 text-center hover:shadow-md transition-shadow">
+                    {sponsor.photoBase64 ? (
+                      <img src={sponsor.photoBase64} alt={sponsor.name} className="w-12 h-12 object-contain mx-auto mb-2 rounded" />
+                    ) : (
+                      <div className="w-12 h-12 bg-gray-200 rounded mx-auto mb-2 flex items-center justify-center">
+                        <Star className="w-6 h-6 text-gray-400" />
+                      </div>
+                    )}
+                    <h4 className="text-sm font-medium text-gray-900 truncate">{sponsor.name}</h4>
+                    <p className="text-xs text-gray-500 capitalize">{sponsor.type}</p>
+                  </div>
+                ))}
+              </div>
+              
+              {sponsors.length > 12 && (
+                <div className="text-center mt-6">
+                  <p className="text-gray-600">And {sponsors.length - 12} more amazing sponsors!</p>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <Star className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Become Our Sponsor</h3>
+              <p className="text-gray-600">Join us in supporting cricket excellence</p>
+            </div>
+          )}
+        </div>
+      </section>
+      
+      {/* Heroes Section */}
+      <section className="py-12 sm:py-16 bg-gradient-to-br from-cricket-navy via-cricket-blue to-cricket-orange">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Cricket Heroes</h2>
+            <p className="text-xl text-white/90 max-w-3xl mx-auto">
+              Celebrating the legends who make cricket beautiful
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center text-white">
+              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trophy className="w-10 h-10 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Tournament MVP</h3>
+              <p className="text-white/90 mb-4">Outstanding performance across all matches</p>
+              <div className="bg-white/20 rounded-lg p-3">
+                {loading || tournamentLoading ? (
+                  <p className="font-semibold">Loading...</p>
+                ) : topPerformers?.topRunScorers?.[0] && topPerformers?.topWicketTakers?.[0] ? (
+                  <>
+                    <p className="font-semibold">{topPerformers?.topRunScorers?.[0]?.runs > (topPerformers?.topWicketTakers?.[0]?.wickets || 0) * 10 ? topPerformers?.topRunScorers?.[0]?.name : topPerformers?.topWicketTakers?.[0]?.name}</p>
+                    <p className="text-sm text-white/80">Current leader</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold">Tournament starting</p>
+                    <p className="text-sm text-white/80">Play matches to compete</p>
+                  </>
+                )}
+              </div>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center text-white">
+              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Target className="w-10 h-10 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Best Bowler</h3>
+              <p className="text-white/90 mb-4">Most wickets with best economy rate</p>
+              <div className="bg-white/20 rounded-lg p-3">
+                {loading || tournamentLoading ? (
+                  <p className="font-semibold">Loading...</p>
+                ) : topPerformers?.topWicketTakers?.[0] ? (
+                  <>
+                    <p className="font-semibold">{topPerformers?.topWicketTakers?.[0]?.name}</p>
+                    <p className="text-sm text-white/80">{topPerformers?.topWicketTakers?.[0]?.wickets} wickets</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold">No wickets yet</p>
+                    <p className="text-sm text-white/80">Tournament starting</p>
+                  </>
+                )}
+              </div>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center text-white">
+              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="w-10 h-10 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Best Batsman</h3>
+              <p className="text-white/90 mb-4">Highest runs with best average</p>
+              <div className="bg-white/20 rounded-lg p-3">
+                {loading || tournamentLoading ? (
+                  <p className="font-semibold">Loading...</p>
+                ) : topPerformers?.topRunScorers?.[0] ? (
+                  <>
+                    <p className="font-semibold">{topPerformers?.topRunScorers?.[0]?.name}</p>
+                    <p className="text-sm text-white/80">{topPerformers?.topRunScorers?.[0]?.runs} runs</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold">No runs yet</p>
+                    <p className="text-sm text-white/80">Tournament starting</p>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -281,32 +642,67 @@ const Home = () => {
 
 
       {/* CTA Section */}
-      <section className="bg-corporate-dark text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Join the Khajjidoni Premier League Community
-          </h2>
-          <p className="text-xl mb-8 text-gray-200">
-            Register as a player and be part of the action
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link 
-              to="/player-registration" 
-              className="btn-secondary"
-              onClick={() => {
-                setTimeout(() => {
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }, 100);
-              }}
-            >
-              Register Now
-            </Link>
-            <Link 
-              to="/live-scores" 
-              className="btn-secondary"
-            >
-              Live Scores
-            </Link>
+      <section className="bg-gradient-to-r from-cricket-navy to-cricket-blue text-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                Be Part of the Action
+              </h2>
+              <p className="text-xl mb-6 text-white/90">
+                Join Khajjidoni Premier League and showcase your cricket skills on the biggest stage
+              </p>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-cricket-orange rounded-full"></div>
+                  <span>Professional tournament experience</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-cricket-orange rounded-full"></div>
+                  <span>Live scoring and statistics tracking</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-cricket-orange rounded-full"></div>
+                  <span>Prize money and recognition</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-cricket-orange rounded-full"></div>
+                  <span>Network with cricket enthusiasts</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="text-center lg:text-right">
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 mb-6">
+                <h3 className="text-2xl font-bold mb-4">Tournament 2025</h3>
+                <div className="space-y-2 text-white/90">
+                  <p>📅 Registration: Open Now</p>
+                  <p>🏏 Tournament: March 2025</p>
+                  <p>🏆 Prize Pool: ₹50,000</p>
+                  <p>📍 Venue: Nutan Vidyalaya Khajjidoni</p>
+                </div>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-end">
+                <Link 
+                  to="/player-registration" 
+                  className="bg-cricket-orange hover:bg-cricket-orange/90 text-white px-8 py-3 rounded-lg font-semibold transition-colors shadow-lg"
+                  onClick={() => {
+                    setTimeout(() => {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }, 100);
+                  }}
+                >
+                  Register Now
+                </Link>
+                <Link 
+                  to="/stats" 
+                  className="bg-white/20 hover:bg-white/30 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
+                >
+                  View Stats
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, Target, Users, TrendingUp, Award, Calendar, Star, Medal } from 'lucide-react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
-import dataSync from '../services/dataSync';
+import { useTournamentData } from '../hooks/useTournamentData';
 
 // Helper function to generate initials from full name
 const getPlayerInitials = (fullName) => {
@@ -16,43 +16,33 @@ const getPlayerInitials = (fullName) => {
 
 const CricHeroesStats = () => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [loading, setLoading] = useState(true);
-  const [topPerformers, setTopPerformers] = useState({
-    topRunScorers: [],
-    topWicketTakers: [],
-    bestBatsmen: [],
-    bestBowlers: []
-  });
-  const [playerStats, setPlayerStats] = useState([]);
-  const [pointsTable, setPointsTable] = useState([]);
   const [playerRegistrations, setPlayerRegistrations] = useState([]);
+  
+  // Use centralized tournament data hook for consistent data
+  const { topPerformers, playerStats, standings: pointsTable, loading } = useTournamentData();
 
   useEffect(() => {
-    fetchStatsData();
+    fetchPlayerRegistrations();
   }, []);
 
-  const fetchStatsData = async () => {
+  // Refresh player registrations when tournament data updates
+  useEffect(() => {
+    if (!loading && topPerformers && playerStats) {
+      fetchPlayerRegistrations();
+    }
+  }, [topPerformers, playerStats, loading]);
+
+  const fetchPlayerRegistrations = async () => {
     try {
-      const [performers, stats, standings, playersSnapshot] = await Promise.all([
-        dataSync.getTopPerformers(),
-        dataSync.getSyncedPlayerStats(),
-        dataSync.getSyncedStandings(),
-        getDocs(collection(db, 'playerRegistrations'))
-      ]);
-      
+      const playersSnapshot = await getDocs(collection(db, 'playerRegistrations'));
       const playersData = playersSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-      
-      setTopPerformers(performers);
-      setPlayerStats(stats);
-      setPointsTable(standings);
       setPlayerRegistrations(playersData);
+      console.log('✅ Player registrations refreshed:', playersData.length);
     } catch (error) {
-      console.error('Error fetching stats:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error fetching player registrations:', error);
     }
   };
 
@@ -87,57 +77,58 @@ const CricHeroesStats = () => {
         {/* Tab Navigation */}
         <div className="bg-white rounded-lg shadow-lg mb-8">
           <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6">
+            <nav className="flex overflow-x-auto space-x-2 sm:space-x-8 px-2 sm:px-6">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                    className={`flex items-center space-x-1 sm:space-x-2 py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
                       activeTab === tab.id
                         ? 'border-cricket-orange text-cricket-orange'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                   >
-                    <Icon size={16} />
-                    <span>{tab.name}</span>
+                    <Icon size={14} className="sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">{tab.name}</span>
+                    <span className="sm:hidden">{tab.name.split(' ')[0]}</span>
                   </button>
                 );
               })}
             </nav>
           </div>
 
-          <div className="p-6">
+          <div className="p-3 sm:p-6">
             {/* Overview Tab */}
             {activeTab === 'overview' && (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 text-center">
-                    <Users className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                    <h3 className="text-2xl font-bold text-blue-900">{playerStats.filter(p => p.matches > 0).length}</h3>
-                    <p className="text-blue-700">Active Players</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 sm:p-6 text-center">
+                    <Users className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 mx-auto mb-2" />
+                    <h3 className="text-lg sm:text-2xl font-bold text-blue-900">{playerStats.filter(p => p.matches > 0).length}</h3>
+                    <p className="text-xs sm:text-sm text-blue-700">Active Players</p>
                   </div>
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-6 text-center">
-                    <Calendar className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                    <h3 className="text-2xl font-bold text-green-900">{playerStats.reduce((sum, p) => sum + (p.runs || 0), 0)}</h3>
-                    <p className="text-green-700">Total Runs</p>
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-3 sm:p-6 text-center">
+                    <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mx-auto mb-2" />
+                    <h3 className="text-lg sm:text-2xl font-bold text-green-900">{playerStats.reduce((sum, p) => sum + (p.runs || 0), 0)}</h3>
+                    <p className="text-xs sm:text-sm text-green-700">Total Runs</p>
                   </div>
-                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-6 text-center">
-                    <Target className="w-8 h-8 text-orange-600 mx-auto mb-2" />
-                    <h3 className="text-2xl font-bold text-orange-900">{playerStats.reduce((sum, p) => sum + (p.wickets || 0), 0)}</h3>
-                    <p className="text-orange-700">Total Wickets</p>
+                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-3 sm:p-6 text-center">
+                    <Target className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600 mx-auto mb-2" />
+                    <h3 className="text-lg sm:text-2xl font-bold text-orange-900">{playerStats.reduce((sum, p) => sum + (p.wickets || 0), 0)}</h3>
+                    <p className="text-xs sm:text-sm text-orange-700">Total Wickets</p>
                   </div>
-                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-6 text-center">
-                    <Trophy className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                    <h3 className="text-2xl font-bold text-purple-900">{Math.max(...playerStats.map(p => p.highestScore || 0), 0)}</h3>
-                    <p className="text-purple-700">Highest Score</p>
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-3 sm:p-6 text-center">
+                    <Trophy className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600 mx-auto mb-2" />
+                    <h3 className="text-lg sm:text-2xl font-bold text-purple-900">{Math.max(...playerStats.map(p => p.highestScore || 0), 0)}</h3>
+                    <p className="text-xs sm:text-sm text-purple-700">Highest Score</p>
                   </div>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold mb-4">Tournament Format</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="bg-gray-50 rounded-lg p-4 sm:p-6">
+                  <h3 className="text-base sm:text-lg font-semibold mb-4">Tournament Format</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm">
                     <div><span className="font-medium">Format:</span> T20</div>
                     <div><span className="font-medium">Overs:</span> 20 per side</div>
                     <div><span className="font-medium">Teams:</span> 8 teams</div>
@@ -236,37 +227,37 @@ const CricHeroesStats = () => {
                 ) : (
                   <>
                     {/* Top Run Scorers */}
-                    <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-6">
-                      <h3 className="text-xl font-bold text-green-800 mb-4 flex items-center">
-                        <Trophy className="w-6 h-6 mr-2" />
+                    <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-4 sm:p-6">
+                      <h3 className="text-lg sm:text-xl font-bold text-green-800 mb-4 flex items-center">
+                        <Trophy className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
                         Top Run Scorers
                       </h3>
-                      {topPerformers.topRunScorers.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {topPerformers.topRunScorers.slice(0, 6).map((player, index) => {
+                      {topPerformers?.topRunScorers?.length > 0 ? (
+                        <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                          {topPerformers?.topRunScorers?.slice(0, 6).map((player, index) => {
                             const playerPhoto = getPlayerPhoto(player.name);
                             return (
-                              <div key={player.playerId} className="bg-white rounded-lg p-4 flex items-center space-x-4">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+                              <div key={player.playerId} className="bg-white rounded-lg p-3 sm:p-4 flex items-center space-x-3 sm:space-x-4">
+                                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm flex-shrink-0 ${
                                   index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-500' : 'bg-green-600'
                                 }`}>
                                   {index + 1}
                                 </div>
                                 {playerPhoto ? (
-                                  <div className="w-12 h-12 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full p-0.5 flex-shrink-0">
+                                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full p-0.5 flex-shrink-0">
                                     <img src={playerPhoto} alt={player.name} className="w-full h-full object-cover rounded-full" />
                                   </div>
                                 ) : (
-                                  <div className="w-12 h-12 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm flex-shrink-0">
                                     {getPlayerInitials(player.name)}
                                   </div>
                                 )}
-                                <div className="flex-1">
-                                  <h4 className="font-semibold text-gray-900">{player.name}</h4>
-                                  <p className="text-sm text-gray-600">{player.team}</p>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-gray-900 text-sm sm:text-base truncate">{player.name}</h4>
+                                  <p className="text-xs sm:text-sm text-gray-600 truncate">{player.team}</p>
                                 </div>
-                                <div className="text-right">
-                                  <p className="text-lg font-bold text-green-700">{player.runs}</p>
+                                <div className="text-right flex-shrink-0">
+                                  <p className="text-base sm:text-lg font-bold text-green-700">{player.runs}</p>
                                   <p className="text-xs text-gray-500">Avg: {player.average}</p>
                                 </div>
                               </div>
@@ -279,37 +270,37 @@ const CricHeroesStats = () => {
                     </div>
 
                     {/* Top Wicket Takers */}
-                    <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-6">
-                      <h3 className="text-xl font-bold text-red-800 mb-4 flex items-center">
-                        <Target className="w-6 h-6 mr-2" />
+                    <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-4 sm:p-6">
+                      <h3 className="text-lg sm:text-xl font-bold text-red-800 mb-4 flex items-center">
+                        <Target className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
                         Top Wicket Takers
                       </h3>
-                      {topPerformers.topWicketTakers.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {topPerformers.topWicketTakers.slice(0, 6).map((player, index) => {
+                      {topPerformers?.topWicketTakers?.length > 0 ? (
+                        <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                          {topPerformers?.topWicketTakers?.slice(0, 6).map((player, index) => {
                             const playerPhoto = getPlayerPhoto(player.name);
                             return (
-                              <div key={player.playerId} className="bg-white rounded-lg p-4 flex items-center space-x-4">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+                              <div key={player.playerId} className="bg-white rounded-lg p-3 sm:p-4 flex items-center space-x-3 sm:space-x-4">
+                                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm flex-shrink-0 ${
                                   index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-500' : 'bg-red-600'
                                 }`}>
                                   {index + 1}
                                 </div>
                                 {playerPhoto ? (
-                                  <div className="w-12 h-12 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full p-0.5 flex-shrink-0">
+                                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full p-0.5 flex-shrink-0">
                                     <img src={playerPhoto} alt={player.name} className="w-full h-full object-cover rounded-full" />
                                   </div>
                                 ) : (
-                                  <div className="w-12 h-12 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm flex-shrink-0">
                                     {getPlayerInitials(player.name)}
                                   </div>
                                 )}
-                                <div className="flex-1">
-                                  <h4 className="font-semibold text-gray-900">{player.name}</h4>
-                                  <p className="text-sm text-gray-600">{player.team}</p>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-gray-900 text-sm sm:text-base truncate">{player.name}</h4>
+                                  <p className="text-xs sm:text-sm text-gray-600 truncate">{player.team}</p>
                                 </div>
-                                <div className="text-right">
-                                  <p className="text-lg font-bold text-red-700">{player.wickets}</p>
+                                <div className="text-right flex-shrink-0">
+                                  <p className="text-base sm:text-lg font-bold text-red-700">{player.wickets}</p>
                                   <p className="text-xs text-gray-500">Econ: {player.economy}</p>
                                 </div>
                               </div>
@@ -322,33 +313,33 @@ const CricHeroesStats = () => {
                     </div>
 
                     {/* Best Averages */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-6">
-                        <h3 className="text-lg font-bold text-blue-800 mb-4 flex items-center">
-                          <Star className="w-5 h-5 mr-2" />
+                    <div className="grid grid-cols-1 gap-6">
+                      <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 sm:p-6">
+                        <h3 className="text-base sm:text-lg font-bold text-blue-800 mb-4 flex items-center">
+                          <Star className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                           Best Batting Averages
                         </h3>
-                        {topPerformers.bestBatsmen.length > 0 ? (
-                          <div className="space-y-3">
-                            {topPerformers.bestBatsmen.slice(0, 5).map((player, index) => {
+                        {topPerformers?.bestBatsmen?.length > 0 ? (
+                          <div className="space-y-2 sm:space-y-3">
+                            {topPerformers?.bestBatsmen?.slice(0, 5).map((player, index) => {
                               const playerPhoto = getPlayerPhoto(player.name);
                               return (
-                                <div key={player.playerId} className="flex items-center bg-white rounded p-3 space-x-3">
+                                <div key={player.playerId} className="flex items-center bg-white rounded p-2 sm:p-3 space-x-2 sm:space-x-3">
                                   {playerPhoto ? (
-                                    <div className="w-10 h-10 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full p-0.5 flex-shrink-0">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full p-0.5 flex-shrink-0">
                                       <img src={playerPhoto} alt={player.name} className="w-full h-full object-cover rounded-full" />
                                     </div>
                                   ) : (
-                                    <div className="w-10 h-10 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm flex-shrink-0">
                                       {getPlayerInitials(player.name)}
                                     </div>
                                   )}
-                                  <div className="flex-1">
-                                    <p className="font-medium text-gray-900">{player.name}</p>
-                                    <p className="text-sm text-gray-600">{player.team}</p>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{player.name}</p>
+                                    <p className="text-xs sm:text-sm text-gray-600 truncate">{player.team}</p>
                                   </div>
-                                  <div className="text-right">
-                                    <p className="font-bold text-blue-700">{player.average}</p>
+                                  <div className="text-right flex-shrink-0">
+                                    <p className="font-bold text-blue-700 text-sm sm:text-base">{player.average}</p>
                                     <p className="text-xs text-gray-500">{player.runs} runs</p>
                                   </div>
                                 </div>
@@ -356,36 +347,36 @@ const CricHeroesStats = () => {
                             })}
                           </div>
                         ) : (
-                          <p className="text-blue-700">No qualified batsmen yet.</p>
+                          <p className="text-blue-700 text-sm">No qualified batsmen yet.</p>
                         )}
                       </div>
 
-                      <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-6">
-                        <h3 className="text-lg font-bold text-purple-800 mb-4 flex items-center">
-                          <Medal className="w-5 h-5 mr-2" />
+                      <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-4 sm:p-6">
+                        <h3 className="text-base sm:text-lg font-bold text-purple-800 mb-4 flex items-center">
+                          <Medal className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                           Best Economy Rates
                         </h3>
-                        {topPerformers.bestBowlers.length > 0 ? (
-                          <div className="space-y-3">
-                            {topPerformers.bestBowlers.slice(0, 5).map((player, index) => {
+                        {topPerformers?.bestBowlers?.length > 0 ? (
+                          <div className="space-y-2 sm:space-y-3">
+                            {topPerformers?.bestBowlers?.slice(0, 5).map((player, index) => {
                               const playerPhoto = getPlayerPhoto(player.name);
                               return (
-                                <div key={player.playerId} className="flex items-center bg-white rounded p-3 space-x-3">
+                                <div key={player.playerId} className="flex items-center bg-white rounded p-2 sm:p-3 space-x-2 sm:space-x-3">
                                   {playerPhoto ? (
-                                    <div className="w-10 h-10 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full p-0.5 flex-shrink-0">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full p-0.5 flex-shrink-0">
                                       <img src={playerPhoto} alt={player.name} className="w-full h-full object-cover rounded-full" />
                                     </div>
                                   ) : (
-                                    <div className="w-10 h-10 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm flex-shrink-0">
                                       {getPlayerInitials(player.name)}
                                     </div>
                                   )}
-                                  <div className="flex-1">
-                                    <p className="font-medium text-gray-900">{player.name}</p>
-                                    <p className="text-sm text-gray-600">{player.team}</p>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{player.name}</p>
+                                    <p className="text-xs sm:text-sm text-gray-600 truncate">{player.team}</p>
                                   </div>
-                                  <div className="text-right">
-                                    <p className="font-bold text-purple-700">{player.economy}</p>
+                                  <div className="text-right flex-shrink-0">
+                                    <p className="font-bold text-purple-700 text-sm sm:text-base">{player.economy}</p>
                                     <p className="text-xs text-gray-500">{player.wickets} wickets</p>
                                   </div>
                                 </div>
@@ -393,7 +384,7 @@ const CricHeroesStats = () => {
                             })}
                           </div>
                         ) : (
-                          <p className="text-purple-700">No qualified bowlers yet.</p>
+                          <p className="text-purple-700 text-sm">No qualified bowlers yet.</p>
                         )}
                       </div>
                     </div>

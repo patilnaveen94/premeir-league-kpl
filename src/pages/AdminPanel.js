@@ -5,11 +5,14 @@ import { Users, Calendar, Trophy, FileText, CheckCircle, XCircle, Plus, Upload, 
 import { useAdmin } from '../context/AdminContext';
 import { db } from '../firebase/firebase';
 import AdminLogin from '../components/AdminLogin';
+import dataSync from '../services/dataSync';
 import EnhancedLiveScoring from '../components/EnhancedLiveScoring';
 import LiveScoreboard from '../components/LiveScoreboard';
 import ComprehensiveScoring from '../components/ComprehensiveScoring';
 import addSLVStrikersData from '../utils/addSLVStrikersData';
 import { formatMatchDate } from '../utils/dateUtils';
+import dataRefreshManager from '../utils/dataRefresh';
+import DataConsistencyChecker from '../components/DataConsistencyChecker';
 
 
 // Helper function to generate initials from full name
@@ -84,8 +87,513 @@ const AdminPanel = () => {
   const [carouselImageFile, setCarouselImageFile] = useState(null);
   const [showDetailedScoring, setShowDetailedScoring] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
+  const [showScoreEntry, setShowScoreEntry] = useState(false);
+  const [scoreEntryMatch, setScoreEntryMatch] = useState(null);
+  const [scorecardData, setScorecardData] = useState({});
+  const [showJsonImport, setShowJsonImport] = useState(false);
+  const [jsonInput, setJsonInput] = useState('');
+  const [importLoading, setImportLoading] = useState(false);
   
   const isSuperUser = currentAdmin?.role === 'superuser';
+
+  const initializeScorecardData = (match) => {
+    const data = {
+      team1: {
+        totalRuns: match.team1Score?.runs || 0,
+        wickets: match.team1Score?.wickets || 0,
+        overs: match.team1Score?.oversDisplay || '0.0',
+        extras: match.team1Extras || 0,
+        batting: {},
+        bowling: {}
+      },
+      team2: {
+        totalRuns: match.team2Score?.runs || 0,
+        wickets: match.team2Score?.wickets || 0,
+        overs: match.team2Score?.oversDisplay || '0.0',
+        extras: match.team2Extras || 0,
+        batting: {},
+        bowling: {}
+      }
+    };
+
+    // Initialize batting stats
+    match.team1Players?.forEach(player => {
+      const battingStats = match.battingStats?.[match.team1]?.find(p => p.playerId === player.id);
+      data.team1.batting[player.id] = {
+        runs: battingStats?.runs ?? 0,
+        balls: battingStats?.balls ?? 0,
+        fours: battingStats?.fours ?? 0,
+        sixes: battingStats?.sixes ?? 0,
+        dismissalType: battingStats?.dismissalType || '',
+        bowlerName: battingStats?.bowlerName || '',
+        fielderName: battingStats?.fielderName || '',
+        fielder2Name: battingStats?.fielder2Name || ''
+      };
+    });
+
+    match.team2Players?.forEach(player => {
+      const battingStats = match.battingStats?.[match.team2]?.find(p => p.playerId === player.id);
+      data.team2.batting[player.id] = {
+        runs: battingStats?.runs ?? 0,
+        balls: battingStats?.balls ?? 0,
+        fours: battingStats?.fours ?? 0,
+        sixes: battingStats?.sixes ?? 0,
+        dismissalType: battingStats?.dismissalType || '',
+        bowlerName: battingStats?.bowlerName || '',
+        fielderName: battingStats?.fielderName || '',
+        fielder2Name: battingStats?.fielder2Name || ''
+      };
+    });
+
+    // Initialize bowling stats
+    match.team1Players?.forEach(player => {
+      const bowlingStats = match.bowlingStats?.[match.team1]?.find(p => p.playerId === player.id);
+      data.team1.bowling[player.id] = {
+        overs: bowlingStats?.overs ?? 0,
+        maidens: bowlingStats?.maidens ?? 0,
+        runs: bowlingStats?.runs ?? 0,
+        wickets: bowlingStats?.wickets ?? 0,
+        economy: bowlingStats?.economy ?? 0
+      };
+    });
+
+    match.team2Players?.forEach(player => {
+      const bowlingStats = match.bowlingStats?.[match.team2]?.find(p => p.playerId === player.id);
+      data.team2.bowling[player.id] = {
+        overs: bowlingStats?.overs ?? 0,
+        maidens: bowlingStats?.maidens ?? 0,
+        runs: bowlingStats?.runs ?? 0,
+        wickets: bowlingStats?.wickets ?? 0,
+        economy: bowlingStats?.economy ?? 0
+      };
+    });
+
+    setScorecardData(data);
+  };
+
+  const updateScorecardData = (team, section, playerId, field, value) => {
+    setScorecardData(prev => {
+      const newData = {
+        ...prev,
+        [team]: {
+          ...prev[team],
+          [section]: {
+            ...prev[team][section],
+            [playerId]: {
+              ...prev[team][section][playerId],
+              [field]: value
+            }
+          }
+        }
+      };
+      
+      // Auto-calculate strike rate for batting
+      if (section === 'batting' && (field === 'runs' || field === 'balls')) {
+        const playerData = newData[team][section][playerId];
+        const runs = parseInt(playerData.runs) || 0;
+        const balls = parseInt(playerData.balls) || 0;
+        if (balls > 0) {
+          newData[team][section][playerId].strikeRate = ((runs / balls) * 100).toFixed(2);
+        } else {
+          newData[team][section][playerId].strikeRate = 0;
+        }
+      }
+      
+      // Auto-calculate economy rate for bowling
+      if (section === 'bowling' && (field === 'runs' || field === 'overs')) {
+        const playerData = newData[team][section][playerId];
+        const runs = parseInt(playerData.runs) || 0;
+        const overs = parseFloat(playerData.overs) || 0;
+        if (overs > 0) {
+          newData[team][section][playerId].economy = (runs / overs).toFixed(2);
+        } else {
+          newData[team][section][playerId].economy = 0;
+        }
+      }
+      
+      return newData;
+    });
+  };
+
+  const updateTeamTotal = (team, field, value) => {
+    setScorecardData(prev => ({
+      ...prev,
+      [team]: {
+        ...prev[team],
+        [field]: value
+      }
+    }));
+  };
+
+  const convertCricHeroesJsonToFirebase = (cricHeroesJson) => {
+    try {
+      const data = JSON.parse(cricHeroesJson);
+      console.log('🔍 Parsed JSON structure:', {
+        hasPageProps: !!data.pageProps,
+        hasScorecard: !!data.pageProps?.scorecard,
+        scorecardLength: data.pageProps?.scorecard?.length
+      });
+      
+      const scorecard = data.pageProps?.scorecard;
+      
+      if (!scorecard || scorecard.length < 2) {
+        throw new Error('Invalid scorecard data - missing or incomplete scorecard array');
+      }
+
+      const team1Data = scorecard[0];
+      const team2Data = scorecard[1];
+      
+      console.log('🏏 Team data structure:', {
+        team1: {
+          name: team1Data.teamName,
+          hasBatting: !!team1Data.batting,
+          battingCount: team1Data.batting?.length,
+          hasBowling: !!team1Data.bowling,
+          bowlingCount: team1Data.bowling?.length
+        },
+        team2: {
+          name: team2Data.teamName,
+          hasBatting: !!team2Data.batting,
+          battingCount: team2Data.batting?.length,
+          hasBowling: !!team2Data.bowling,
+          bowlingCount: team2Data.bowling?.length
+        }
+      });
+      
+      // Convert batting stats with detailed dismissal info
+      const convertBattingStats = (batting, teamName) => {
+        console.log(`🏏 Converting batting for ${teamName}:`, {
+          playerCount: batting.length,
+          firstPlayer: batting[0]
+        });
+        
+        return batting.map(player => {
+          const isOut = player.how_to_out !== 'not out';
+          let dismissalType = '';
+          let bowlerName = '';
+          let fielderName = '';
+          
+          if (isOut) {
+            const dismissal = player.how_to_out.toLowerCase();
+            if (dismissal.includes('b ')) {
+              dismissalType = 'bowled';
+              bowlerName = player.how_to_out.split('b ')[1]?.split(' ')[0] || '';
+            } else if (dismissal.includes('c ')) {
+              dismissalType = 'caught';
+              const parts = player.how_to_out.split('c ')[1];
+              if (parts?.includes(' b ')) {
+                fielderName = parts.split(' b ')[0] || '';
+                bowlerName = parts.split(' b ')[1] || '';
+              } else {
+                fielderName = parts || '';
+              }
+            } else if (dismissal.includes('lbw')) {
+              dismissalType = 'lbw';
+              bowlerName = player.how_to_out.split('lbw ')[1] || '';
+            } else if (dismissal.includes('run out')) {
+              dismissalType = 'run out';
+              fielderName = player.how_to_out.split('run out ')[1] || '';
+            } else if (dismissal.includes('stumped')) {
+              dismissalType = 'stumped';
+              const parts = player.how_to_out.split('stumped ')[1];
+              if (parts?.includes(' b ')) {
+                fielderName = parts.split(' b ')[0] || '';
+                bowlerName = parts.split(' b ')[1] || '';
+              }
+            } else {
+              dismissalType = 'other';
+            }
+          }
+          
+          return {
+            playerId: player.player_id?.toString() || player.name.replace(/\s+/g, '_').toLowerCase(),
+            name: player.name,
+            runs: parseInt(player.runs) || 0,
+            balls: parseInt(player.balls) || 0,
+            fours: parseInt(player['4s']) || 0,
+            sixes: parseInt(player['6s']) || 0,
+            isOut,
+            dismissalType,
+            bowlerName,
+            fielderName,
+            strikeRate: parseFloat(player.SR) || 0
+          };
+        });
+      };
+
+      // Convert bowling stats with detailed figures
+      const convertBowlingStats = (bowling, teamName) => {
+        console.log(`🎳 Converting bowling for ${teamName}:`, {
+          playerCount: bowling.length,
+          firstPlayer: bowling[0]
+        });
+        
+        return bowling.map(player => {
+          const overs = parseFloat(player.overs) || 0;
+          const runs = parseInt(player.runs) || 0;
+          const wickets = parseInt(player.wickets) || 0;
+          const economy = parseFloat(player.economy_rate) || (overs > 0 ? (runs / overs).toFixed(2) : 0);
+          
+          return {
+            playerId: player.player_id?.toString() || player.name.replace(/\s+/g, '_').toLowerCase(),
+            name: player.name,
+            overs,
+            maidens: parseInt(player.maidens) || 0,
+            runs,
+            wickets,
+            economy: parseFloat(economy),
+            dots: parseInt(player['0s']) || 0,
+            wides: parseInt(player.wide) || 0,
+            noBalls: parseInt(player.noball) || 0,
+            bestFigures: wickets > 0 ? `${wickets}/${runs}` : '0/0'
+          };
+        });
+      };
+
+      const firebaseData = {
+        // Toss information
+        tossWinner: data.pageProps?.summaryData?.data?.toss_details?.includes(team1Data.teamName) ? 
+                   team1Data.teamName : team2Data.teamName,
+        tossChoice: data.pageProps?.summaryData?.data?.toss_details?.includes('field') ? 'bowl' : 'bat',
+        
+        // Team 1 data
+        team1: {
+          totalRuns: team1Data.inning?.total_run || 0,
+          wickets: team1Data.inning?.total_wicket || 0,
+          overs: team1Data.inning?.overs_played || '0.0',
+          extras: team1Data.inning?.total_extra || 0,
+          batting: {},
+          bowling: {}
+        },
+        
+        // Team 2 data
+        team2: {
+          totalRuns: team2Data.inning?.total_run || 0,
+          wickets: team2Data.inning?.total_wicket || 0,
+          overs: team2Data.inning?.overs_played || '0.0',
+          extras: team2Data.inning?.total_extra || 0,
+          batting: {},
+          bowling: {}
+        },
+        
+        // Match result with proper formatting
+        result: data.pageProps?.summaryData?.data?.match_summary?.summary || null,
+        winningTeam: data.pageProps?.summaryData?.data?.winning_team || null,
+        matchSummary: data.pageProps?.summaryData?.data?.match_summary?.summary || null
+      };
+
+      // Convert batting stats for both teams
+      console.log('🏃 Converting batting stats...');
+      const team1Batting = convertBattingStats(team1Data.batting || [], team1Data.teamName);
+      const team2Batting = convertBattingStats(team2Data.batting || [], team2Data.teamName);
+      console.log('✅ Batting conversion complete:', {
+        team1Count: team1Batting.length,
+        team2Count: team2Batting.length,
+        team1Sample: team1Batting[0],
+        team2Sample: team2Batting[0]
+      });
+      
+      // Convert bowling stats for both teams (note: team1 bowlers are from team2 data)
+      console.log('🎳 Converting bowling stats...');
+      const team1Bowling = convertBowlingStats(team2Data.bowling || [], team2Data.teamName);
+      const team2Bowling = convertBowlingStats(team1Data.bowling || [], team1Data.teamName);
+      console.log('✅ Bowling conversion complete:', {
+        team1Count: team1Bowling.length,
+        team2Count: team2Bowling.length,
+        team1Sample: team1Bowling[0],
+        team2Sample: team2Bowling[0]
+      });
+
+      // Populate batting data with proper structure
+      console.log('📊 Populating Firebase data structure...');
+      team1Batting.forEach(player => {
+        firebaseData.team1.batting[player.playerId] = {
+          ...player,
+          status: player.isOut ? 'out' : 'not out'
+        };
+      });
+      
+      team2Batting.forEach(player => {
+        firebaseData.team2.batting[player.playerId] = {
+          ...player,
+          status: player.isOut ? 'out' : 'not out'
+        };
+      });
+
+      // Populate bowling data with proper structure
+      team1Bowling.forEach(player => {
+        firebaseData.team1.bowling[player.playerId] = {
+          ...player,
+          oversDisplay: player.overs.toString()
+        };
+      });
+      
+      team2Bowling.forEach(player => {
+        firebaseData.team2.bowling[player.playerId] = {
+          ...player,
+          oversDisplay: player.overs.toString()
+        };
+      });
+      
+      console.log('🎯 Final Firebase data structure:', {
+        team1BattingKeys: Object.keys(firebaseData.team1.batting),
+        team2BattingKeys: Object.keys(firebaseData.team2.batting),
+        team1BowlingKeys: Object.keys(firebaseData.team1.bowling),
+        team2BowlingKeys: Object.keys(firebaseData.team2.bowling),
+        sampleBatting: firebaseData.team1.batting[Object.keys(firebaseData.team1.batting)[0]],
+        sampleBowling: firebaseData.team1.bowling[Object.keys(firebaseData.team1.bowling)[0]]
+      });
+
+      return firebaseData;
+    } catch (error) {
+      console.error('Error converting JSON:', error);
+      throw new Error('Failed to convert JSON data: ' + error.message);
+    }
+  };
+
+  const handleJsonImport = async () => {
+    if (!jsonInput.trim()) {
+      alert('Please paste the JSON data');
+      return;
+    }
+
+    setImportLoading(true);
+    try {
+      const convertedData = convertCricHeroesJsonToFirebase(jsonInput);
+      console.log('=== JSON IMPORT & SAVE ===');
+      console.log('Raw JSON input:', jsonInput.substring(0, 500) + '...');
+      console.log('Converted data from JSON:', JSON.stringify(convertedData, null, 2));
+      
+      // Prepare Firebase update data
+      const updateData = {
+        status: 'completed',
+        tossWinner: convertedData.tossWinner || null,
+        tossChoice: convertedData.tossChoice || null,
+        team1Score: {
+          runs: convertedData.team1?.totalRuns || 0,
+          wickets: convertedData.team1?.wickets || 0,
+          oversDisplay: convertedData.team1?.overs || '0.0'
+        },
+        team2Score: {
+          runs: convertedData.team2?.totalRuns || 0,
+          wickets: convertedData.team2?.wickets || 0,
+          oversDisplay: convertedData.team2?.overs || '0.0'
+        },
+        team1Extras: convertedData.team1?.extras || 0,
+        team2Extras: convertedData.team2?.extras || 0,
+        result: convertedData.result || null,
+        winningTeam: convertedData.winningTeam || null,
+        updatedAt: new Date(),
+        lastUpdatedBy: currentAdmin?.userid || 'admin'
+      };
+      
+      // Add detailed batting stats with proper structure
+      if (convertedData.team1?.batting || convertedData.team2?.batting) {
+        const battingStats = {};
+        
+        if (convertedData.team1?.batting) {
+          battingStats[scoreEntryMatch.team1] = Object.values(convertedData.team1.batting)
+            .filter(player => player.runs > 0 || player.balls > 0 || player.dismissalType)
+            .map(player => ({
+              playerId: player.playerId,
+              name: player.name,
+              runs: player.runs || 0,
+              balls: player.balls || 0,
+              fours: player.fours || 0,
+              sixes: player.sixes || 0,
+              dismissalType: player.dismissalType || null,
+              bowlerName: player.bowlerName || null,
+              fielderName: player.fielderName || null,
+              isOut: player.isOut || false,
+              strikeRate: player.strikeRate || 0
+            }));
+        }
+        
+        if (convertedData.team2?.batting) {
+          battingStats[scoreEntryMatch.team2] = Object.values(convertedData.team2.batting)
+            .filter(player => player.runs > 0 || player.balls > 0 || player.dismissalType)
+            .map(player => ({
+              playerId: player.playerId,
+              name: player.name,
+              runs: player.runs || 0,
+              balls: player.balls || 0,
+              fours: player.fours || 0,
+              sixes: player.sixes || 0,
+              dismissalType: player.dismissalType || null,
+              bowlerName: player.bowlerName || null,
+              fielderName: player.fielderName || null,
+              isOut: player.isOut || false,
+              strikeRate: player.strikeRate || 0
+            }));
+        }
+        
+        updateData.battingStats = battingStats;
+      }
+      
+      // Add detailed bowling stats with proper structure
+      if (convertedData.team1?.bowling || convertedData.team2?.bowling) {
+        const bowlingStats = {};
+        
+        if (convertedData.team1?.bowling) {
+          bowlingStats[scoreEntryMatch.team1] = Object.values(convertedData.team1.bowling)
+            .filter(player => player.overs > 0 || player.runs > 0 || player.wickets > 0)
+            .map(player => ({
+              playerId: player.playerId,
+              name: player.name,
+              overs: player.overs || 0,
+              maidens: player.maidens || 0,
+              runs: player.runs || 0,
+              wickets: player.wickets || 0,
+              economy: player.economy || 0,
+              dots: player.dots || 0,
+              wides: player.wides || 0,
+              noBalls: player.noBalls || 0
+            }));
+        }
+        
+        if (convertedData.team2?.bowling) {
+          bowlingStats[scoreEntryMatch.team2] = Object.values(convertedData.team2.bowling)
+            .filter(player => player.overs > 0 || player.runs > 0 || player.wickets > 0)
+            .map(player => ({
+              playerId: player.playerId,
+              name: player.name,
+              overs: player.overs || 0,
+              maidens: player.maidens || 0,
+              runs: player.runs || 0,
+              wickets: player.wickets || 0,
+              economy: player.economy || 0,
+              dots: player.dots || 0,
+              wides: player.wides || 0,
+              noBalls: player.noBalls || 0
+            }));
+        }
+        
+        updateData.bowlingStats = bowlingStats;
+      }
+      
+      console.log('Saving to Firebase:', updateData);
+      
+      // Save to Firebase
+      await updateDoc(doc(db, 'matches', scoreEntryMatch.id), updateData);
+      
+      console.log('✅ JSON data saved to Firebase successfully');
+      
+      // Trigger comprehensive data refresh using the manager
+      await dataRefreshManager.refreshAfterMatchOperation('json-import', `${scoreEntryMatch.team1} vs ${scoreEntryMatch.team2}`);
+      
+      setShowJsonImport(false);
+      setJsonInput('');
+      await fetchMatches(); // Refresh matches
+      
+      alert('✅ JSON data imported and saved successfully! All statistics have been updated.');
+      
+    } catch (error) {
+      console.error('❌ JSON import error:', error);
+      alert('❌ Error importing JSON: ' + error.message);
+    } finally {
+      setImportLoading(false);
+    }
+  };
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -141,7 +649,11 @@ const AdminPanel = () => {
         ...doc.data(),
         matchType: doc.data().matchType || 'knockout'
       }));
-      matchesData.sort((a, b) => new Date(b.date) - new Date(a.date));
+      matchesData.sort((a, b) => {
+        const dateTimeA = new Date(`${a.date}T${a.time || '00:00'}`);
+        const dateTimeB = new Date(`${b.date}T${b.time || '00:00'}`);
+        return dateTimeA - dateTimeB;
+      });
       setMatches(matchesData);
     } catch (error) {
       console.error('Error fetching matches:', error);
@@ -186,6 +698,7 @@ const AdminPanel = () => {
         approved,
         status: approved ? 'approved' : 'rejected',
         teamId: approved && teamId ? teamId : null,
+        season: 'Season 1', // Default to Season 1 for existing players
         reviewedAt: new Date(),
         reviewedBy: currentAdmin?.userid
       });
@@ -230,7 +743,15 @@ const AdminPanel = () => {
       }]);
       
       resetTeamForm();
-      alert('Team added successfully!');
+      
+      // Initialize team in points table
+      const pointsTableService = await import('../services/pointsTableService');
+      await pointsTableService.default.initializeTeam(newTeam.name);
+      
+      // Trigger comprehensive data refresh using the manager
+      await dataRefreshManager.refreshAfterTeamOperation('create', newTeam.name);
+      
+      alert('Team added successfully! All data has been refreshed.');
     } catch (error) {
       console.error('Error adding team:', error);
       setError(`Error adding team: ${error.message}`);
@@ -261,7 +782,11 @@ const AdminPanel = () => {
 
       fetchTeams();
       resetTeamForm();
-      alert('Team updated successfully!');
+      
+      // Trigger comprehensive data refresh using the manager
+      await dataRefreshManager.refreshAfterTeamOperation('update', selectedTeam.name);
+      
+      alert('Team updated successfully! All data has been refreshed.');
     } catch (error) {
       console.error('Error updating team:', error);
       setError(`Error updating team: ${error.message}`);
@@ -275,7 +800,11 @@ const AdminPanel = () => {
       try {
         await deleteDoc(doc(db, 'teams', teamId));
         setTeams(prev => prev.filter(team => team.id !== teamId));
-        alert('Team deleted successfully!');
+        
+        // Trigger comprehensive data refresh using the manager
+        await dataRefreshManager.refreshAfterTeamOperation('delete', teams.find(t => t.id === teamId)?.name || 'Unknown');
+        
+        alert('Team deleted successfully! All data has been refreshed.');
       } catch (error) {
         console.error('Error deleting team:', error);
         alert('Error deleting team. Please try again.');
@@ -927,6 +1456,7 @@ const AdminPanel = () => {
     { id: 'payment', name: 'Payment Settings', icon: CreditCard },
     { id: 'media', name: 'Carousel Images', icon: Image },
     { id: 'news', name: 'News', icon: FileText },
+    { id: 'system', name: 'System Status', icon: Activity },
     ...(isSuperUser ? [{ id: 'admins', name: 'Admin Users', icon: User }] : [])
   ];
 
@@ -968,6 +1498,11 @@ const AdminPanel = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Data Consistency Checker */}
+        <div className="mb-8">
+          <DataConsistencyChecker showDetails={true} />
         </div>
 
         {/* Tab Navigation */}
@@ -2429,6 +2964,11 @@ const AdminPanel = () => {
                   <div className="flex items-center space-x-2">
                     <Activity className="w-5 h-5 text-red-500 animate-pulse" />
                     <span className="text-sm text-gray-600">Real-time match scoring</span>
+                    {selectedMatch && (
+                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                        Match Selected: {selectedMatch.team1} vs {selectedMatch.team2}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -2438,8 +2978,16 @@ const AdminPanel = () => {
                     <h3 className="text-lg font-semibold mb-4 flex items-center">
                       <Activity className="w-5 h-5 mr-2 text-cricket-green" />
                       Live Match Scoring
+                      {selectedMatch && (
+                        <button
+                          onClick={() => setSelectedMatch(null)}
+                          className="ml-auto text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-md"
+                        >
+                          Clear Selection
+                        </button>
+                      )}
                     </h3>
-                    <EnhancedLiveScoring />
+                    <EnhancedLiveScoring preSelectedMatch={selectedMatch} />
                   </div>
                 </div>
 
@@ -2451,6 +2999,7 @@ const AdminPanel = () => {
                     <p><strong>3. Real-time Updates:</strong> Scores update instantly across all devices</p>
                     <p><strong>4. Live Display:</strong> Matches appear on the public scoreboard automatically</p>
                     <p><strong>5. Match Control:</strong> Pause, resume, or end matches as needed</p>
+                    <p><strong>6. Score Entry:</strong> Click "Score Entry" button from matches tab to directly score a specific match</p>
                   </div>
                 </div>
               </div>
@@ -2536,9 +3085,14 @@ const AdminPanel = () => {
                           createdAt: new Date(),
                           createdBy: currentAdmin?.userid
                         });
+                        
+                        // Trigger comprehensive data refresh using the manager
+                        await dataRefreshManager.refreshAfterMatchOperation('create', `${newMatch.team1} vs ${newMatch.team2}`);
+                        
                         setNewMatch({ team1: '', team2: '', date: '', venue: 'Nutan Vidyalaya Khajjidoni', overs: '8', matchType: 'knockout', team1Score: '', team2Score: '', status: 'upcoming' });
                         setShowAddMatch(false);
                         fetchMatches();
+                        
                         alert('Match scheduled successfully with player squads!');
                       } catch (error) {
                         console.error('Error scheduling match:', error);
@@ -2719,20 +3273,49 @@ const AdminPanel = () => {
                         <div className="flex flex-col space-y-2 ml-4">
                           <button
                             onClick={() => {
-                              setSelectedMatch(match);
-                              setShowDetailedScoring(true);
+                              setScoreEntryMatch(match);
+                              initializeScorecardData(match);
+                              setShowScoreEntry(true);
                             }}
-                            className="bg-cricket-orange hover:bg-cricket-orange/90 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2"
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2"
                           >
                             <Target size={16} />
-                            <span>Scorecard</span>
+                            <span>Enter Scores</span>
                           </button>
                           
                           <button
                             onClick={() => {
-                              if (window.confirm('Delete this match? This will also delete all match statistics.')) {
-                                deleteDoc(doc(db, 'matches', match.id));
-                                fetchMatches();
+                              setScoreEntryMatch(match);
+                              setShowJsonImport(true);
+                            }}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2"
+                          >
+                            <Upload size={16} />
+                            <span>Import JSON</span>
+                          </button>
+                          
+                          <button
+                            onClick={async () => {
+                              if (window.confirm('Delete this match? This will also delete all related statistics and update points table.')) {
+                                try {
+                                  console.log('🗑️ Deleting match and related data:', match.id);
+                                  
+                                  // Delete the match document
+                                  await deleteDoc(doc(db, 'matches', match.id));
+                                  
+                                  // Recalculate all player statistics from remaining matches
+                                  const { default: statsService } = await import('../services/statsService');
+                                  await statsService.recalculateAllStats();
+                                  
+                                  // Trigger comprehensive data refresh using the manager
+                                  await dataRefreshManager.refreshAfterMatchOperation('delete', `${match.team1} vs ${match.team2}`);
+                                  
+                                  fetchMatches();
+                                  alert('Match deleted successfully! All player statistics have been recalculated.');
+                                } catch (error) {
+                                  console.error('❌ Error deleting match:', error);
+                                  alert('Error deleting match: ' + error.message);
+                                }
                               }
                             }}
                             className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2"
@@ -2850,6 +3433,66 @@ const AdminPanel = () => {
                 <p className="text-gray-600">
                   This section is under development. Coming soon!
                 </p>
+              </div>
+            )}
+
+            {/* System Status Tab */}
+            {activeTab === 'system' && (
+              <div>
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">System Status & Data Consistency</h2>
+                  <p className="text-gray-600 mb-6">
+                    Monitor data consistency across all pages and trigger manual refreshes when needed.
+                  </p>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Detailed Data Consistency Checker */}
+                  <DataConsistencyChecker showDetails={true} />
+
+                  {/* Manual Refresh Controls */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-blue-900 mb-4">Manual Data Refresh</h3>
+                    <p className="text-blue-800 mb-4 text-sm">
+                      Use these controls if you notice data inconsistencies across different pages.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <button
+                        onClick={() => dataRefreshManager.triggerQuickRefresh('admin-manual')}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
+                      >
+                        Quick Refresh (Components Only)
+                      </button>
+                      <button
+                        onClick={() => dataRefreshManager.triggerCompleteRefresh(true, 'admin-manual-full')}
+                        className="bg-blue-800 hover:bg-blue-900 text-white px-4 py-2 rounded-md font-medium"
+                      >
+                        Complete Refresh (Full Sync)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* System Information */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">System Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-700">Refresh Manager Status:</span>
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                          dataRefreshManager.isRefreshInProgress() 
+                            ? 'bg-yellow-100 text-yellow-800' 
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {dataRefreshManager.isRefreshInProgress() ? 'Refreshing...' : 'Ready'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Queued Requests:</span>
+                        <span className="ml-2 text-gray-600">{dataRefreshManager.getQueueLength()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -3056,18 +3699,666 @@ const AdminPanel = () => {
 
 
 
-        {/* Comprehensive Match Scoring Modal */}
-        {showDetailedScoring && selectedMatch && (
-          <ComprehensiveScoring
-            match={selectedMatch}
-            onClose={() => {
-              setShowDetailedScoring(false);
-              setSelectedMatch(null);
-            }}
-            onUpdate={() => {
-              fetchMatches();
-            }}
-          />
+        {/* JSON Import Modal */}
+        {showJsonImport && scoreEntryMatch && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold">Import CricHeroes JSON - {scoreEntryMatch.team1} vs {scoreEntryMatch.team2}</h3>
+                <button onClick={() => setShowJsonImport(false)} className="text-gray-400 hover:text-gray-600">
+                  <XCircle size={24} />
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Paste CricHeroes JSON Response:
+                </label>
+                <textarea
+                  value={jsonInput}
+                  onChange={(e) => setJsonInput(e.target.value)}
+                  className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md font-mono text-sm"
+                  placeholder="Paste the complete JSON response from CricHeroes here..."
+                />
+              </div>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h4 className="font-semibold text-blue-900 mb-2">How to use:</h4>
+                <ol className="text-sm text-blue-800 space-y-1">
+                  <li>1. Copy the complete JSON response from CricHeroes scorecard page</li>
+                  <li>2. Paste it in the textarea above</li>
+                  <li>3. Click "Import & Convert" to automatically populate the scorecard</li>
+                  <li>4. Review the imported data and make any necessary adjustments</li>
+                  <li>5. Save the complete scorecard to update the match</li>
+                </ol>
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <button 
+                  onClick={() => setShowJsonImport(false)} 
+                  className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleJsonImport}
+                  disabled={importLoading || !jsonInput.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {importLoading ? 'Importing & Saving...' : 'Import & Save to Firebase'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Simple Scorecard Entry Modal */}
+        {showScoreEntry && scoreEntryMatch && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold">Enter Match Scores - {scoreEntryMatch.team1} vs {scoreEntryMatch.team2}</h3>
+                <button onClick={() => setShowScoreEntry(false)} className="text-gray-400 hover:text-gray-600">
+                  <XCircle size={24} />
+                </button>
+              </div>
+              
+              {/* Toss Information */}
+              <div className="mb-6 bg-yellow-50 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold mb-4">Toss Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <select 
+                    value={scorecardData.tossWinner || ''}
+                    onChange={(e) => setScorecardData(prev => ({...prev, tossWinner: e.target.value}))}
+                    className="px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">Select Toss Winner</option>
+                    <option value={scoreEntryMatch.team1}>{scoreEntryMatch.team1}</option>
+                    <option value={scoreEntryMatch.team2}>{scoreEntryMatch.team2}</option>
+                  </select>
+                  <select 
+                    value={scorecardData.tossChoice || ''}
+                    onChange={(e) => setScorecardData(prev => ({...prev, tossChoice: e.target.value}))}
+                    className="px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">Select Choice</option>
+                    <option value="bat">Bat First</option>
+                    <option value="bowl">Bowl First</option>
+                  </select>
+                </div>
+              </div>
+              
+              {/* Team 1 Batting & Team 2 Bowling */}
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold mb-4">{scoreEntryMatch.team1} Batting vs {scoreEntryMatch.team2} Bowling</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="font-semibold mb-4">{scoreEntryMatch.team1} Batting</h4>
+                    <div className="space-y-3 mb-4">
+                      <div className="grid grid-cols-3 gap-2">
+                        <input 
+                          type="number" 
+                          placeholder="Total Runs" 
+                          value={scorecardData.team1?.totalRuns || ''}
+                          onChange={(e) => updateTeamTotal('team1', 'totalRuns', e.target.value)}
+                          className="px-3 py-2 border rounded" 
+                        />
+                        <input 
+                          type="number" 
+                          placeholder="Wickets" 
+                          value={scorecardData.team1?.wickets || ''}
+                          onChange={(e) => updateTeamTotal('team1', 'wickets', e.target.value)}
+                          className="px-3 py-2 border rounded" 
+                        />
+                        <input 
+                          type="text" 
+                          placeholder="Overs" 
+                          value={scorecardData.team1?.overs || ''}
+                          onChange={(e) => updateTeamTotal('team1', 'overs', e.target.value)}
+                          className="px-3 py-2 border rounded" 
+                        />
+                      </div>
+                      <input 
+                        type="number" 
+                        placeholder="Extras" 
+                        value={scorecardData.team1?.extras || ''}
+                        onChange={(e) => updateTeamTotal('team1', 'extras', e.target.value)}
+                        className="w-full px-3 py-2 border rounded" 
+                      />
+                    </div>
+                    
+                    {/* Batting Stats Headers */}
+                    <div className="grid grid-cols-5 gap-1 mb-2 text-xs font-semibold text-gray-600">
+                      <div>Runs</div>
+                      <div>Balls</div>
+                      <div>4s</div>
+                      <div>6s</div>
+                      <div>S/R</div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      {scoreEntryMatch.team1Players?.map((player, i) => (
+                        <div key={i} className="bg-white p-2 rounded border">
+                          <div className="font-medium text-sm mb-2">{player.name}</div>
+                          <div className="grid grid-cols-5 gap-1 mb-2">
+                            <input 
+                              type="number" 
+                              placeholder="Runs" 
+                              value={scorecardData.team1?.batting?.[player.id]?.runs ?? 0}
+                              onChange={(e) => updateScorecardData('team1', 'batting', player.id, 'runs', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs" 
+                            />
+                            <input 
+                              type="number" 
+                              placeholder="Balls" 
+                              value={scorecardData.team1?.batting?.[player.id]?.balls ?? 0}
+                              onChange={(e) => updateScorecardData('team1', 'batting', player.id, 'balls', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs" 
+                            />
+                            <input 
+                              type="number" 
+                              placeholder="4s" 
+                              value={scorecardData.team1?.batting?.[player.id]?.fours ?? 0}
+                              onChange={(e) => updateScorecardData('team1', 'batting', player.id, 'fours', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs" 
+                            />
+                            <input 
+                              type="number" 
+                              placeholder="6s" 
+                              value={scorecardData.team1?.batting?.[player.id]?.sixes ?? 0}
+                              onChange={(e) => updateScorecardData('team1', 'batting', player.id, 'sixes', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs" 
+                            />
+                            <div className="px-2 py-1 bg-gray-100 rounded text-xs text-center font-medium">
+                              {scorecardData.team1?.batting?.[player.id]?.strikeRate || '0.00'}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-4 gap-1">
+                            <select 
+                              value={scorecardData.team1?.batting?.[player.id]?.dismissalType || ''}
+                              onChange={(e) => updateScorecardData('team1', 'batting', player.id, 'dismissalType', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs"
+                            >
+                              <option value="">Not Out</option>
+                              <option value="bowled">Bowled</option>
+                              <option value="caught">Caught</option>
+                              <option value="lbw">LBW</option>
+                              <option value="runout">Run Out</option>
+                              <option value="stumped">Stumped</option>
+                            </select>
+                            <select 
+                              value={scorecardData.team1?.batting?.[player.id]?.bowlerName || ''}
+                              onChange={(e) => updateScorecardData('team1', 'batting', player.id, 'bowlerName', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs"
+                            >
+                              <option value="">Bowler</option>
+                              {scoreEntryMatch.team2Players?.map(p => (
+                                <option key={p.id} value={p.name}>{p.name}</option>
+                              ))}
+                            </select>
+                            <select 
+                              value={scorecardData.team1?.batting?.[player.id]?.fielderName || ''}
+                              onChange={(e) => updateScorecardData('team1', 'batting', player.id, 'fielderName', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs"
+                            >
+                              <option value="">Fielder 1</option>
+                              {scoreEntryMatch.team2Players?.map(p => (
+                                <option key={p.id} value={p.name}>{p.name}</option>
+                              ))}
+                            </select>
+                            <select 
+                              value={scorecardData.team1?.batting?.[player.id]?.fielder2Name || ''}
+                              onChange={(e) => updateScorecardData('team1', 'batting', player.id, 'fielder2Name', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs"
+                            >
+                              <option value="">Fielder 2</option>
+                              {scoreEntryMatch.team2Players?.map(p => (
+                                <option key={p.id} value={p.name}>{p.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-semibold mb-4">{scoreEntryMatch.team2} Bowling</h4>
+                    
+                    {/* Bowling Stats Headers */}
+                    <div className="grid grid-cols-5 gap-1 mb-2 text-xs font-semibold text-gray-600">
+                      <div>Overs</div>
+                      <div>Maidens</div>
+                      <div>Runs</div>
+                      <div>Wickets</div>
+                      <div>Economy</div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      {scoreEntryMatch.team2Players?.map((player, i) => (
+                        <div key={i} className="bg-white p-2 rounded border">
+                          <div className="font-medium text-sm mb-2">{player.name}</div>
+                          <div className="grid grid-cols-5 gap-1">
+                            <input 
+                              type="number" 
+                              step="0.1" 
+                              placeholder="Overs" 
+                              value={scorecardData.team2?.bowling?.[player.id]?.overs ?? 0}
+                              onChange={(e) => updateScorecardData('team2', 'bowling', player.id, 'overs', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs" 
+                            />
+                            <input 
+                              type="number" 
+                              placeholder="Maidens" 
+                              value={scorecardData.team2?.bowling?.[player.id]?.maidens ?? 0}
+                              onChange={(e) => updateScorecardData('team2', 'bowling', player.id, 'maidens', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs" 
+                            />
+                            <input 
+                              type="number" 
+                              placeholder="Runs" 
+                              value={scorecardData.team2?.bowling?.[player.id]?.runs ?? 0}
+                              onChange={(e) => updateScorecardData('team2', 'bowling', player.id, 'runs', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs" 
+                            />
+                            <input 
+                              type="number" 
+                              placeholder="Wickets" 
+                              value={scorecardData.team2?.bowling?.[player.id]?.wickets ?? 0}
+                              onChange={(e) => updateScorecardData('team2', 'bowling', player.id, 'wickets', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs" 
+                            />
+                            <div className="px-2 py-1 bg-gray-100 rounded text-xs text-center font-medium">
+                              {scorecardData.team2?.bowling?.[player.id]?.economy || '0.00'}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Team 2 Batting & Team 1 Bowling */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-4">{scoreEntryMatch.team2} Batting vs {scoreEntryMatch.team1} Bowling</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="font-semibold mb-4">{scoreEntryMatch.team2} Batting</h4>
+                    <div className="space-y-3 mb-4">
+                      <div className="grid grid-cols-3 gap-2">
+                        <input 
+                          type="number" 
+                          placeholder="Total Runs" 
+                          value={scorecardData.team2?.totalRuns || ''}
+                          onChange={(e) => updateTeamTotal('team2', 'totalRuns', e.target.value)}
+                          className="px-3 py-2 border rounded" 
+                        />
+                        <input 
+                          type="number" 
+                          placeholder="Wickets" 
+                          value={scorecardData.team2?.wickets || ''}
+                          onChange={(e) => updateTeamTotal('team2', 'wickets', e.target.value)}
+                          className="px-3 py-2 border rounded" 
+                        />
+                        <input 
+                          type="text" 
+                          placeholder="Overs" 
+                          value={scorecardData.team2?.overs || ''}
+                          onChange={(e) => updateTeamTotal('team2', 'overs', e.target.value)}
+                          className="px-3 py-2 border rounded" 
+                        />
+                      </div>
+                      <input 
+                        type="number" 
+                        placeholder="Extras" 
+                        value={scorecardData.team2?.extras || ''}
+                        onChange={(e) => updateTeamTotal('team2', 'extras', e.target.value)}
+                        className="w-full px-3 py-2 border rounded" 
+                      />
+                    </div>
+                    
+                    {/* Batting Stats Headers */}
+                    <div className="grid grid-cols-5 gap-1 mb-2 text-xs font-semibold text-gray-600">
+                      <div>Runs</div>
+                      <div>Balls</div>
+                      <div>4s</div>
+                      <div>6s</div>
+                      <div>S/R</div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      {scoreEntryMatch.team2Players?.map((player, i) => (
+                        <div key={i} className="bg-white p-2 rounded border">
+                          <div className="font-medium text-sm mb-2">{player.name}</div>
+                          <div className="grid grid-cols-5 gap-1 mb-2">
+                            <input 
+                              type="number" 
+                              placeholder="Runs" 
+                              value={scorecardData.team2?.batting?.[player.id]?.runs ?? 0}
+                              onChange={(e) => updateScorecardData('team2', 'batting', player.id, 'runs', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs" 
+                            />
+                            <input 
+                              type="number" 
+                              placeholder="Balls" 
+                              value={scorecardData.team2?.batting?.[player.id]?.balls ?? 0}
+                              onChange={(e) => updateScorecardData('team2', 'batting', player.id, 'balls', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs" 
+                            />
+                            <input 
+                              type="number" 
+                              placeholder="4s" 
+                              value={scorecardData.team2?.batting?.[player.id]?.fours ?? 0}
+                              onChange={(e) => updateScorecardData('team2', 'batting', player.id, 'fours', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs" 
+                            />
+                            <input 
+                              type="number" 
+                              placeholder="6s" 
+                              value={scorecardData.team2?.batting?.[player.id]?.sixes ?? 0}
+                              onChange={(e) => updateScorecardData('team2', 'batting', player.id, 'sixes', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs" 
+                            />
+                            <div className="px-2 py-1 bg-gray-100 rounded text-xs text-center font-medium">
+                              {scorecardData.team2?.batting?.[player.id]?.strikeRate || '0.00'}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-4 gap-1">
+                            <select 
+                              value={scorecardData.team2?.batting?.[player.id]?.dismissalType || ''}
+                              onChange={(e) => updateScorecardData('team2', 'batting', player.id, 'dismissalType', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs"
+                            >
+                              <option value="">Not Out</option>
+                              <option value="bowled">Bowled</option>
+                              <option value="caught">Caught</option>
+                              <option value="lbw">LBW</option>
+                              <option value="runout">Run Out</option>
+                              <option value="stumped">Stumped</option>
+                            </select>
+                            <select 
+                              value={scorecardData.team2?.batting?.[player.id]?.bowlerName || ''}
+                              onChange={(e) => updateScorecardData('team2', 'batting', player.id, 'bowlerName', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs"
+                            >
+                              <option value="">Bowler</option>
+                              {scoreEntryMatch.team1Players?.map(p => (
+                                <option key={p.id} value={p.name}>{p.name}</option>
+                              ))}
+                            </select>
+                            <select 
+                              value={scorecardData.team2?.batting?.[player.id]?.fielderName || ''}
+                              onChange={(e) => updateScorecardData('team2', 'batting', player.id, 'fielderName', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs"
+                            >
+                              <option value="">Fielder 1</option>
+                              {scoreEntryMatch.team1Players?.map(p => (
+                                <option key={p.id} value={p.name}>{p.name}</option>
+                              ))}
+                            </select>
+                            <select 
+                              value={scorecardData.team2?.batting?.[player.id]?.fielder2Name || ''}
+                              onChange={(e) => updateScorecardData('team2', 'batting', player.id, 'fielder2Name', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs"
+                            >
+                              <option value="">Fielder 2</option>
+                              {scoreEntryMatch.team1Players?.map(p => (
+                                <option key={p.id} value={p.name}>{p.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-semibold mb-4">{scoreEntryMatch.team1} Bowling</h4>
+                    
+                    {/* Bowling Stats Headers */}
+                    <div className="grid grid-cols-5 gap-1 mb-2 text-xs font-semibold text-gray-600">
+                      <div>Overs</div>
+                      <div>Maidens</div>
+                      <div>Runs</div>
+                      <div>Wickets</div>
+                      <div>Economy</div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      {scoreEntryMatch.team1Players?.map((player, i) => (
+                        <div key={i} className="bg-white p-2 rounded border">
+                          <div className="font-medium text-sm mb-2">{player.name}</div>
+                          <div className="grid grid-cols-5 gap-1">
+                            <input 
+                              type="number" 
+                              step="0.1" 
+                              placeholder="Overs" 
+                              value={scorecardData.team1?.bowling?.[player.id]?.overs ?? 0}
+                              onChange={(e) => updateScorecardData('team1', 'bowling', player.id, 'overs', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs" 
+                            />
+                            <input 
+                              type="number" 
+                              placeholder="Maidens" 
+                              value={scorecardData.team1?.bowling?.[player.id]?.maidens ?? 0}
+                              onChange={(e) => updateScorecardData('team1', 'bowling', player.id, 'maidens', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs" 
+                            />
+                            <input 
+                              type="number" 
+                              placeholder="Runs" 
+                              value={scorecardData.team1?.bowling?.[player.id]?.runs ?? 0}
+                              onChange={(e) => updateScorecardData('team1', 'bowling', player.id, 'runs', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs" 
+                            />
+                            <input 
+                              type="number" 
+                              placeholder="Wickets" 
+                              value={scorecardData.team1?.bowling?.[player.id]?.wickets ?? 0}
+                              onChange={(e) => updateScorecardData('team1', 'bowling', player.id, 'wickets', e.target.value)}
+                              className="px-2 py-1 border rounded text-xs" 
+                            />
+                            <div className="px-2 py-1 bg-gray-100 rounded text-xs text-center font-medium">
+                              {scorecardData.team1?.bowling?.[player.id]?.economy || '0.00'}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <button onClick={() => setShowScoreEntry(false)} className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button 
+                  onClick={async () => {
+                    try {
+                      console.log('=== SCORECARD SAVE DEBUG ===');
+                      console.log('Raw scorecard data:', JSON.stringify(scorecardData, null, 2));
+                      console.log('Match data:', scoreEntryMatch);
+                      
+                      // Validate required data
+                      if (!scorecardData || (!scorecardData.team1 && !scorecardData.team2)) {
+                        throw new Error('No scorecard data to save');
+                      }
+                      
+                      const updateData = {
+                        status: 'completed',
+                        tossWinner: scorecardData.tossWinner || null,
+                        tossChoice: scorecardData.tossChoice || null,
+                        team1Score: {
+                          runs: parseInt(scorecardData.team1?.totalRuns) || 0,
+                          wickets: parseInt(scorecardData.team1?.wickets) || 0,
+                          oversDisplay: scorecardData.team1?.overs || '0.0'
+                        },
+                        team2Score: {
+                          runs: parseInt(scorecardData.team2?.totalRuns) || 0,
+                          wickets: parseInt(scorecardData.team2?.wickets) || 0,
+                          oversDisplay: scorecardData.team2?.overs || '0.0'
+                        },
+                        team1Extras: parseInt(scorecardData.team1?.extras) || 0,
+                        team2Extras: parseInt(scorecardData.team2?.extras) || 0,
+                        result: scorecardData.result || null,
+                        winningTeam: scorecardData.winningTeam || null,
+                        updatedAt: new Date(),
+                        lastUpdatedBy: currentAdmin?.userid || 'admin'
+                      };
+                      
+                      console.log('Basic update data prepared:', updateData);
+                      
+                      // Process batting stats
+                      const battingStats = {};
+                      let hasBattingData = false;
+                      
+                      if (scorecardData.team1?.batting && Object.keys(scorecardData.team1.batting).length > 0) {
+                        console.log('Processing team1 batting stats...');
+                        battingStats[scoreEntryMatch.team1] = [];
+                        
+                        Object.entries(scorecardData.team1.batting).forEach(([playerId, stats]) => {
+                          const playerData = scoreEntryMatch.team1Players?.find(p => p.id === playerId);
+                          if (playerData && (stats.runs > 0 || stats.balls > 0 || stats.dismissalType)) {
+                            battingStats[scoreEntryMatch.team1].push({
+                              playerId,
+                              name: playerData.name,
+                              runs: parseInt(stats.runs) || 0,
+                              balls: parseInt(stats.balls) || 0,
+                              fours: parseInt(stats.fours) || 0,
+                              sixes: parseInt(stats.sixes) || 0,
+                              dismissalType: stats.dismissalType || null,
+                              bowlerName: stats.bowlerName || null,
+                              fielderName: stats.fielderName || null,
+                              fielder2Name: stats.fielder2Name || null,
+                              isOut: !!stats.dismissalType,
+                              strikeRate: stats.balls > 0 ? parseFloat(((stats.runs / stats.balls) * 100).toFixed(2)) : 0
+                            });
+                            hasBattingData = true;
+                          }
+                        });
+                      }
+                      
+                      if (scorecardData.team2?.batting && Object.keys(scorecardData.team2.batting).length > 0) {
+                        console.log('Processing team2 batting stats...');
+                        battingStats[scoreEntryMatch.team2] = [];
+                        
+                        Object.entries(scorecardData.team2.batting).forEach(([playerId, stats]) => {
+                          const playerData = scoreEntryMatch.team2Players?.find(p => p.id === playerId);
+                          if (playerData && (stats.runs > 0 || stats.balls > 0 || stats.dismissalType)) {
+                            battingStats[scoreEntryMatch.team2].push({
+                              playerId,
+                              name: playerData.name,
+                              runs: parseInt(stats.runs) || 0,
+                              balls: parseInt(stats.balls) || 0,
+                              fours: parseInt(stats.fours) || 0,
+                              sixes: parseInt(stats.sixes) || 0,
+                              dismissalType: stats.dismissalType || null,
+                              bowlerName: stats.bowlerName || null,
+                              fielderName: stats.fielderName || null,
+                              fielder2Name: stats.fielder2Name || null,
+                              isOut: !!stats.dismissalType,
+                              strikeRate: stats.balls > 0 ? parseFloat(((stats.runs / stats.balls) * 100).toFixed(2)) : 0
+                            });
+                            hasBattingData = true;
+                          }
+                        });
+                      }
+                      
+                      if (hasBattingData) {
+                        updateData.battingStats = battingStats;
+                        console.log('Batting stats added:', battingStats);
+                      }
+                      
+                      // Process bowling stats
+                      const bowlingStats = {};
+                      let hasBowlingData = false;
+                      
+                      if (scorecardData.team1?.bowling && Object.keys(scorecardData.team1.bowling).length > 0) {
+                        console.log('Processing team1 bowling stats...');
+                        bowlingStats[scoreEntryMatch.team1] = [];
+                        
+                        Object.entries(scorecardData.team1.bowling).forEach(([playerId, stats]) => {
+                          const playerData = scoreEntryMatch.team1Players?.find(p => p.id === playerId);
+                          if (playerData && (stats.overs > 0 || stats.runs > 0 || stats.wickets > 0)) {
+                            const overs = parseFloat(stats.overs) || 0;
+                            const runs = parseInt(stats.runs) || 0;
+                            bowlingStats[scoreEntryMatch.team1].push({
+                              playerId,
+                              name: playerData.name,
+                              overs,
+                              maidens: parseInt(stats.maidens) || 0,
+                              runs,
+                              wickets: parseInt(stats.wickets) || 0,
+                              economy: overs > 0 ? parseFloat((runs / overs).toFixed(2)) : 0
+                            });
+                            hasBowlingData = true;
+                          }
+                        });
+                      }
+                      
+                      if (scorecardData.team2?.bowling && Object.keys(scorecardData.team2.bowling).length > 0) {
+                        console.log('Processing team2 bowling stats...');
+                        bowlingStats[scoreEntryMatch.team2] = [];
+                        
+                        Object.entries(scorecardData.team2.bowling).forEach(([playerId, stats]) => {
+                          const playerData = scoreEntryMatch.team2Players?.find(p => p.id === playerId);
+                          if (playerData && (stats.overs > 0 || stats.runs > 0 || stats.wickets > 0)) {
+                            const overs = parseFloat(stats.overs) || 0;
+                            const runs = parseInt(stats.runs) || 0;
+                            bowlingStats[scoreEntryMatch.team2].push({
+                              playerId,
+                              name: playerData.name,
+                              overs,
+                              maidens: parseInt(stats.maidens) || 0,
+                              runs,
+                              wickets: parseInt(stats.wickets) || 0,
+                              economy: overs > 0 ? parseFloat((runs / overs).toFixed(2)) : 0
+                            });
+                            hasBowlingData = true;
+                          }
+                        });
+                      }
+                      
+                      if (hasBowlingData) {
+                        updateData.bowlingStats = bowlingStats;
+                        console.log('Bowling stats added:', bowlingStats);
+                      }
+                      
+                      console.log('=== FINAL UPDATE DATA ===');
+                      console.log(JSON.stringify(updateData, null, 2));
+                      console.log('Updating match ID:', scoreEntryMatch.id);
+                      
+                      // Perform the update
+                      await updateDoc(doc(db, 'matches', scoreEntryMatch.id), updateData);
+                      
+                      console.log('✅ Firebase update completed successfully');
+                      
+                      // Trigger complete data sync to update all statistics
+                      await dataSync.syncAllData();
+                      
+                      setShowScoreEntry(false);
+                      await fetchMatches(); // Refresh matches
+                      alert('✅ Scorecard saved successfully! All statistics have been updated.');
+                      
+                    } catch (error) {
+                      console.error('❌ Error saving scorecard:', error);
+                      console.error('Error details:', {
+                        message: error.message,
+                        code: error.code,
+                        stack: error.stack
+                      });
+                      alert('❌ Error saving scorecard: ' + error.message + '\n\nCheck browser console for detailed error information.');
+                    }
+                  }}
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  Save Complete Scorecard
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

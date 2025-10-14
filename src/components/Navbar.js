@@ -24,6 +24,7 @@ const Navbar = () => {
     { name: 'Home', path: '/' },
     { name: 'Teams', path: '/teams' },
     { name: 'Stats', path: '/stats' },
+    { name: 'Auction', path: '/auction' },
     { name: 'CricHeroes', path: '/cricheroes' },
     { name: 'News', path: '/news' },
     { name: 'Sponsors', path: '/sponsors' },

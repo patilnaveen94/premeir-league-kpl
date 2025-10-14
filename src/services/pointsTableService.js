@@ -88,14 +88,40 @@ class PointsTableService {
   async getPointsTable() {
     try {
       console.log('PointsTableService: Fetching from Firebase...');
-      const pointsSnapshot = await getDocs(collection(db, 'pointsTable'));
       
-      console.log('PointsTableService: Firebase docs count:', pointsSnapshot.docs.length);
+      // Get all teams from teams collection to ensure all teams are shown
+      const [pointsSnapshot, teamsSnapshot] = await Promise.all([
+        getDocs(collection(db, 'pointsTable')),
+        getDocs(collection(db, 'teams'))
+      ]);
       
-      const teams = pointsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      console.log('PointsTableService: Points docs:', pointsSnapshot.docs.length, 'Teams docs:', teamsSnapshot.docs.length);
+      
+      const pointsData = {};
+      pointsSnapshot.docs.forEach(doc => {
+        pointsData[doc.id] = { id: doc.id, ...doc.data() };
+      });
+      
+      const allTeams = teamsSnapshot.docs.map(doc => doc.data().name);
+      
+      // Ensure all teams are represented in points table
+      const teams = allTeams.map(teamName => {
+        return pointsData[teamName] || {
+          id: teamName,
+          teamName,
+          matchesPlayed: 0,
+          won: 0,
+          lost: 0,
+          tied: 0,
+          noResult: 0,
+          points: 0,
+          runsFor: 0,
+          ballsFaced: 0,
+          runsAgainst: 0,
+          ballsBowled: 0,
+          netRunRate: '0.000'
+        };
+      });
 
       // Sort in JavaScript instead of Firebase
       teams.sort((a, b) => {
@@ -108,7 +134,7 @@ class PointsTableService {
         team.position = index + 1;
       });
 
-      console.log('PointsTableService: Processed teams:', teams);
+      console.log('PointsTableService: Processed teams:', teams.length);
       return teams;
     } catch (error) {
       console.error('Error fetching points table:', error);
@@ -164,6 +190,48 @@ class PointsTableService {
   calculateForm(team) {
     // This would require match history - simplified for now
     return 'N/A';
+  }
+
+  // Recalculate points table from scratch based on current matches
+  async recalculatePointsTable() {
+    try {
+      console.log('🏆 Recalculating points table...');
+      
+      // Clear existing points table
+      const pointsSnapshot = await getDocs(collection(db, 'pointsTable'));
+      const deletePromises = pointsSnapshot.docs.map(doc => doc.ref.delete());
+      await Promise.all(deletePromises);
+      
+      // Get all teams and matches
+      const [matchesSnapshot, teamsSnapshot] = await Promise.all([
+        getDocs(collection(db, 'matches')),
+        getDocs(collection(db, 'teams'))
+      ]);
+      
+      const matches = matchesSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(match => match.status === 'completed' && match.team1Score && match.team2Score);
+      
+      const allTeams = teamsSnapshot.docs.map(doc => doc.data().name);
+      
+      console.log(`🏆 Initializing ${allTeams.length} teams and processing ${matches.length} completed matches...`);
+      
+      // Initialize ALL teams first (even those without matches)
+      for (const teamName of allTeams) {
+        await this.initializeTeam(teamName);
+      }
+      
+      // Reprocess all completed matches
+      for (const match of matches) {
+        await this.updatePointsTable(match);
+      }
+      
+      console.log('✅ Points table recalculated successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error recalculating points table:', error);
+      return { success: false, error: error.message };
+    }
   }
 }
 

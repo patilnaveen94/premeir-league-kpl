@@ -3,7 +3,7 @@ import { collection, getDocs, doc, updateDoc, addDoc, onSnapshot, query, where, 
 import { db } from '../firebase/firebase';
 import { Play, Pause, Square, RotateCcw, Users, Clock, Target, Activity, AlertTriangle, RefreshCw } from 'lucide-react';
 
-const EnhancedLiveScoring = () => {
+const EnhancedLiveScoring = ({ preSelectedMatch }) => {
   const [matches, setMatches] = useState([]);
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [showPreviousMatches, setShowPreviousMatches] = useState(false);
@@ -69,6 +69,12 @@ const EnhancedLiveScoring = () => {
   useEffect(() => {
     fetchMatches();
   }, []);
+
+  useEffect(() => {
+    if (preSelectedMatch) {
+      setSelectedMatch(preSelectedMatch);
+    }
+  }, [preSelectedMatch]);
 
   useEffect(() => {
     if (selectedMatch) {

@@ -232,6 +232,42 @@ class StatsService {
       };
     }
   }
+
+  // Recalculate all stats from scratch based on current matches
+  async recalculateAllStats() {
+    try {
+      console.log('🔄 Recalculating all player statistics...');
+      
+      // Clear existing stats
+      const statsSnapshot = await getDocs(collection(db, 'playerStats'));
+      const deletePromises = statsSnapshot.docs.map(doc => doc.ref.delete());
+      await Promise.all(deletePromises);
+      
+      // Clear processed matches
+      const processedSnapshot = await getDocs(collection(db, 'processedMatches'));
+      const deleteProcessedPromises = processedSnapshot.docs.map(doc => doc.ref.delete());
+      await Promise.all(deleteProcessedPromises);
+      
+      // Get all completed matches
+      const matchesSnapshot = await getDocs(collection(db, 'matches'));
+      const matches = matchesSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(match => match.status === 'completed' && (match.battingStats || match.bowlingStats));
+      
+      console.log(`🏆 Processing ${matches.length} completed matches...`);
+      
+      // Reprocess all matches
+      for (const match of matches) {
+        await this.updatePlayerStats(match);
+      }
+      
+      console.log('✅ All player statistics recalculated successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error recalculating stats:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 export default new StatsService();

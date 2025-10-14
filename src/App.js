@@ -16,6 +16,7 @@ const PlayerRegistration = lazy(() => import('./pages/PlayerRegistration'));
 const AdminPanel = lazy(() => import('./pages/AdminPanel'));
 const CricHeroesStats = lazy(() => import('./pages/CricHeroesStats'));
 const CricHeroesHome = lazy(() => import('./pages/CricHeroesHome'));
+const Auction = lazy(() => import('./pages/Auction'));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-[50vh]">
@@ -36,6 +37,7 @@ function App() {
                   <Route path="/" element={<Home />} />
                   <Route path="/teams" element={<Teams />} />
                   <Route path="/stats" element={<CricHeroesStats />} />
+                  <Route path="/auction" element={<Auction />} />
                   <Route path="/cricheroes" element={<CricHeroesHome />} />
                   <Route path="/news" element={<News />} />
                   <Route path="/sponsors" element={<Sponsors />} />
