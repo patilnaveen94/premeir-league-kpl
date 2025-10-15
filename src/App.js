@@ -5,6 +5,7 @@ import { SeasonProvider } from './context/SeasonContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import LoadingSpinner from './components/LoadingSpinner';
+import ScrollToTop from './components/ScrollToTop';
 
 // Lazy load pages for better performance
 const Home = lazy(() => import('./pages/Home'));
@@ -31,7 +32,7 @@ function App() {
         <Router>
           <div className="App flex flex-col min-h-screen">
             <Navbar />
-            <main className="flex-1 pb-16 sm:pb-0">
+            <main className="flex-1">
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
                   <Route path="/" element={<Home />} />
@@ -48,6 +49,7 @@ function App() {
               </Suspense>
             </main>
             <Footer />
+            <ScrollToTop />
           </div>
         </Router>
       </AdminProvider>

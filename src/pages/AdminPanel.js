@@ -85,6 +85,7 @@ const AdminPanel = () => {
   const [showAddCarouselImage, setShowAddCarouselImage] = useState(false);
   const [newCarouselImage, setNewCarouselImage] = useState({ title: '', order: 0 });
   const [carouselImageFile, setCarouselImageFile] = useState(null);
+  const [registrationSectionVisible, setRegistrationSectionVisible] = useState(true);
   const [showDetailedScoring, setShowDetailedScoring] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [showScoreEntry, setShowScoreEntry] = useState(false);
@@ -610,6 +611,7 @@ const AdminPanel = () => {
       fetchFormFields();
       fetchPaymentConfig();
       fetchCarouselImages();
+      fetchRegistrationSettings();
     }
   }, [isAdminLoggedIn]);
 
@@ -1446,6 +1448,43 @@ const AdminPanel = () => {
     }
   };
 
+  const fetchRegistrationSettings = async () => {
+    try {
+      const settingsSnapshot = await getDocs(collection(db, 'settings'));
+      const registrationSetting = settingsSnapshot.docs.find(doc => doc.id === 'playerRegistration');
+      setRegistrationSectionVisible(registrationSetting?.data()?.visible !== false);
+    } catch (error) {
+      console.error('Error fetching registration settings:', error);
+    }
+  };
+
+  const handleToggleRegistrationSection = async () => {
+    try {
+      const settingsSnapshot = await getDocs(collection(db, 'settings'));
+      const registrationDoc = settingsSnapshot.docs.find(doc => doc.id === 'playerRegistration');
+      
+      if (registrationDoc) {
+        await updateDoc(doc(db, 'settings', 'playerRegistration'), {
+          visible: !registrationSectionVisible,
+          updatedAt: new Date(),
+          updatedBy: currentAdmin?.userid
+        });
+      } else {
+        await addDoc(collection(db, 'settings'), {
+          visible: !registrationSectionVisible,
+          createdAt: new Date(),
+          createdBy: currentAdmin?.userid
+        });
+      }
+      
+      setRegistrationSectionVisible(!registrationSectionVisible);
+      alert(`Registration section ${!registrationSectionVisible ? 'enabled' : 'disabled'} successfully!`);
+    } catch (error) {
+      console.error('Error updating registration settings:', error);
+      alert('Error updating registration settings');
+    }
+  };
+
   const tabs = [
     { id: 'players', name: 'Player Registrations', icon: Users },
     { id: 'teams', name: 'Teams', icon: Trophy },
@@ -1455,6 +1494,7 @@ const AdminPanel = () => {
     { id: 'form', name: 'Registration Form', icon: FileText },
     { id: 'payment', name: 'Payment Settings', icon: CreditCard },
     { id: 'media', name: 'Carousel Images', icon: Image },
+    { id: 'website', name: 'Website Settings', icon: Lock },
     { id: 'news', name: 'News', icon: FileText },
     { id: 'system', name: 'System Status', icon: Activity },
     ...(isSuperUser ? [{ id: 'admins', name: 'Admin Users', icon: User }] : [])
@@ -3433,6 +3473,60 @@ const AdminPanel = () => {
                 <p className="text-gray-600">
                   This section is under development. Coming soon!
                 </p>
+              </div>
+            )}
+
+            {/* Website Settings Tab */}
+            {activeTab === 'website' && (
+              <div>
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Website Settings</h2>
+                  <p className="text-gray-600">
+                    Control the visibility and behavior of different sections on the website.
+                  </p>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Player Registration Section Control */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Player Registration Section</h3>
+                        <p className="text-gray-600 text-sm">
+                          Control whether the player registration section appears on the home page.
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className={`text-sm font-medium ${
+                          registrationSectionVisible ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {registrationSectionVisible ? 'Visible' : 'Hidden'}
+                        </span>
+                        <button
+                          onClick={handleToggleRegistrationSection}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            registrationSectionVisible ? 'bg-green-600' : 'bg-gray-200'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              registrationSectionVisible ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                      <h4 className="font-semibold text-blue-900 mb-2">What this controls:</h4>
+                      <ul className="text-sm text-blue-800 space-y-1">
+                        <li>• Shows/hides the "Join the League" section on the home page</li>
+                        <li>• Includes tournament details, prize information, and registration button</li>
+                        <li>• Useful for controlling registration periods</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 

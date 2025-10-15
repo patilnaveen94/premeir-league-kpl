@@ -16,6 +16,7 @@ const Home = () => {
   const [totalMatches, setTotalMatches] = useState(0);
   const [sponsors, setSponsors] = useState([]);
   const [playerRegistrations, setPlayerRegistrations] = useState([]);
+  const [showRegistrationSection, setShowRegistrationSection] = useState(true);
   
   // Use centralized tournament data hook for consistent data
   const { topPerformers, standings, playerStats, loading: tournamentLoading } = useTournamentData();
@@ -55,18 +56,23 @@ const Home = () => {
   const fetchHomeData = async () => {
     try {
       // Fetch basic data that doesn't need sync
-      const [carouselSnapshot, teamsSnapshot, allMatchesSnapshot, sponsorsSnapshot, playersSnapshot] = await Promise.all([
+      const [carouselSnapshot, teamsSnapshot, allMatchesSnapshot, sponsorsSnapshot, playersSnapshot, settingsSnapshot] = await Promise.all([
         getDocs(collection(db, 'carouselImages')),
         getDocs(collection(db, 'teams')),
         getDocs(collection(db, 'matches')),
         getDocs(collection(db, 'sponsors')),
-        getDocs(collection(db, 'playerRegistrations'))
+        getDocs(collection(db, 'playerRegistrations')),
+        getDocs(collection(db, 'settings'))
       ]);
       
       const playersData = playersSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+      
+      // Get registration section visibility setting
+      const registrationSetting = settingsSnapshot.docs.find(doc => doc.id === 'playerRegistration');
+      setShowRegistrationSection(registrationSetting?.data()?.visible !== false);
 
       // Process basic data
       const carouselData = carouselSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -640,6 +646,75 @@ const Home = () => {
 
 
 
+
+      {/* Player Registration Section */}
+      {showRegistrationSection && (
+        <section className="py-12 sm:py-16 bg-gradient-to-br from-orange-500 via-red-500 to-pink-600">
+          <div className="responsive-container">
+            <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 sm:p-12 text-white text-center">
+              <div className="max-w-4xl mx-auto">
+                <div className="mb-8">
+                  <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Users className="w-10 h-10 text-white" />
+                  </div>
+                  <h2 className="text-3xl sm:text-4xl font-bold mb-4">Join the League</h2>
+                  <p className="text-xl text-white/90 mb-8">
+                    Register now for Khajjidoni Premier League 2025 and be part of cricket history
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <div className="bg-white/10 rounded-xl p-6">
+                    <Trophy className="w-8 h-8 text-white mx-auto mb-3" />
+                    <h3 className="font-bold text-lg mb-2">Prize Money</h3>
+                    <p className="text-white/90">₹50,000 total prize pool</p>
+                  </div>
+                  <div className="bg-white/10 rounded-xl p-6">
+                    <Calendar className="w-8 h-8 text-white mx-auto mb-3" />
+                    <h3 className="font-bold text-lg mb-2">Tournament</h3>
+                    <p className="text-white/90">March 2025</p>
+                  </div>
+                  <div className="bg-white/10 rounded-xl p-6">
+                    <MapPin className="w-8 h-8 text-white mx-auto mb-3" />
+                    <h3 className="font-bold text-lg mb-2">Venue</h3>
+                    <p className="text-white/90">Nutan Vidyalaya Khajjidoni</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-4 mb-8">
+                  <div className="flex items-center justify-center space-x-3">
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                    <span>Open to all cricket enthusiasts</span>
+                  </div>
+                  <div className="flex items-center justify-center space-x-3">
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                    <span>Professional tournament format</span>
+                  </div>
+                  <div className="flex items-center justify-center space-x-3">
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                    <span>Live scoring and statistics</span>
+                  </div>
+                </div>
+                
+                <div className="responsive-flex justify-center">
+                  <Link 
+                    to="/player-registration" 
+                    className="bg-white text-orange-600 hover:bg-gray-100 px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 w-full sm:w-auto text-center"
+                  >
+                    Register as Player
+                  </Link>
+                  <Link 
+                    to="/teams" 
+                    className="bg-white/20 hover:bg-white/30 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 w-full sm:w-auto text-center"
+                  >
+                    View Teams
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section className="bg-gradient-to-r from-cricket-navy to-cricket-blue text-white py-12 sm:py-16">

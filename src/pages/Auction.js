@@ -14,24 +14,16 @@ const Auction = () => {
   const [showPlayerModal, setShowPlayerModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [playerStats, setPlayerStats] = useState({});
-  const [showScrollTop, setShowScrollTop] = useState(false);
+
   const { isAdminLoggedIn } = useAdmin();
 
   useEffect(() => {
     fetchAuctionData();
   }, [selectedSeason]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 300);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+
+
 
   const fetchAuctionData = async () => {
     try {
@@ -184,24 +176,24 @@ const Auction = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="bg-gradient-to-r from-orange-600 to-red-600 rounded-xl p-6 mb-8 text-white">
+        <div className="bg-gradient-to-r from-orange-600 to-red-600 rounded-xl p-4 sm:p-6 mb-6 sm:mb-8 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold flex items-center">
-                <Gavel className="w-8 h-8 mr-3" />
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold flex items-center">
+                <Gavel className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 mr-2 sm:mr-3 md:mr-4" />
                 Player Auction
               </h1>
-              <p className="text-orange-100 mt-2">Khajjidoni Premier League Player Auction System</p>
+              <p className="text-orange-100 mt-1 sm:mt-2 text-sm sm:text-base md:text-lg lg:text-xl">Khajjidoni Premier League Player Auction System</p>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold">{filteredPlayers.length}</div>
-              <div className="text-orange-100">Total Players</div>
+              <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold">{filteredPlayers.length}</div>
+              <div className="text-orange-100 text-xs sm:text-sm md:text-base lg:text-lg">Total Players</div>
             </div>
           </div>
         </div>
 
         {/* Enhanced Controls with Modern Design */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 border border-gray-100">
           {/* Season Update Notice */}
           {players.filter(p => p.needsSeasonUpdate).length > 0 && (
             <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
@@ -223,24 +215,24 @@ const Auction = () => {
           )}
           <div className="space-y-8">
             {/* Season & Status Selection Row */}
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+            <div className="space-y-6">
               {/* Season Selection with Gradient Buttons */}
-              <div className="flex-1">
-                <label className="block text-sm font-bold text-gray-800 mb-4 uppercase tracking-wide">Tournament Season</label>
-                <div className="flex space-x-3">
+              <div>
+                <label className="block text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-800 mb-3 sm:mb-4 uppercase tracking-wide">Tournament Season</label>
+                <div className="flex flex-wrap gap-2 sm:gap-3">
                   {['Season 1', 'Season 2'].map(season => (
                     <button
                       key={season}
                       onClick={() => setSelectedSeason(season)}
-                      className={`px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-105 ${
+                      className={`px-4 sm:px-6 md:px-8 lg:px-10 py-2 sm:py-3 md:py-4 lg:py-5 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base md:text-lg lg:text-xl transition-all duration-300 flex-shrink-0 ${
                         selectedSeason === season
-                          ? 'bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 text-white shadow-2xl scale-105'
+                          ? 'bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 text-white shadow-xl'
                           : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300 shadow-lg'
                       }`}
                     >
-                      <span className="flex items-center space-x-2">
+                      <span className="flex items-center space-x-1 sm:space-x-2">
                         <span>🏆</span>
-                        <span>{season}</span>
+                        <span className="whitespace-nowrap">{season}</span>
                       </span>
                     </button>
                   ))}
@@ -248,26 +240,26 @@ const Auction = () => {
               </div>
 
               {/* Status Filter with Colorful Buttons */}
-              <div className="flex-1">
-                <label className="block text-sm font-bold text-gray-800 mb-4 uppercase tracking-wide">Player Status</label>
-                <div className="flex space-x-3">
+              <div>
+                <label className="block text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-800 mb-3 sm:mb-4 uppercase tracking-wide">Player Status</label>
+                <div className="flex flex-wrap gap-2 sm:gap-3">
                   {[
-                    { value: 'all', label: 'All Players', gradient: 'from-blue-500 to-purple-600', icon: '👥' },
+                    { value: 'all', label: 'All', gradient: 'from-blue-500 to-purple-600', icon: '👥' },
                     { value: 'sold', label: 'Sold', gradient: 'from-green-500 to-emerald-600', icon: '✅' },
                     { value: 'unsold', label: 'Unsold', gradient: 'from-gray-500 to-slate-600', icon: '⏳' }
                   ].map(status => (
                     <button
                       key={status.value}
                       onClick={() => setStatusFilter(status.value)}
-                      className={`px-6 py-3 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 ${
+                      className={`px-3 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-3 md:py-4 lg:py-5 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm md:text-base lg:text-lg transition-all duration-300 flex-shrink-0 ${
                         statusFilter === status.value
-                          ? `bg-gradient-to-r ${status.gradient} text-white shadow-xl scale-105`
+                          ? `bg-gradient-to-r ${status.gradient} text-white shadow-xl`
                           : 'bg-white text-gray-600 hover:bg-gray-50 shadow-md border-2 border-gray-200'
                       }`}
                     >
-                      <span className="flex items-center space-x-2">
+                      <span className="flex items-center space-x-1 sm:space-x-2">
                         <span>{status.icon}</span>
-                        <span>{status.label}</span>
+                        <span className="whitespace-nowrap">{status.label}</span>
                       </span>
                     </button>
                   ))}
@@ -276,43 +268,43 @@ const Auction = () => {
             </div>
             
             {/* Enhanced Statistics Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-300">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-3xl">👥</span>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-300">
+                <div className="flex items-center justify-between mb-1 sm:mb-2">
+                  <span className="text-xl sm:text-2xl lg:text-3xl">👥</span>
                   <div className="text-right">
-                    <div className="text-3xl font-bold">{players.length}</div>
-                    <div className="text-blue-100 text-sm font-medium">Total Players</div>
+                    <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold">{players.length}</div>
+                    <div className="text-blue-100 text-xs sm:text-sm md:text-base lg:text-lg font-medium">Total Players</div>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-300">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-3xl">✅</span>
+              <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-300">
+                <div className="flex items-center justify-between mb-1 sm:mb-2">
+                  <span className="text-xl sm:text-2xl lg:text-3xl">✅</span>
                   <div className="text-right">
-                    <div className="text-3xl font-bold">{soldPlayers.length}</div>
-                    <div className="text-green-100 text-sm font-medium">Sold</div>
+                    <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold">{soldPlayers.length}</div>
+                    <div className="text-green-100 text-xs sm:text-sm md:text-base lg:text-lg font-medium">Sold</div>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-gray-500 to-gray-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-300">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-3xl">⏳</span>
+              <div className="bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-300">
+                <div className="flex items-center justify-between mb-1 sm:mb-2">
+                  <span className="text-xl sm:text-2xl lg:text-3xl">⏳</span>
                   <div className="text-right">
-                    <div className="text-3xl font-bold">{unsoldPlayers.length}</div>
-                    <div className="text-gray-100 text-sm font-medium">Unsold</div>
+                    <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold">{unsoldPlayers.length}</div>
+                    <div className="text-gray-100 text-xs sm:text-sm md:text-base lg:text-lg font-medium">Unsold</div>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-300">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-3xl">🏆</span>
+              <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-300">
+                <div className="flex items-center justify-between mb-1 sm:mb-2">
+                  <span className="text-xl sm:text-2xl lg:text-3xl">🏆</span>
                   <div className="text-right">
-                    <div className="text-3xl font-bold">{Math.round((soldPlayers.length / filteredPlayers.length) * 100) || 0}%</div>
-                    <div className="text-purple-100 text-sm font-medium">Sold Rate</div>
+                    <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold">{Math.round((soldPlayers.length / filteredPlayers.length) * 100) || 0}%</div>
+                    <div className="text-purple-100 text-xs sm:text-sm md:text-base lg:text-lg font-medium">Sold Rate</div>
                   </div>
                 </div>
               </div>
@@ -321,7 +313,7 @@ const Auction = () => {
         </div>
 
         {/* Enhanced Players Grid with Colorful Professional Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
           {filteredPlayers.map((player) => {
             const stats = playerStats[player.fullName] || {};
             
@@ -354,8 +346,8 @@ const Auction = () => {
                   <div className="absolute bottom-0 left-0 w-16 h-16 bg-white bg-opacity-10 rounded-full translate-y-8 -translate-x-8"></div>
                   
                   {/* Status Badge */}
-                  <div className="absolute top-3 right-3">
-                    <span className={`px-4 py-2 rounded-full text-xs font-bold text-white shadow-lg ${
+                  <div className="absolute top-2 sm:top-3 right-2 sm:right-3">
+                    <span className={`px-2 sm:px-3 md:px-4 lg:px-5 py-1 sm:py-2 md:py-3 rounded-full text-xs sm:text-sm md:text-base font-bold text-white shadow-lg ${
                       player.auctionStatus === 'sold' 
                         ? 'bg-green-600 bg-opacity-90' 
                         : 'bg-gray-600 bg-opacity-90'
@@ -364,9 +356,9 @@ const Auction = () => {
                     </span>
                   </div>
                   
-                  <div className="flex items-center space-x-4 relative z-10">
+                  <div className="flex items-center space-x-3 sm:space-x-4 relative z-10">
                     {player.photoBase64 ? (
-                      <div className="w-20 h-20 rounded-full border-4 border-white shadow-2xl overflow-hidden ring-4 ring-white ring-opacity-30 flex-shrink-0">
+                      <div className="w-16 h-16 sm:w-18 sm:h-18 lg:w-20 lg:h-20 rounded-full border-3 sm:border-4 border-white shadow-2xl overflow-hidden ring-2 sm:ring-4 ring-white ring-opacity-30 flex-shrink-0">
                         <img
                           src={player.photoBase64}
                           alt={player.fullName}
@@ -374,20 +366,20 @@ const Auction = () => {
                         />
                       </div>
                     ) : (
-                      <div className="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center border-4 border-white shadow-2xl ring-4 ring-white ring-opacity-30 flex-shrink-0">
-                        <span className="text-white font-bold text-2xl">
+                      <div className="w-16 h-16 sm:w-18 sm:h-18 lg:w-20 lg:h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center border-3 sm:border-4 border-white shadow-2xl ring-2 sm:ring-4 ring-white ring-opacity-30 flex-shrink-0">
+                        <span className="text-white font-bold text-lg sm:text-xl lg:text-2xl">
                           {getPlayerInitials(player.fullName)}
                         </span>
                       </div>
                     )}
                     
                     <div className="flex-1 min-w-0 text-white">
-                      <h3 className="font-bold text-lg leading-tight drop-shadow-lg" title={player.fullName}>
-                        {player.fullName.length > 20 ? player.fullName.substring(0, 20) + '...' : player.fullName}
+                      <h3 className="font-bold text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl leading-tight drop-shadow-lg truncate" title={player.fullName}>
+                        {player.fullName}
                       </h3>
-                      <p className="text-white text-opacity-90 text-sm font-medium truncate">{player.position}</p>
+                      <p className="text-white text-opacity-90 text-xs sm:text-sm md:text-base lg:text-lg font-medium truncate">{player.position}</p>
                       <div className="flex items-center mt-1">
-                        <span className="text-xs bg-white bg-opacity-20 px-2 py-1 rounded-full truncate">
+                        <span className="text-xs sm:text-sm md:text-base bg-white bg-opacity-20 px-2 py-1 rounded-full">
                           {stats.matches || 0} matches
                         </span>
                       </div>
@@ -396,7 +388,7 @@ const Auction = () => {
                 </div>
 
                 {/* Card Body with Enhanced Design */}
-                <div className="p-6">
+                <div className="p-4 sm:p-5 lg:p-6">
                   {player.soldTo && (
                     <div className="mb-6 p-4 bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 rounded-2xl border-2 border-green-200 shadow-inner">
                       <p className="text-sm font-bold text-green-800 flex items-center">
@@ -408,30 +400,30 @@ const Auction = () => {
                   )}
 
                   {/* Enhanced Stats Grid */}
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    <div className="text-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-3 border border-blue-200 shadow-sm">
-                      <div className="text-xl font-bold text-blue-600">{stats.runs || 0}</div>
-                      <div className="text-blue-500 text-xs font-bold uppercase tracking-wide">Runs</div>
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-3 sm:mb-4">
+                    <div className="text-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg sm:rounded-xl lg:rounded-2xl p-2 sm:p-3 border border-blue-200 shadow-sm">
+                      <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-blue-600">{stats.runs || 0}</div>
+                      <div className="text-blue-500 text-xs sm:text-sm md:text-base font-bold uppercase tracking-wide">Runs</div>
                     </div>
-                    <div className="text-center bg-gradient-to-br from-red-50 to-red-100 rounded-2xl p-3 border border-red-200 shadow-sm">
-                      <div className="text-xl font-bold text-red-600">{stats.wickets || 0}</div>
-                      <div className="text-red-500 text-xs font-bold uppercase tracking-wide">Wkts</div>
+                    <div className="text-center bg-gradient-to-br from-red-50 to-red-100 rounded-lg sm:rounded-xl lg:rounded-2xl p-2 sm:p-3 border border-red-200 shadow-sm">
+                      <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-red-600">{stats.wickets || 0}</div>
+                      <div className="text-red-500 text-xs sm:text-sm md:text-base font-bold uppercase tracking-wide">Wkts</div>
                     </div>
-                    <div className="text-center bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-3 border border-purple-200 shadow-sm">
-                      <div className="text-xl font-bold text-purple-600">{stats.matches || 0}</div>
-                      <div className="text-purple-500 text-xs font-bold uppercase tracking-wide">Mat</div>
+                    <div className="text-center bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg sm:rounded-xl lg:rounded-2xl p-2 sm:p-3 border border-purple-200 shadow-sm">
+                      <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-purple-600">{stats.matches || 0}</div>
+                      <div className="text-purple-500 text-xs sm:text-sm md:text-base font-bold uppercase tracking-wide">Mat</div>
                     </div>
                   </div>
                   
                   {/* Performance Indicators */}
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-2 border border-orange-200">
-                      <div className="text-xs text-orange-600 font-bold uppercase tracking-wide mb-1">Avg</div>
-                      <div className="text-sm font-bold text-orange-700">{stats.average || '0.00'}</div>
+                    <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg sm:rounded-xl p-2 border border-orange-200">
+                      <div className="text-xs sm:text-sm md:text-base text-orange-600 font-bold uppercase tracking-wide mb-1">Avg</div>
+                      <div className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-orange-700">{stats.average || '0.00'}</div>
                     </div>
-                    <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl p-2 border border-teal-200">
-                      <div className="text-xs text-teal-600 font-bold uppercase tracking-wide mb-1">SR</div>
-                      <div className="text-sm font-bold text-teal-700">{stats.strikeRate || '0.00'}</div>
+                    <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg sm:rounded-xl p-2 border border-teal-200">
+                      <div className="text-xs sm:text-sm md:text-base text-teal-600 font-bold uppercase tracking-wide mb-1">SR</div>
+                      <div className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-teal-700">{stats.strikeRate || '0.00'}</div>
                     </div>
                   </div>
                 </div>
@@ -445,10 +437,10 @@ const Auction = () => {
             <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full w-32 h-32 flex items-center justify-center mx-auto mb-8 shadow-xl">
               <Users className="w-16 h-16 text-gray-400" />
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">No Players Found</h3>
-            <p className="text-gray-600 text-lg mb-6">No players match the selected criteria for {selectedSeason}.</p>
+            <h3 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">No Players Found</h3>
+            <p className="text-gray-600 text-lg sm:text-xl md:text-2xl lg:text-3xl mb-6">No players match the selected criteria for {selectedSeason}.</p>
             <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 max-w-md mx-auto">
-              <p className="text-blue-800 text-sm">
+              <p className="text-blue-800 text-sm sm:text-base md:text-lg">
                 💡 Try selecting a different season or status filter to see more players.
               </p>
             </div>
@@ -472,8 +464,8 @@ const Auction = () => {
               
               <button
                 onClick={() => setShowPlayerModal(false)}
-                className="absolute top-4 right-4 text-white hover:text-gray-200 bg-black bg-opacity-30 rounded-full p-4 transition-all duration-300 hover:bg-opacity-50 z-10 touch-manipulation"
-                style={{ minWidth: '48px', minHeight: '48px' }}
+                className="absolute top-6 right-6 text-white hover:text-gray-200 bg-black bg-opacity-30 rounded-full p-3 transition-all duration-300 hover:bg-opacity-50 z-10"
+                style={{ minWidth: '48px', minHeight: '48px', touchAction: 'manipulation' }}
               >
                 <X className="w-6 h-6" />
               </button>
@@ -496,17 +488,17 @@ const Auction = () => {
                 )}
                 
                 <div className="flex-1">
-                  <h2 className="text-4xl font-bold mb-3 drop-shadow-lg">{selectedPlayer.fullName}</h2>
-                  <p className="text-white text-opacity-90 text-xl mb-3 font-medium">{selectedPlayer.position}</p>
+                  <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 drop-shadow-lg">{selectedPlayer.fullName}</h2>
+                  <p className="text-white text-opacity-90 text-lg sm:text-xl md:text-2xl lg:text-3xl mb-3 font-medium">{selectedPlayer.position}</p>
                   <div className="flex items-center space-x-4">
-                    <span className={`inline-block px-6 py-3 rounded-full text-sm font-bold shadow-lg ${
+                    <span className={`inline-block px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 rounded-full text-sm sm:text-base md:text-lg font-bold shadow-lg ${
                       selectedPlayer.auctionStatus === 'sold' 
                         ? 'bg-green-600 bg-opacity-90 text-white'
                         : 'bg-gray-600 bg-opacity-90 text-white'
                     }`}>
                       {selectedPlayer.auctionStatus === 'sold' ? '✅ SOLD' : '⏳ AVAILABLE'}
                     </span>
-                    <span className="inline-block px-4 py-2 rounded-full text-sm font-medium bg-white bg-opacity-20">
+                    <span className="inline-block px-3 sm:px-4 md:px-6 py-1 sm:py-2 md:py-3 rounded-full text-sm sm:text-base md:text-lg font-medium bg-white bg-opacity-20">
                       {playerStats[selectedPlayer.fullName]?.matches || 0} Matches Played
                     </span>
                   </div>
@@ -522,8 +514,8 @@ const Auction = () => {
                       <Trophy className="w-8 h-8 text-white" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-green-900 text-2xl mb-2">Team Assignment</h4>
-                      <p className="text-green-800 text-lg">Currently playing for: <span className="font-bold text-2xl text-green-700">{selectedPlayer.soldTo}</span></p>
+                      <h4 className="font-bold text-green-900 text-xl sm:text-2xl md:text-3xl mb-2">Team Assignment</h4>
+                      <p className="text-green-800 text-lg sm:text-xl md:text-2xl">Currently playing for: <span className="font-bold text-xl sm:text-2xl md:text-3xl text-green-700">{selectedPlayer.soldTo}</span></p>
                     </div>
                   </div>
                 </div>
@@ -532,73 +524,73 @@ const Auction = () => {
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-12">
                 {/* Enhanced Statistics Section */}
                 <div>
-                  <h4 className="font-bold text-gray-900 text-2xl mb-8 flex items-center">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mr-3">
-                      <Target className="w-5 h-5 text-white" />
+                  <h4 className="font-bold text-gray-900 text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-8 flex items-center">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mr-3">
+                      <Target className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-white" />
                     </div>
                     Performance Statistics
                   </h4>
                   
                   <div className="grid grid-cols-2 gap-6 mb-8">
                     <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-2xl text-white shadow-xl transform hover:scale-105 transition-all duration-300">
-                      <div className="text-4xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.runs || 0}</div>
-                      <div className="text-blue-100 font-bold uppercase tracking-wide text-sm">Total Runs</div>
+                      <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.runs || 0}</div>
+                      <div className="text-blue-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Total Runs</div>
                     </div>
                     <div className="bg-gradient-to-br from-red-500 to-red-600 p-6 rounded-2xl text-white shadow-xl transform hover:scale-105 transition-all duration-300">
-                      <div className="text-4xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.wickets || 0}</div>
-                      <div className="text-red-100 font-bold uppercase tracking-wide text-sm">Wickets</div>
+                      <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.wickets || 0}</div>
+                      <div className="text-red-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Wickets</div>
                     </div>
                     <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-2xl text-white shadow-xl transform hover:scale-105 transition-all duration-300">
-                      <div className="text-4xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.matches || 0}</div>
-                      <div className="text-green-100 font-bold uppercase tracking-wide text-sm">Matches</div>
+                      <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.matches || 0}</div>
+                      <div className="text-green-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Matches</div>
                     </div>
                     <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-2xl text-white shadow-xl transform hover:scale-105 transition-all duration-300">
-                      <div className="text-4xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.average || '0.00'}</div>
-                      <div className="text-purple-100 font-bold uppercase tracking-wide text-sm">Average</div>
+                      <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.average || '0.00'}</div>
+                      <div className="text-purple-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Average</div>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-6">
                     <div className="bg-gradient-to-br from-orange-500 to-amber-600 p-6 rounded-2xl text-white shadow-xl transform hover:scale-105 transition-all duration-300">
-                      <div className="text-3xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.strikeRate || '0.00'}</div>
-                      <div className="text-orange-100 font-bold uppercase tracking-wide text-sm">Strike Rate</div>
+                      <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.strikeRate || '0.00'}</div>
+                      <div className="text-orange-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Strike Rate</div>
                     </div>
                     <div className="bg-gradient-to-br from-teal-500 to-cyan-600 p-6 rounded-2xl text-white shadow-xl transform hover:scale-105 transition-all duration-300">
-                      <div className="text-3xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.economy || '0.00'}</div>
-                      <div className="text-teal-100 font-bold uppercase tracking-wide text-sm">Economy</div>
+                      <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.economy || '0.00'}</div>
+                      <div className="text-teal-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Economy</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Enhanced Personal Information */}
                 <div>
-                  <h4 className="font-bold text-gray-900 text-2xl mb-8 flex items-center">
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mr-3">
-                      <Users className="w-5 h-5 text-white" />
+                  <h4 className="font-bold text-gray-900 text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-8 flex items-center">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mr-3">
+                      <Users className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-white" />
                     </div>
                     Personal Information
                   </h4>
                   
                   <div className="space-y-6">
                     <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-2xl border border-gray-200 shadow-sm">
-                      <div className="text-sm text-gray-500 font-bold uppercase tracking-wide mb-2">Email Address</div>
-                      <div className="text-gray-900 font-bold text-lg">{selectedPlayer.email}</div>
+                      <div className="text-sm sm:text-base md:text-lg text-gray-500 font-bold uppercase tracking-wide mb-2">Email Address</div>
+                      <div className="text-gray-900 font-bold text-lg sm:text-xl md:text-2xl">{selectedPlayer.email}</div>
                     </div>
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-100 p-6 rounded-2xl border border-blue-200 shadow-sm">
-                      <div className="text-sm text-blue-600 font-bold uppercase tracking-wide mb-2">Phone Number</div>
-                      <div className="text-blue-900 font-bold text-lg">{selectedPlayer.phone}</div>
+                      <div className="text-sm sm:text-base md:text-lg text-blue-600 font-bold uppercase tracking-wide mb-2">Phone Number</div>
+                      <div className="text-blue-900 font-bold text-lg sm:text-xl md:text-2xl">{selectedPlayer.phone}</div>
                     </div>
                     <div className="bg-gradient-to-r from-green-50 to-emerald-100 p-6 rounded-2xl border border-green-200 shadow-sm">
-                      <div className="text-sm text-green-600 font-bold uppercase tracking-wide mb-2">Playing Position</div>
-                      <div className="text-green-900 font-bold text-lg">{selectedPlayer.position}</div>
+                      <div className="text-sm sm:text-base md:text-lg text-green-600 font-bold uppercase tracking-wide mb-2">Playing Position</div>
+                      <div className="text-green-900 font-bold text-lg sm:text-xl md:text-2xl">{selectedPlayer.position}</div>
                     </div>
                     <div className="bg-gradient-to-r from-purple-50 to-pink-100 p-6 rounded-2xl border border-purple-200 shadow-sm">
-                      <div className="text-sm text-purple-600 font-bold uppercase tracking-wide mb-2">Preferred Hand</div>
-                      <div className="text-purple-900 font-bold text-lg">{selectedPlayer.preferredHand || 'Not specified'}</div>
+                      <div className="text-sm sm:text-base md:text-lg text-purple-600 font-bold uppercase tracking-wide mb-2">Preferred Hand</div>
+                      <div className="text-purple-900 font-bold text-lg sm:text-xl md:text-2xl">{selectedPlayer.preferredHand || 'Not specified'}</div>
                     </div>
                     <div className="bg-gradient-to-r from-orange-50 to-amber-100 p-6 rounded-2xl border border-orange-200 shadow-sm">
-                      <div className="text-sm text-orange-600 font-bold uppercase tracking-wide mb-2">Registration Status</div>
-                      <div className={`font-bold text-lg ${
+                      <div className="text-sm sm:text-base md:text-lg text-orange-600 font-bold uppercase tracking-wide mb-2">Registration Status</div>
+                      <div className={`font-bold text-lg sm:text-xl md:text-2xl ${
                         selectedPlayer.status === 'approved' ? 'text-green-700' :
                         selectedPlayer.status === 'pending' ? 'text-yellow-700' :
                         'text-red-700'
@@ -612,16 +604,16 @@ const Auction = () => {
 
               {isAdminLoggedIn && (
                 <div className="mt-12 border-t-2 border-gray-200 pt-10">
-                  <h4 className="font-bold text-gray-900 text-2xl mb-8 flex items-center">
-                    <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center mr-3">
-                      <Edit className="w-5 h-5 text-white" />
+                  <h4 className="font-bold text-gray-900 text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-8 flex items-center">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center mr-3">
+                      <Edit className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-white" />
                     </div>
                     Admin Actions
                   </h4>
                   <div className="bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 rounded-3xl p-8 border-2 border-orange-200 shadow-xl">
                     <div className="space-y-6">
                       <div>
-                        <label className="block text-sm font-bold text-orange-800 mb-4 uppercase tracking-wide">
+                        <label className="block text-sm sm:text-base md:text-lg lg:text-xl font-bold text-orange-800 mb-4 uppercase tracking-wide">
                           🏆 Assign Player to Team
                         </label>
                         <select
@@ -630,7 +622,7 @@ const Auction = () => {
                               handlePlayerAssignment(selectedPlayer.id, e.target.value);
                             }
                           }}
-                          className="w-full px-6 py-4 border-2 border-orange-300 rounded-2xl focus:outline-none focus:ring-4 focus:ring-orange-500 focus:border-orange-500 bg-white text-lg font-semibold shadow-lg"
+                          className="w-full px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-5 border-2 border-orange-300 rounded-2xl focus:outline-none focus:ring-4 focus:ring-orange-500 focus:border-orange-500 bg-white text-base sm:text-lg md:text-xl font-semibold shadow-lg"
                           defaultValue=""
                         >
                           <option value="">Select Team to Assign</option>
@@ -643,7 +635,7 @@ const Auction = () => {
                       {selectedPlayer.teamId && (
                         <button
                           onClick={() => handlePlayerAssignment(selectedPlayer.id, null)}
-                          className="w-full bg-gradient-to-r from-red-500 via-red-600 to-red-700 hover:from-red-600 hover:via-red-700 hover:to-red-800 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105"
+                          className="w-full bg-gradient-to-r from-red-500 via-red-600 to-red-700 hover:from-red-600 hover:via-red-700 hover:to-red-800 text-white px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 rounded-2xl font-bold text-base sm:text-lg md:text-xl transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105"
                         >
                           ❌ Mark as Unsold
                         </button>
@@ -656,7 +648,7 @@ const Auction = () => {
               <div className="mt-12 flex justify-center">
                 <button
                   onClick={() => setShowPlayerModal(false)}
-                  className="bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 hover:from-gray-700 hover:via-gray-800 hover:to-gray-900 text-white px-12 py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
+                  className="bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 hover:from-gray-700 hover:via-gray-800 hover:to-gray-900 text-white px-8 sm:px-12 md:px-16 py-3 sm:py-4 md:py-5 rounded-2xl font-bold text-base sm:text-lg md:text-xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
                 >
                   Close Player Details
                 </button>
@@ -665,17 +657,7 @@ const Auction = () => {
           </div>
         </div>
       )}
-      
-      {/* Scroll to Top Button */}
-      {showScrollTop && (
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-6 right-6 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-110 z-50"
-          style={{ minWidth: '56px', minHeight: '56px' }}
-        >
-          <ArrowUp className="w-6 h-6" />
-        </button>
-      )}
+
     </div>
   );
 };
