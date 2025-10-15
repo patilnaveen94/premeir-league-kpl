@@ -25,7 +25,7 @@ const Navbar = () => {
     { name: 'Teams', path: '/teams' },
     { name: 'Stats', path: '/stats' },
     { name: 'Auction', path: '/auction' },
-    { name: 'CricHeroes', path: '/cricheroes' },
+    { name: 'League Stats', path: '/cricheroes' },
     { name: 'News', path: '/news' },
     { name: 'Sponsors', path: '/sponsors' },
     { name: 'Contact', path: '/contact' },
@@ -38,33 +38,12 @@ const Navbar = () => {
           <div className="flex justify-between h-14 sm:h-16">
             <div className="flex items-center">
               <Link to="/" className="flex items-center space-x-2 sm:space-x-3 py-2" onClick={closeMenu}>
-                {/* Modern Logo Design */}
-                <div className="relative">
-                  <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 bg-gradient-to-br from-blue-600 via-purple-600 to-blue-800 rounded-xl flex items-center justify-center shadow-lg">
-                    <span className="text-white font-black text-xs sm:text-sm lg:text-base tracking-tight">KPL</span>
-                  </div>
-                  <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center shadow-lg">
+                  <span className="text-white font-bold text-xs sm:text-sm">KPL</span>
                 </div>
-                
-                {/* Responsive Text */}
-                <div className="flex flex-col leading-none">
-                  {/* Mobile: Show only KPL */}
-                  <div className="sm:hidden">
-                    <span className="font-black text-lg text-gray-900 tracking-tight">Khajjidoni</span>
-                    <div className="text-xs text-gray-500 font-medium -mt-0.5">Cricket League</div>
-                  </div>
-                  
-                  {/* Tablet: Show abbreviated */}
-                  <div className="hidden sm:block lg:hidden">
-                    <span className="font-black text-xl text-gray-900 tracking-tight">Khajjidoni PL</span>
-                    <div className="text-xs text-gray-500 font-medium -mt-0.5">Premier Cricket League</div>
-                  </div>
-                  
-                  {/* Desktop: Show full name */}
-                  <div className="hidden lg:block">
-                    <span className="font-black text-xl text-gray-900 tracking-tight">Khajjidoni Premier League</span>
-                    <div className="text-xs text-gray-500 font-medium -mt-0.5">Official Cricket Tournament</div>
-                  </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-base sm:text-lg text-gray-900">Khajjidoni Premier League</span>
+                  <span className="text-xs text-gray-500 -mt-1">Cricket Tournament</span>
                 </div>
               </Link>
             </div>
@@ -152,9 +131,17 @@ const Navbar = () => {
         <div className={`fixed inset-0 z-50 lg:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
           <div className="fixed inset-0 bg-black bg-opacity-50" onClick={closeMenu}></div>
           <div className={`fixed top-0 right-0 h-full w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-purple-600">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-red-600">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-xl text-white">Navigation</span>
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">KPL</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-lg text-white">Khajjidoni PL</span>
+                    <span className="text-xs text-orange-100">Cricket League</span>
+                  </div>
+                </div>
                 <button onClick={closeMenu} className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors">
                   <X size={24} className="text-white" />
                 </button>
