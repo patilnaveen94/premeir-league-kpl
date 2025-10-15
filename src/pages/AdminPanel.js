@@ -1508,29 +1508,29 @@ const AdminPanel = () => {
         {/* Tab Navigation */}
         <div className="bg-white rounded-lg shadow-lg">
           <div className="border-b border-gray-200">
-            <nav className="flex overflow-x-auto space-x-2 sm:space-x-8 px-2 sm:px-6">
+            <nav className="mobile-admin-tabs">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center space-x-1 sm:space-x-2 py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
+                    className={`mobile-admin-tab ${
                       activeTab === tab.id
                         ? 'border-cricket-green text-cricket-green'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                   >
                     <Icon size={16} className="sm:w-5 sm:h-5" />
-                    <span className="hidden sm:inline">{tab.name}</span>
-                    <span className="sm:hidden">{tab.name.split(' ')[0]}</span>
+                    <span className="mobile-hidden">{tab.name}</span>
+                    <span className="mobile-only">{tab.name.split(' ')[0]}</span>
                   </button>
                 );
               })}
             </nav>
           </div>
 
-          <div className="p-3 sm:p-6">
+          <div className="mobile-admin-content">
             {/* Player Registrations Tab */}
             {activeTab === 'players' && (
               <div>

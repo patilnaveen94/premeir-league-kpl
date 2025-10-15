@@ -205,18 +205,18 @@ const Home = () => {
         
         {/* Overlay Content */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center text-white px-4 max-w-4xl">
-            <h1 className="responsive-hero font-bold mb-4 sm:mb-6">
+          <div className="text-center text-white responsive-container">
+            <h1 className="responsive-heading font-bold mobile-margin drop-shadow-lg">
               Khajjidoni Premier League
             </h1>
-            <p className="text-lg sm:text-xl md:text-2xl mb-6 sm:mb-8 text-gray-200">
+            <p className="responsive-text mb-6 sm:mb-8 text-gray-200 max-w-3xl mx-auto">
               The Ultimate Cricket Experience
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center max-w-md mx-auto">
-              <Link to="/teams" className="btn-secondary w-full sm:w-auto">
+            <div className="responsive-flex justify-center max-w-md mx-auto">
+              <Link to="/teams" className="mobile-button bg-cricket-green text-white hover:bg-cricket-green/90 shadow-lg mobile-hover w-full sm:w-auto text-center">
                 Explore Teams
               </Link>
-              <Link to="/stats" className="bg-white text-corporate-primary hover:bg-gray-100 active:bg-gray-200 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-semibold transition-colors w-full sm:w-auto shadow-sm">
+              <Link to="/stats" className="mobile-button bg-white text-cricket-navy hover:bg-gray-100 shadow-lg mobile-hover w-full sm:w-auto text-center">
                 View Stats
               </Link>
             </div>
@@ -226,34 +226,34 @@ const Home = () => {
 
       {/* Tournament Info Section */}
       <section className="py-12 sm:py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Tournament 2025</h2>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+        <div className="responsive-container">
+          <div className="text-center mobile-margin">
+            <h2 className="responsive-subheading font-bold text-gray-900 mb-3 sm:mb-4">Tournament 2025</h2>
+            <p className="responsive-text text-gray-600 max-w-3xl mx-auto">
               Experience the thrill of cricket at its finest. 7 teams, unlimited passion, one champion.
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 text-center">
-              <Users className="w-12 h-12 text-blue-600 mx-auto mb-3" />
-              <h3 className="text-2xl font-bold text-blue-900">{loading ? '...' : teams.length}</h3>
-              <p className="text-blue-700 font-medium">Teams</p>
+          <div className="responsive-grid mb-8 sm:mb-12">
+            <div className="mobile-stat-card bg-gradient-to-br from-blue-50 to-blue-100 text-center">
+              <Users className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-blue-600 mx-auto mb-2 sm:mb-3" />
+              <h3 className="mobile-stat-value text-blue-900">{loading ? '...' : teams.length}</h3>
+              <p className="mobile-stat-label text-blue-700">Teams</p>
             </div>
-            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 text-center">
-              <Calendar className="w-12 h-12 text-green-600 mx-auto mb-3" />
-              <h3 className="text-2xl font-bold text-green-900">{loading ? '...' : totalMatches}</h3>
-              <p className="text-green-700 font-medium">Matches</p>
+            <div className="mobile-stat-card bg-gradient-to-br from-green-50 to-green-100 text-center">
+              <Calendar className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-green-600 mx-auto mb-2 sm:mb-3" />
+              <h3 className="mobile-stat-value text-green-900">{loading ? '...' : totalMatches}</h3>
+              <p className="mobile-stat-label text-green-700">Matches</p>
             </div>
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-6 text-center">
-              <Target className="w-12 h-12 text-orange-600 mx-auto mb-3" />
-              <h3 className="text-2xl font-bold text-orange-900">{loading || tournamentLoading ? '...' : playerStats.filter(p => p.matches > 0).length}</h3>
-              <p className="text-orange-700 font-medium">Active Players</p>
+            <div className="mobile-stat-card bg-gradient-to-br from-orange-50 to-orange-100 text-center">
+              <Target className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-orange-600 mx-auto mb-2 sm:mb-3" />
+              <h3 className="mobile-stat-value text-orange-900">{loading || tournamentLoading ? '...' : playerStats.filter(p => p.matches > 0).length}</h3>
+              <p className="mobile-stat-label text-orange-700">Active Players</p>
             </div>
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 text-center">
-              <Trophy className="w-12 h-12 text-purple-600 mx-auto mb-3" />
-              <h3 className="text-2xl font-bold text-purple-900">{loading || tournamentLoading ? '...' : playerStats.reduce((sum, p) => sum + (p.runs || 0), 0)}</h3>
-              <p className="text-purple-700 font-medium">Total Runs</p>
+            <div className="mobile-stat-card bg-gradient-to-br from-purple-50 to-purple-100 text-center">
+              <Trophy className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-purple-600 mx-auto mb-2 sm:mb-3" />
+              <h3 className="mobile-stat-value text-purple-900">{loading || tournamentLoading ? '...' : playerStats.reduce((sum, p) => sum + (p.runs || 0), 0)}</h3>
+              <p className="mobile-stat-label text-purple-700">Total Runs</p>
             </div>
           </div>
           
@@ -279,13 +279,13 @@ const Home = () => {
       
       {/* Live Stats & Recent Matches */}
       <section className="py-12 sm:py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="responsive-container">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
             {/* Recent Matches */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900">Recent Matches</h3>
-                <Link to="/schedule" className="text-cricket-blue hover:text-cricket-navy text-sm font-medium">
+            <div className="card">
+              <div className="responsive-flex justify-between mb-4 sm:mb-6">
+                <h3 className="responsive-subheading font-bold text-gray-900">Recent Matches</h3>
+                <Link to="/schedule" className="text-cricket-blue hover:text-cricket-navy responsive-small font-medium mobile-hidden">
                   View All →
                 </Link>
               </div>
@@ -296,33 +296,33 @@ const Home = () => {
                   ))}
                 </div>
               ) : recentMatches.length > 0 ? (
-                <div className="space-y-4">
+                <div className="mobile-spacing">
                   {recentMatches.map(match => (
-                    <div key={match.id} className="bg-gradient-to-r from-white to-gray-50 border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                          <span className="text-xs font-medium text-green-600 uppercase tracking-wide">Completed</span>
+                    <div key={match.id} className="mobile-match-card mobile-hover">
+                      <div className="responsive-flex justify-between mb-2 sm:mb-3">
+                        <div className="flex items-center space-x-2 sm:space-x-3">
+                          <div className="w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full animate-pulse"></div>
+                          <span className="responsive-small font-medium text-green-600 uppercase tracking-wide">Completed</span>
                         </div>
-                        <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                        <div className="responsive-small text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                           {formatMatchDate(match.date)}
                         </div>
                       </div>
                       
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="mobile-match-teams">
                         <div className="flex-1 text-center">
-                          <div className="text-sm font-bold text-gray-900">{match.team1}</div>
+                          <div className="responsive-small font-bold text-gray-900 truncate">{match.team1}</div>
                         </div>
-                        <div className="px-3">
-                          <div className="text-xs text-gray-400 font-medium">VS</div>
+                        <div className="px-2 sm:px-3">
+                          <div className="responsive-small text-gray-400 font-medium">VS</div>
                         </div>
                         <div className="flex-1 text-center">
-                          <div className="text-sm font-bold text-gray-900">{match.team2}</div>
+                          <div className="responsive-small font-bold text-gray-900 truncate">{match.team2}</div>
                         </div>
                       </div>
                       
-                      <div className="bg-gradient-to-r from-cricket-navy to-cricket-blue text-white text-center py-2 rounded-lg">
-                        <div className="text-sm font-medium">
+                      <div className="bg-gradient-to-r from-cricket-navy to-cricket-blue text-white text-center py-2 sm:py-3 rounded-lg">
+                        <div className="responsive-small font-medium">
                           {getMatchWinMessage(match)}
                         </div>
                       </div>
@@ -338,10 +338,10 @@ const Home = () => {
             </div>
             
             {/* Top Performers */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900">Top Performers</h3>
-                <Link to="/stats" className="text-cricket-blue hover:text-cricket-navy text-sm font-medium">
+            <div className="card">
+              <div className="responsive-flex justify-between mb-4 sm:mb-6">
+                <h3 className="responsive-subheading font-bold text-gray-900">Top Performers</h3>
+                <Link to="/stats" className="text-cricket-blue hover:text-cricket-navy responsive-small font-medium mobile-hidden">
                   View Stats →
                 </Link>
               </div>
@@ -642,14 +642,14 @@ const Home = () => {
 
 
       {/* CTA Section */}
-      <section className="bg-gradient-to-r from-cricket-navy to-cricket-blue text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <section className="bg-gradient-to-r from-cricket-navy to-cricket-blue text-white py-12 sm:py-16">
+        <div className="responsive-container">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              <h2 className="responsive-subheading font-bold mobile-margin">
                 Be Part of the Action
               </h2>
-              <p className="text-xl mb-6 text-white/90">
+              <p className="responsive-text mb-4 sm:mb-6 text-white/90">
                 Join Khajjidoni Premier League and showcase your cricket skills on the biggest stage
               </p>
               <div className="space-y-4">
@@ -683,10 +683,10 @@ const Home = () => {
                 </div>
               </div>
               
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-end">
+              <div className="responsive-flex justify-center lg:justify-end">
                 <Link 
                   to="/player-registration" 
-                  className="bg-cricket-orange hover:bg-cricket-orange/90 text-white px-8 py-3 rounded-lg font-semibold transition-colors shadow-lg"
+                  className="mobile-button bg-cricket-orange hover:bg-cricket-orange/90 text-white shadow-lg mobile-hover w-full sm:w-auto text-center"
                   onClick={() => {
                     setTimeout(() => {
                       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -697,7 +697,7 @@ const Home = () => {
                 </Link>
                 <Link 
                   to="/stats" 
-                  className="bg-white/20 hover:bg-white/30 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
+                  className="mobile-button bg-white/20 hover:bg-white/30 text-white mobile-hover w-full sm:w-auto text-center"
                 >
                   View Stats
                 </Link>

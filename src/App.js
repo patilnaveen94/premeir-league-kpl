@@ -31,7 +31,7 @@ function App() {
         <Router>
           <div className="App flex flex-col min-h-screen">
             <Navbar />
-            <main className="flex-1">
+            <main className="flex-1 pb-16 sm:pb-0">
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
                   <Route path="/" element={<Home />} />
