@@ -374,12 +374,12 @@ const Auction = () => {
                     )}
                     
                     <div className="flex-1 min-w-0 text-white">
-                      <h3 className="font-bold text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl leading-tight drop-shadow-lg truncate" title={player.fullName}>
+                      <h3 className="font-bold text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl leading-tight drop-shadow-lg truncate player-name-safe" title={player.fullName}>
                         {player.fullName}
                       </h3>
                       <p className="text-white text-opacity-90 text-xs sm:text-sm md:text-base lg:text-lg font-medium truncate">{player.position}</p>
                       <div className="flex items-center mt-1">
-                        <span className="text-xs sm:text-sm md:text-base bg-white bg-opacity-20 px-2 py-1 rounded-full">
+                        <span className="text-xs sm:text-sm md:text-base bg-white bg-opacity-20 px-2 py-1 rounded-full truncate">
                           {stats.matches || 0} matches
                         </span>
                       </div>
@@ -392,9 +392,9 @@ const Auction = () => {
                   {player.soldTo && (
                     <div className="mb-6 p-4 bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 rounded-2xl border-2 border-green-200 shadow-inner">
                       <p className="text-sm font-bold text-green-800 flex items-center">
-                        <Trophy className="w-5 h-5 mr-2 text-green-600" />
-                        <span className="text-green-900">Sold to: </span>
-                        <span className="text-green-700 ml-1">{player.soldTo}</span>
+                        <Trophy className="w-5 h-5 mr-2 text-green-600 flex-shrink-0" />
+                        <span className="text-green-900 flex-shrink-0">Sold to: </span>
+                        <span className="text-green-700 ml-1 truncate team-name-safe">{player.soldTo}</span>
                       </p>
                     </div>
                   )}
@@ -487,9 +487,9 @@ const Auction = () => {
                   </div>
                 )}
                 
-                <div className="flex-1">
-                  <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 drop-shadow-lg">{selectedPlayer.fullName}</h2>
-                  <p className="text-white text-opacity-90 text-lg sm:text-xl md:text-2xl lg:text-3xl mb-3 font-medium">{selectedPlayer.position}</p>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 drop-shadow-lg truncate">{selectedPlayer.fullName}</h2>
+                  <p className="text-white text-opacity-90 text-lg sm:text-xl md:text-2xl lg:text-3xl mb-3 font-medium truncate">{selectedPlayer.position}</p>
                   <div className="flex items-center space-x-4">
                     <span className={`inline-block px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 rounded-full text-sm sm:text-base md:text-lg font-bold shadow-lg ${
                       selectedPlayer.auctionStatus === 'sold' 
@@ -574,11 +574,11 @@ const Auction = () => {
                   <div className="space-y-6">
                     <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-2xl border border-gray-200 shadow-sm">
                       <div className="text-sm sm:text-base md:text-lg text-gray-500 font-bold uppercase tracking-wide mb-2">Email Address</div>
-                      <div className="text-gray-900 font-bold text-lg sm:text-xl md:text-2xl">{selectedPlayer.email}</div>
+                      <div className="text-gray-900 font-bold text-lg sm:text-xl md:text-2xl email-safe" title={selectedPlayer.email}>{selectedPlayer.email}</div>
                     </div>
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-100 p-6 rounded-2xl border border-blue-200 shadow-sm">
                       <div className="text-sm sm:text-base md:text-lg text-blue-600 font-bold uppercase tracking-wide mb-2">Phone Number</div>
-                      <div className="text-blue-900 font-bold text-lg sm:text-xl md:text-2xl">{selectedPlayer.phone}</div>
+                      <div className="text-blue-900 font-bold text-lg sm:text-xl md:text-2xl phone-safe" title={selectedPlayer.phone}>{selectedPlayer.phone}</div>
                     </div>
                     <div className="bg-gradient-to-r from-green-50 to-emerald-100 p-6 rounded-2xl border border-green-200 shadow-sm">
                       <div className="text-sm sm:text-base md:text-lg text-green-600 font-bold uppercase tracking-wide mb-2">Playing Position</div>

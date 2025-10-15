@@ -1,0 +1,195 @@
+/* Overflow Prevention Utilities */
+
+/* Prevent horizontal scroll on body and html */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Container utilities to prevent overflow */
+.container-safe {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.text-safe {
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Flex utilities for text overflow */
+.flex-text-safe {
+  min-width: 0;
+  flex: 1;
+}
+
+.flex-no-shrink {
+  flex-shrink: 0;
+}
+
+/* Grid utilities for text overflow */
+.grid-text-safe > * {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Card content safety */
+.card-content-safe {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.card-content-safe h1,
+.card-content-safe h2,
+.card-content-safe h3,
+.card-content-safe h4,
+.card-content-safe h5,
+.card-content-safe h6 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-content-safe p,
+.card-content-safe span,
+.card-content-safe div {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Modal content safety */
+.modal-content-safe {
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+}
+
+/* Table responsive utilities */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive table {
+  min-width: 100%;
+  white-space: nowrap;
+}
+
+.table-responsive td,
+.table-responsive th {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+/* Mobile-specific overflow fixes */
+@media (max-width: 768px) {
+  .mobile-text-safe {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .mobile-multiline-safe {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+  }
+  
+  .mobile-container-safe {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+}
+
+/* Specific component fixes */
+.team-name-safe {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-name-safe {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.email-safe {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.phone-safe {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Button text safety */
+.btn-text-safe {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* Input field safety */
+.input-safe {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Prevent specific elements from causing overflow */
+img, video, iframe, embed, object {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Fix for long URLs or code blocks */
+.url-safe, .code-safe {
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+
+/* Utility classes for common scenarios */
+.truncate-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.truncate-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -112,22 +112,22 @@ const Teams = () => {
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
                     <span className="text-lg sm:text-2xl font-bold">{getTeamInitials(team.name)}</span>
                   </div>
-                  <h3 className="text-lg sm:text-xl font-bold px-2">{team.name}</h3>
+                  <h3 className="text-lg sm:text-xl font-bold px-2 truncate">{team.name}</h3>
                 </div>
               </div>
               
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600 text-sm sm:text-base">City:</span>
-                  <span className="font-semibold text-sm sm:text-base">{team.city}</span>
+                  <span className="text-gray-600 text-sm sm:text-base flex-shrink-0">City:</span>
+                  <span className="font-semibold text-sm sm:text-base truncate ml-2">{team.city}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600 text-sm sm:text-base">Founded:</span>
-                  <span className="font-semibold text-sm sm:text-base">{team.founded}</span>
+                  <span className="text-gray-600 text-sm sm:text-base flex-shrink-0">Founded:</span>
+                  <span className="font-semibold text-sm sm:text-base truncate ml-2">{team.founded}</span>
                 </div>
                 <div className="flex justify-between items-start">
-                  <span className="text-gray-600 text-sm sm:text-base">Stadium:</span>
-                  <span className="font-semibold text-xs sm:text-sm text-right flex-1 ml-2">{team.stadium}</span>
+                  <span className="text-gray-600 text-sm sm:text-base flex-shrink-0">Stadium:</span>
+                  <span className="font-semibold text-xs sm:text-sm text-right flex-1 ml-2 truncate">{team.stadium}</span>
                 </div>
               </div>
               
@@ -151,22 +151,22 @@ const Teams = () => {
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg sm:rounded-2xl shadow-2xl p-4 sm:p-6 lg:p-8 max-w-5xl w-full max-h-[95vh] overflow-y-auto">
               {/* Header with gradient background */}
-              <div className="relative bg-gradient-to-r from-cricket-navy via-cricket-blue to-cricket-orange rounded-lg sm:rounded-xl p-4 sm:p-6 mb-6 sm:mb-8 text-white">
+              <div className="relative bg-gradient-to-r from-cricket-navy via-cricket-blue to-cricket-orange rounded-lg sm:rounded-xl p-4 sm:p-6 mb-6 sm:mb-8 text-white overflow-hidden">
                 <div className="flex justify-between items-start sm:items-center">
-                  <div className="flex items-center space-x-3 sm:space-x-4 flex-1">
+                  <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0 pr-4">
                     {selectedTeam.logoURL && (
                       <div className="w-12 h-12 sm:w-20 sm:h-20 bg-white/20 rounded-full p-1 sm:p-2 backdrop-blur-sm flex-shrink-0">
                         <img src={selectedTeam.logoURL} alt="Team Logo" className="w-full h-full object-cover rounded-full" />
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold drop-shadow-lg truncate">{selectedTeam.name}</h3>
-                      <p className="text-white/90 text-sm sm:text-base lg:text-lg">{selectedTeam.city}</p>
+                      <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold drop-shadow-lg break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{selectedTeam.name}</h3>
+                      <p className="text-white/90 text-sm sm:text-base lg:text-lg truncate">{selectedTeam.city}</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setShowTeamDetails(false)}
-                    className="text-white/80 hover:text-white bg-white/20 rounded-full p-2 backdrop-blur-sm transition-all touch-btn flex-shrink-0 ml-2"
+                    className="text-white/80 hover:text-white bg-white/20 rounded-full p-2 backdrop-blur-sm transition-all touch-btn flex-shrink-0"
                   >
                     <XCircle size={20} className="sm:w-7 sm:h-7" />
                   </button>
@@ -184,11 +184,11 @@ const Teams = () => {
                     <div className="grid grid-cols-2 gap-6">
                       <div className="bg-white/70 rounded-lg p-4 shadow-sm">
                         <span className="font-semibold text-cricket-navy text-sm">Founded</span>
-                        <p className="text-lg font-bold text-gray-800">{selectedTeam.founded}</p>
+                        <p className="text-lg font-bold text-gray-800 truncate">{selectedTeam.founded}</p>
                       </div>
                       <div className="bg-white/70 rounded-lg p-4 shadow-sm">
                         <span className="font-semibold text-cricket-navy text-sm">Stadium</span>
-                        <p className="text-lg font-bold text-gray-800">{selectedTeam.stadium}</p>
+                        <p className="text-lg font-bold text-gray-800 truncate">{selectedTeam.stadium}</p>
                       </div>
                     </div>
                   </div>
@@ -209,9 +209,9 @@ const Teams = () => {
                             <img src={selectedTeam.captainPhotoURL} alt="Captain" className="w-full h-full object-cover rounded-full" />
                           </div>
                         )}
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="font-bold text-orange-800 text-sm">👑 CAPTAIN</p>
-                          <p className="text-lg font-semibold text-gray-800">{selectedTeam.captain}</p>
+                          <p className="text-lg font-semibold text-gray-800 truncate">{selectedTeam.captain}</p>
                         </div>
                       </div>
                     </div>
@@ -224,9 +224,9 @@ const Teams = () => {
                             <img src={selectedTeam.ownerPhotoURL} alt="Owner" className="w-full h-full object-cover rounded-full" />
                           </div>
                         )}
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="font-bold text-purple-800 text-sm">💼 OWNER</p>
-                          <p className="text-lg font-semibold text-gray-800">{selectedTeam.owner}</p>
+                          <p className="text-lg font-semibold text-gray-800 truncate">{selectedTeam.owner}</p>
                         </div>
                       </div>
                     </div>
@@ -238,8 +238,8 @@ const Teams = () => {
                           <div className="w-14 h-14 bg-white rounded-full p-1 shadow-lg">
                             <img src={selectedTeam.sponsorPhotoURL} alt="Sponsor" className="w-full h-full object-cover rounded-full" />
                           </div>
-                          <div>
-                            <p className="font-bold text-blue-800 text-sm">🤝 SPONSOR</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-blue-800 text-sm truncate">🤝 SPONSOR</p>
                           </div>
                         </div>
                       </div>

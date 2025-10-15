@@ -147,7 +147,7 @@ const Home = () => {
   return (
     <div className="min-h-screen">
       {/* Hero Carousel Section */}
-      <section className="relative h-64 sm:h-80 md:h-96 lg:h-[500px] overflow-hidden">
+      <section className="relative h-64 sm:h-80 md:h-96 lg:h-[500px] overflow-hidden animate-fade-in">
         {carouselImages.length > 0 ? (
           <>
             <div className="relative h-full">
@@ -212,17 +212,17 @@ const Home = () => {
         {/* Overlay Content */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center text-white responsive-container">
-            <h1 className="responsive-heading font-bold mobile-margin drop-shadow-lg">
+            <h1 className="responsive-heading font-bold mobile-margin drop-shadow-lg animate-fade-in-up">
               Khajjidoni Premier League
             </h1>
-            <p className="responsive-text mb-6 sm:mb-8 text-gray-200 max-w-3xl mx-auto">
+            <p className="responsive-text mb-6 sm:mb-8 text-gray-200 max-w-3xl mx-auto animate-fade-in-up animation-delay-200">
               The Ultimate Cricket Experience
             </p>
-            <div className="responsive-flex justify-center max-w-md mx-auto">
-              <Link to="/teams" className="mobile-button bg-cricket-green text-white hover:bg-cricket-green/90 shadow-lg mobile-hover w-full sm:w-auto text-center">
+            <div className="responsive-flex justify-center max-w-md mx-auto animate-fade-in-up animation-delay-300">
+              <Link to="/teams" className="mobile-button bg-cricket-green text-white hover:bg-cricket-green/90 shadow-lg mobile-hover w-full sm:w-auto text-center btn-animate">
                 Explore Teams
               </Link>
-              <Link to="/stats" className="mobile-button bg-white text-cricket-navy hover:bg-gray-100 shadow-lg mobile-hover w-full sm:w-auto text-center">
+              <Link to="/stats" className="mobile-button bg-white text-cricket-navy hover:bg-gray-100 shadow-lg mobile-hover w-full sm:w-auto text-center btn-animate">
                 View Stats
               </Link>
             </div>
@@ -233,7 +233,7 @@ const Home = () => {
       {/* Tournament Info Section */}
       <section className="py-12 sm:py-16 bg-white">
         <div className="responsive-container">
-          <div className="text-center mobile-margin">
+          <div className="text-center mobile-margin animate-fade-in-up">
             <h2 className="responsive-subheading font-bold text-gray-900 mb-3 sm:mb-4">Tournament 2025</h2>
             <p className="responsive-text text-gray-600 max-w-3xl mx-auto">
               Experience the thrill of cricket at its finest. 7 teams, unlimited passion, one champion.
@@ -241,40 +241,40 @@ const Home = () => {
           </div>
           
           <div className="responsive-grid mb-8 sm:mb-12">
-            <div className="mobile-stat-card bg-gradient-to-br from-blue-50 to-blue-100 text-center">
-              <Users className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-blue-600 mx-auto mb-2 sm:mb-3" />
+            <div className="mobile-stat-card bg-gradient-to-br from-blue-50 to-blue-100 text-center stagger-item hover-lift">
+              <Users className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-blue-600 mx-auto mb-2 sm:mb-3 transition-transform duration-300 hover:scale-110" />
               <h3 className="mobile-stat-value text-blue-900">{loading ? '...' : teams.length}</h3>
               <p className="mobile-stat-label text-blue-700">Teams</p>
             </div>
-            <div className="mobile-stat-card bg-gradient-to-br from-green-50 to-green-100 text-center">
-              <Calendar className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-green-600 mx-auto mb-2 sm:mb-3" />
+            <div className="mobile-stat-card bg-gradient-to-br from-green-50 to-green-100 text-center stagger-item hover-lift">
+              <Calendar className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-green-600 mx-auto mb-2 sm:mb-3 transition-transform duration-300 hover:scale-110" />
               <h3 className="mobile-stat-value text-green-900">{loading ? '...' : totalMatches}</h3>
               <p className="mobile-stat-label text-green-700">Matches</p>
             </div>
-            <div className="mobile-stat-card bg-gradient-to-br from-orange-50 to-orange-100 text-center">
-              <Target className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-orange-600 mx-auto mb-2 sm:mb-3" />
+            <div className="mobile-stat-card bg-gradient-to-br from-orange-50 to-orange-100 text-center stagger-item hover-lift">
+              <Target className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-orange-600 mx-auto mb-2 sm:mb-3 transition-transform duration-300 hover:scale-110" />
               <h3 className="mobile-stat-value text-orange-900">{loading || tournamentLoading ? '...' : playerStats.filter(p => p.matches > 0).length}</h3>
               <p className="mobile-stat-label text-orange-700">Active Players</p>
             </div>
-            <div className="mobile-stat-card bg-gradient-to-br from-purple-50 to-purple-100 text-center">
-              <Trophy className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-purple-600 mx-auto mb-2 sm:mb-3" />
+            <div className="mobile-stat-card bg-gradient-to-br from-purple-50 to-purple-100 text-center stagger-item hover-lift">
+              <Trophy className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-purple-600 mx-auto mb-2 sm:mb-3 transition-transform duration-300 hover:scale-110" />
               <h3 className="mobile-stat-value text-purple-900">{loading || tournamentLoading ? '...' : playerStats.reduce((sum, p) => sum + (p.runs || 0), 0)}</h3>
               <p className="mobile-stat-label text-purple-700">Total Runs</p>
             </div>
           </div>
           
-          <div className="bg-gradient-to-r from-cricket-navy to-cricket-blue rounded-2xl p-8 text-white text-center">
+          <div className="bg-gradient-to-r from-cricket-navy to-cricket-blue rounded-2xl p-8 text-white text-center animate-scale-in hover-lift">
             <h3 className="text-2xl font-bold mb-4">Tournament Format</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-              <div className="bg-white/10 rounded-lg p-4">
+              <div className="bg-white/10 rounded-lg p-4 hover-scale transition-all duration-300">
                 <h4 className="font-semibold mb-2">League Stage</h4>
                 <p className="text-white/90">Round-robin format with each team playing others</p>
               </div>
-              <div className="bg-white/10 rounded-lg p-4">
+              <div className="bg-white/10 rounded-lg p-4 hover-scale transition-all duration-300">
                 <h4 className="font-semibold mb-2">Playoffs</h4>
                 <p className="text-white/90">Top 4 teams qualify for knockout stage</p>
               </div>
-              <div className="bg-white/10 rounded-lg p-4">
+              <div className="bg-white/10 rounded-lg p-4 hover-scale transition-all duration-300">
                 <h4 className="font-semibold mb-2">Final</h4>
                 <p className="text-white/90">Winner takes all in the championship match</p>
               </div>
@@ -288,10 +288,10 @@ const Home = () => {
         <div className="responsive-container">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
             {/* Recent Matches */}
-            <div className="card">
+            <div className="card card-entrance hover-lift">
               <div className="responsive-flex justify-between mb-4 sm:mb-6">
                 <h3 className="responsive-subheading font-bold text-gray-900">Recent Matches</h3>
-                <Link to="/schedule" className="text-cricket-blue hover:text-cricket-navy responsive-small font-medium mobile-hidden">
+                <Link to="/schedule" className="text-cricket-blue hover:text-cricket-navy responsive-small font-medium mobile-hidden transition-colors duration-300 hover:scale-105">
                   View All →
                 </Link>
               </div>
@@ -303,8 +303,8 @@ const Home = () => {
                 </div>
               ) : recentMatches.length > 0 ? (
                 <div className="mobile-spacing">
-                  {recentMatches.map(match => (
-                    <div key={match.id} className="mobile-match-card mobile-hover">
+                  {recentMatches.map((match, index) => (
+                    <div key={match.id} className="mobile-match-card mobile-hover card-hover" style={{ animationDelay: `${index * 100}ms` }}>
                       <div className="responsive-flex justify-between mb-2 sm:mb-3">
                         <div className="flex items-center space-x-2 sm:space-x-3">
                           <div className="w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full animate-pulse"></div>
@@ -344,10 +344,10 @@ const Home = () => {
             </div>
             
             {/* Top Performers */}
-            <div className="card">
+            <div className="card card-entrance hover-lift animation-delay-200">
               <div className="responsive-flex justify-between mb-4 sm:mb-6">
                 <h3 className="responsive-subheading font-bold text-gray-900">Top Performers</h3>
-                <Link to="/stats" className="text-cricket-blue hover:text-cricket-navy responsive-small font-medium mobile-hidden">
+                <Link to="/stats" className="text-cricket-blue hover:text-cricket-navy responsive-small font-medium mobile-hidden transition-colors duration-300 hover:scale-105">
                   View Stats →
                 </Link>
               </div>
@@ -360,9 +360,9 @@ const Home = () => {
               ) : (
                 <div className="space-y-6">
                   {/* Top Run Scorer */}
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl p-4 border border-green-200">
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl p-4 border border-green-200 hover-lift transition-all duration-300">
                     <div className="flex items-center mb-3">
-                      <Trophy className="w-5 h-5 text-green-600 mr-2" />
+                      <Trophy className="w-5 h-5 text-green-600 mr-2 transition-transform duration-300 hover:rotate-12" />
                       <h4 className="text-sm font-bold text-green-800">Top Run Scorer</h4>
                     </div>
                     {topPerformers?.topRunScorers?.[0] ? (
@@ -395,9 +395,9 @@ const Home = () => {
                   </div>
                   
                   {/* Top Wicket Taker */}
-                  <div className="bg-gradient-to-br from-red-50 to-rose-100 rounded-xl p-4 border border-red-200">
+                  <div className="bg-gradient-to-br from-red-50 to-rose-100 rounded-xl p-4 border border-red-200 hover-lift transition-all duration-300">
                     <div className="flex items-center mb-3">
-                      <Target className="w-5 h-5 text-red-600 mr-2" />
+                      <Target className="w-5 h-5 text-red-600 mr-2 transition-transform duration-300 hover:rotate-12" />
                       <h4 className="text-sm font-bold text-red-800">Top Wicket Taker</h4>
                     </div>
                     {topPerformers?.topWicketTakers?.[0] ? (
@@ -430,9 +430,9 @@ const Home = () => {
                   </div>
                   
                   {/* Current Leader */}
-                  <div className="bg-gradient-to-br from-yellow-50 to-amber-100 rounded-xl p-4 border border-yellow-200">
+                  <div className="bg-gradient-to-br from-yellow-50 to-amber-100 rounded-xl p-4 border border-yellow-200 hover-lift transition-all duration-300">
                     <div className="flex items-center mb-3">
-                      <Trophy className="w-5 h-5 text-yellow-600 mr-2" />
+                      <Trophy className="w-5 h-5 text-yellow-600 mr-2 transition-transform duration-300 hover:rotate-12" />
                       <h4 className="text-sm font-bold text-yellow-800">Current Leader</h4>
                     </div>
                     {standings?.[0] ? (
@@ -465,7 +465,7 @@ const Home = () => {
       {/* Features Section */}
       <section className="py-12 sm:py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8 sm:mb-12">
+          <div className="text-center mb-8 sm:mb-12 animate-fade-in-up">
             <h2 className="responsive-heading font-bold text-gray-900 mb-3 sm:mb-4">
               Everything Cricket
             </h2>
@@ -476,9 +476,11 @@ const Home = () => {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {features.map((feature, index) => (
-              <div key={index} className="mobile-card sm:card text-center hover:shadow-lg transition-all duration-300 hover:scale-105">
+              <div key={index} className="mobile-card sm:card text-center hover:shadow-lg transition-all duration-300 hover:scale-105 stagger-item card-hover">
                 <div className="flex justify-center mb-3 sm:mb-4">
-                  {feature.icon}
+                  <div className="transition-transform duration-300 hover:scale-110 hover:rotate-6">
+                    {feature.icon}
+                  </div>
                 </div>
                 <h3 className="text-lg sm:text-xl font-semibold mb-2 text-gray-900">
                   {feature.title}
@@ -495,7 +497,7 @@ const Home = () => {
       {/* Sponsors Section */}
       <section className="py-12 sm:py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
+          <div className="text-center mb-12 animate-fade-in-up">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Our Sponsors</h2>
             <p className="text-lg text-gray-600 max-w-3xl mx-auto">
               Proud partners supporting Khajjidoni Premier League
@@ -511,10 +513,10 @@ const Home = () => {
           ) : sponsors.length > 0 ? (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-                {sponsors.filter(s => s.type === 'title').map(sponsor => (
-                  <div key={sponsor.id} className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-6 text-center border-2 border-yellow-200">
+                {sponsors.filter(s => s.type === 'title').map((sponsor, index) => (
+                  <div key={sponsor.id} className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-6 text-center border-2 border-yellow-200 hover-lift stagger-item">
                     {sponsor.photoBase64 && (
-                      <img src={sponsor.photoBase64} alt={sponsor.name} className="w-16 h-16 object-contain mx-auto mb-3 rounded" />
+                      <img src={sponsor.photoBase64} alt={sponsor.name} className="w-16 h-16 object-contain mx-auto mb-3 rounded transition-transform duration-300 hover:scale-110" />
                     )}
                     <h3 className="font-bold text-yellow-800 mb-1">{sponsor.name}</h3>
                     <p className="text-xs text-yellow-600 uppercase font-medium">Title Sponsor</p>
@@ -523,13 +525,13 @@ const Home = () => {
               </div>
               
               <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
-                {sponsors.filter(s => s.type !== 'title').slice(0, 12).map(sponsor => (
-                  <div key={sponsor.id} className="bg-white rounded-lg p-4 text-center hover:shadow-md transition-shadow">
+                {sponsors.filter(s => s.type !== 'title').slice(0, 12).map((sponsor, index) => (
+                  <div key={sponsor.id} className="bg-white rounded-lg p-4 text-center hover:shadow-md transition-all duration-300 hover-scale stagger-item">
                     {sponsor.photoBase64 ? (
-                      <img src={sponsor.photoBase64} alt={sponsor.name} className="w-12 h-12 object-contain mx-auto mb-2 rounded" />
+                      <img src={sponsor.photoBase64} alt={sponsor.name} className="w-12 h-12 object-contain mx-auto mb-2 rounded transition-transform duration-300 hover:scale-110" />
                     ) : (
                       <div className="w-12 h-12 bg-gray-200 rounded mx-auto mb-2 flex items-center justify-center">
-                        <Star className="w-6 h-6 text-gray-400" />
+                        <Star className="w-6 h-6 text-gray-400 transition-transform duration-300 hover:rotate-12" />
                       </div>
                     )}
                     <h4 className="text-sm font-medium text-gray-900 truncate">{sponsor.name}</h4>
@@ -557,7 +559,7 @@ const Home = () => {
       {/* Heroes Section */}
       <section className="py-12 sm:py-16 bg-gradient-to-br from-cricket-navy via-cricket-blue to-cricket-orange">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
+          <div className="text-center mb-12 animate-fade-in-up">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Cricket Heroes</h2>
             <p className="text-xl text-white/90 max-w-3xl mx-auto">
               Celebrating the legends who make cricket beautiful
@@ -565,9 +567,9 @@ const Home = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center text-white">
-              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Trophy className="w-10 h-10 text-white" />
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center text-white hover-lift stagger-item">
+              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 transition-transform duration-300 hover:scale-110">
+                <Trophy className="w-10 h-10 text-white transition-transform duration-300 hover:rotate-12" />
               </div>
               <h3 className="text-xl font-bold mb-2">Tournament MVP</h3>
               <p className="text-white/90 mb-4">Outstanding performance across all matches</p>
@@ -588,9 +590,9 @@ const Home = () => {
               </div>
             </div>
             
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center text-white">
-              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Target className="w-10 h-10 text-white" />
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center text-white hover-lift stagger-item">
+              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 transition-transform duration-300 hover:scale-110">
+                <Target className="w-10 h-10 text-white transition-transform duration-300 hover:rotate-12" />
               </div>
               <h3 className="text-xl font-bold mb-2">Best Bowler</h3>
               <p className="text-white/90 mb-4">Most wickets with best economy rate</p>
@@ -611,9 +613,9 @@ const Home = () => {
               </div>
             </div>
             
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center text-white">
-              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="w-10 h-10 text-white" />
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center text-white hover-lift stagger-item">
+              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 transition-transform duration-300 hover:scale-110">
+                <Users className="w-10 h-10 text-white transition-transform duration-300 hover:rotate-12" />
               </div>
               <h3 className="text-xl font-bold mb-2">Best Batsman</h3>
               <p className="text-white/90 mb-4">Highest runs with best average</p>
@@ -696,16 +698,16 @@ const Home = () => {
                   </div>
                 </div>
                 
-                <div className="responsive-flex justify-center">
+                <div className="responsive-flex justify-center animate-fade-in-up animation-delay-500">
                   <Link 
                     to="/player-registration" 
-                    className="bg-white text-orange-600 hover:bg-gray-100 px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 w-full sm:w-auto text-center"
+                    className="bg-white text-orange-600 hover:bg-gray-100 px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 w-full sm:w-auto text-center btn-animate"
                   >
                     Register as Player
                   </Link>
                   <Link 
                     to="/teams" 
-                    className="bg-white/20 hover:bg-white/30 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 w-full sm:w-auto text-center"
+                    className="bg-white/20 hover:bg-white/30 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 w-full sm:w-auto text-center btn-animate"
                   >
                     View Teams
                   </Link>
@@ -758,10 +760,10 @@ const Home = () => {
                 </div>
               </div>
               
-              <div className="responsive-flex justify-center lg:justify-end">
+              <div className="responsive-flex justify-center lg:justify-end animate-fade-in-up animation-delay-300">
                 <Link 
                   to="/player-registration" 
-                  className="mobile-button bg-cricket-orange hover:bg-cricket-orange/90 text-white shadow-lg mobile-hover w-full sm:w-auto text-center"
+                  className="mobile-button bg-cricket-orange hover:bg-cricket-orange/90 text-white shadow-lg mobile-hover w-full sm:w-auto text-center btn-animate"
                   onClick={() => {
                     setTimeout(() => {
                       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -772,7 +774,7 @@ const Home = () => {
                 </Link>
                 <Link 
                   to="/stats" 
-                  className="mobile-button bg-white/20 hover:bg-white/30 text-white mobile-hover w-full sm:w-auto text-center"
+                  className="mobile-button bg-white/20 hover:bg-white/30 text-white mobile-hover w-full sm:w-auto text-center btn-animate"
                 >
                   View Stats
                 </Link>
