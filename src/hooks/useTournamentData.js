@@ -26,13 +26,24 @@ const notifySubscribers = (newData) => {
   subscribers.forEach(callback => callback(newData));
 };
 
-// Global refresh function
+// Global refresh function with rate limiting
 const globalRefreshData = async (forceSync = false) => {
+  // Rate limiting: prevent multiple refreshes within 3 seconds
+  const now = Date.now();
+  const timeSinceLastUpdate = globalTournamentData.lastUpdated ? now - globalTournamentData.lastUpdated.getTime() : Infinity;
+  
+  if (timeSinceLastUpdate < 3000 && !forceSync) {
+    console.log('⏳ Skipping refresh - too soon since last update', { timeSinceLastUpdate });
+    return { success: true, cached: true };
+  }
+  
   try {
-    console.log('🔄 Global tournament data refresh starting...', { forceSync, subscriberCount: subscribers.size });
+    console.log('🔄 Global tournament data refresh starting...', { forceSync, subscriberCount: subscribers.size, timeSinceLastUpdate });
     
-    // Notify loading state
-    notifySubscribers({ ...globalTournamentData, loading: true, error: null });
+    // Only show loading for forced syncs or initial loads
+    if (forceSync || !globalTournamentData.lastUpdated) {
+      notifySubscribers({ ...globalTournamentData, loading: true, error: null });
+    }
     
     // Force complete data sync if requested
     if (forceSync) {
@@ -116,6 +127,15 @@ export const useTournamentData = (autoRefresh = true) => {
     
     subscribers.add(unsubscribe);
     
+    // Listen for real-time cricket data updates
+    const handleRealTimeUpdate = (event) => {
+      console.log('🔄 Real-time update received:', event.detail);
+      // Refresh data immediately when match is completed
+      refreshData(false);
+    };
+    
+    window.addEventListener('cricketDataUpdated', handleRealTimeUpdate);
+    
     // Initial data load if not already loaded
     if (globalTournamentData.loading && globalTournamentData.lastUpdated === null) {
       refreshData();
@@ -125,21 +145,23 @@ export const useTournamentData = (autoRefresh = true) => {
     
     return () => {
       subscribers.delete(unsubscribe);
+      window.removeEventListener('cricketDataUpdated', handleRealTimeUpdate);
     };
   }, [refreshData]);
 
-  // Auto-refresh every 60 seconds if enabled (reduced frequency for better performance)
+  // Auto-refresh every 2 minutes if enabled (further reduced frequency)
   useEffect(() => {
     if (!autoRefresh) return;
     
     const interval = setInterval(() => {
-      // Only auto-refresh if data is older than 30 seconds
+      // Only auto-refresh if data is older than 2 minutes
       const now = new Date();
       const lastUpdate = globalTournamentData.lastUpdated;
-      if (!lastUpdate || (now - lastUpdate) > 30000) {
+      if (!lastUpdate || (now - lastUpdate) > 120000) {
+        console.log('🔄 Auto-refreshing tournament data (2min interval)');
         refreshData(false);
       }
-    }, 60000);
+    }, 120000); // 2 minutes
     return () => clearInterval(interval);
   }, [autoRefresh, refreshData]);
 

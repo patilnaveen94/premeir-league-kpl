@@ -154,6 +154,9 @@ class DataSyncService {
     try {
       console.log('🔄 Starting complete data sync...');
       
+      // Clear processed matches first to ensure reprocessing
+      await statsService.clearProcessedMatches();
+      
       // Clear existing stats and recalculate from matches
       await statsService.recalculateAllStats();
       await pointsTableService.recalculatePointsTable();
@@ -172,6 +175,37 @@ class DataSyncService {
       return { success: true };
     } catch (error) {
       console.error('❌ Error in complete data sync:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Force reprocess a specific match and update all related data
+  async reprocessMatch(matchId) {
+    try {
+      console.log(`🔄 Reprocessing match: ${matchId}`);
+      
+      // Reprocess the match stats
+      const statsResult = await statsService.reprocessMatch(matchId);
+      if (!statsResult.success) {
+        throw new Error(`Failed to reprocess match stats: ${statsResult.error}`);
+      }
+      
+      // Recalculate points table
+      await pointsTableService.recalculatePointsTable();
+      
+      // Trigger global refresh
+      try {
+        const { triggerGlobalRefresh } = await import('../hooks/useTournamentData');
+        await triggerGlobalRefresh(false);
+        console.log('✅ Global refresh triggered after match reprocessing');
+      } catch (refreshError) {
+        console.warn('⚠️ Could not trigger global refresh:', refreshError);
+      }
+      
+      console.log(`✅ Match ${matchId} reprocessed successfully`);
+      return { success: true };
+    } catch (error) {
+      console.error(`❌ Error reprocessing match ${matchId}:`, error);
       return { success: false, error: error.message };
     }
   }

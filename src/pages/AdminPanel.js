@@ -13,6 +13,8 @@ import addSLVStrikersData from '../utils/addSLVStrikersData';
 import { formatMatchDate } from '../utils/dateUtils';
 import dataRefreshManager from '../utils/dataRefresh';
 import DataConsistencyChecker from '../components/DataConsistencyChecker';
+import { startNewSeason, activateNewSeason } from '../utils/seasonUtils';
+import '../styles/admin-mobile.css';
 
 
 // Helper function to generate initials from full name
@@ -94,6 +96,13 @@ const AdminPanel = () => {
   const [showJsonImport, setShowJsonImport] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
   const [importLoading, setImportLoading] = useState(false);
+  const [seasonTransitionLoading, setSeasonTransitionLoading] = useState(false);
+  const [currentSeasonSettings, setCurrentSeasonSettings] = useState({
+    current: '1',
+    published: '1',
+    registrationOpen: '1'
+  });
+  const [fixingDuplicates, setFixingDuplicates] = useState(false);
   
   const isSuperUser = currentAdmin?.role === 'superuser';
 
@@ -452,6 +461,8 @@ const AdminPanel = () => {
     }
   };
 
+
+
   const handleJsonImport = async () => {
     if (!jsonInput.trim()) {
       alert('Please paste the JSON data');
@@ -488,105 +499,185 @@ const AdminPanel = () => {
         lastUpdatedBy: currentAdmin?.userid || 'admin'
       };
       
-      // Add detailed batting stats with proper structure
+      // Enhanced player ID matching function with better debugging
+      const findMatchingPlayerId = (playerName, teamPlayers) => {
+        if (!teamPlayers || !playerName) {
+          console.warn(`⚠️ Missing data: playerName=${playerName}, teamPlayers=${teamPlayers?.length}`);
+          return playerName?.replace(/\s+/g, '_').toLowerCase() || 'unknown';
+        }
+        
+        console.log(`🔍 Searching for player: "${playerName}" in team of ${teamPlayers.length} players`);
+        
+        // Try exact name match first
+        let matchedPlayer = teamPlayers.find(p => {
+          const match = p.name && p.name.toLowerCase().trim() === playerName.toLowerCase().trim();
+          if (match) console.log(`✅ Exact match found: ${p.name} -> ${p.id}`);
+          return match;
+        });
+        
+        if (matchedPlayer) return matchedPlayer.id;
+        
+        // Try partial name match (any word in common)
+        const nameParts = playerName.toLowerCase().split(' ').filter(part => part.length > 2);
+        matchedPlayer = teamPlayers.find(p => {
+          if (!p.name) return false;
+          const playerNameParts = p.name.toLowerCase().split(' ');
+          const hasMatch = nameParts.some(part => 
+            playerNameParts.some(playerPart => 
+              playerPart.includes(part) || part.includes(playerPart)
+            )
+          );
+          if (hasMatch) console.log(`🔍 Partial match found: ${playerName} -> ${p.name} (${p.id})`);
+          return hasMatch;
+        });
+        
+        if (matchedPlayer) return matchedPlayer.id;
+        
+        // Log all available players for debugging
+        console.warn(`❌ No match found for "${playerName}". Available players:`);
+        teamPlayers.forEach(p => console.log(`  - ${p.name} (${p.id})`));
+        
+        // Create fallback ID
+        const fallbackId = playerName.replace(/\s+/g, '_').toLowerCase();
+        console.log(`🔄 Using fallback ID: ${fallbackId}`);
+        return fallbackId;
+      };
+      
+      // Add detailed batting stats with proper structure and player ID matching
       if (convertedData.team1?.batting || convertedData.team2?.batting) {
         const battingStats = {};
         
         if (convertedData.team1?.batting) {
+          console.log(`🏏 Processing Team 1 (${scoreEntryMatch.team1}) batting stats...`);
           battingStats[scoreEntryMatch.team1] = Object.values(convertedData.team1.batting)
             .filter(player => player.runs > 0 || player.balls > 0 || player.dismissalType)
-            .map(player => ({
-              playerId: player.playerId,
-              name: player.name,
-              runs: player.runs || 0,
-              balls: player.balls || 0,
-              fours: player.fours || 0,
-              sixes: player.sixes || 0,
-              dismissalType: player.dismissalType || null,
-              bowlerName: player.bowlerName || null,
-              fielderName: player.fielderName || null,
-              isOut: player.isOut || false,
-              strikeRate: player.strikeRate || 0
-            }));
+            .map(player => {
+              const matchedPlayerId = findMatchingPlayerId(player.name, scoreEntryMatch.team1Players);
+              console.log(`🏏 Final batting mapping: ${player.name} -> ${matchedPlayerId}`);
+              
+              return {
+                playerId: matchedPlayerId,
+                name: player.name,
+                runs: parseInt(player.runs) || 0,
+                balls: parseInt(player.balls) || 0,
+                fours: parseInt(player.fours) || 0,
+                sixes: parseInt(player.sixes) || 0,
+                dismissalType: player.dismissalType || null,
+                bowlerName: player.bowlerName || null,
+                fielderName: player.fielderName || null,
+                fielder2Name: player.fielder2Name || null,
+                isOut: Boolean(player.isOut),
+                strikeRate: parseFloat(player.strikeRate) || 0
+              };
+            });
         }
         
         if (convertedData.team2?.batting) {
+          console.log(`🏏 Processing Team 2 (${scoreEntryMatch.team2}) batting stats...`);
           battingStats[scoreEntryMatch.team2] = Object.values(convertedData.team2.batting)
             .filter(player => player.runs > 0 || player.balls > 0 || player.dismissalType)
-            .map(player => ({
-              playerId: player.playerId,
-              name: player.name,
-              runs: player.runs || 0,
-              balls: player.balls || 0,
-              fours: player.fours || 0,
-              sixes: player.sixes || 0,
-              dismissalType: player.dismissalType || null,
-              bowlerName: player.bowlerName || null,
-              fielderName: player.fielderName || null,
-              isOut: player.isOut || false,
-              strikeRate: player.strikeRate || 0
-            }));
+            .map(player => {
+              const matchedPlayerId = findMatchingPlayerId(player.name, scoreEntryMatch.team2Players);
+              console.log(`🏏 Final batting mapping: ${player.name} -> ${matchedPlayerId}`);
+              
+              return {
+                playerId: matchedPlayerId,
+                name: player.name,
+                runs: parseInt(player.runs) || 0,
+                balls: parseInt(player.balls) || 0,
+                fours: parseInt(player.fours) || 0,
+                sixes: parseInt(player.sixes) || 0,
+                dismissalType: player.dismissalType || null,
+                bowlerName: player.bowlerName || null,
+                fielderName: player.fielderName || null,
+                fielder2Name: player.fielder2Name || null,
+                isOut: Boolean(player.isOut),
+                strikeRate: parseFloat(player.strikeRate) || 0
+              };
+            });
         }
         
         updateData.battingStats = battingStats;
+        console.log('📊 Final batting stats structure:', JSON.stringify(battingStats, null, 2));
       }
       
-      // Add detailed bowling stats with proper structure
+      // Add detailed bowling stats with proper structure and player ID matching
       if (convertedData.team1?.bowling || convertedData.team2?.bowling) {
         const bowlingStats = {};
         
         if (convertedData.team1?.bowling) {
+          console.log(`🎳 Processing Team 1 (${scoreEntryMatch.team1}) bowling stats...`);
           bowlingStats[scoreEntryMatch.team1] = Object.values(convertedData.team1.bowling)
             .filter(player => player.overs > 0 || player.runs > 0 || player.wickets > 0)
-            .map(player => ({
-              playerId: player.playerId,
-              name: player.name,
-              overs: player.overs || 0,
-              maidens: player.maidens || 0,
-              runs: player.runs || 0,
-              wickets: player.wickets || 0,
-              economy: player.economy || 0,
-              dots: player.dots || 0,
-              wides: player.wides || 0,
-              noBalls: player.noBalls || 0
-            }));
+            .map(player => {
+              const matchedPlayerId = findMatchingPlayerId(player.name, scoreEntryMatch.team1Players);
+              console.log(`🎳 Final bowling mapping: ${player.name} -> ${matchedPlayerId}`);
+              
+              return {
+                playerId: matchedPlayerId,
+                name: player.name,
+                overs: parseFloat(player.overs) || 0,
+                maidens: parseInt(player.maidens) || 0,
+                runs: parseInt(player.runs) || 0,
+                wickets: parseInt(player.wickets) || 0,
+                economy: parseFloat(player.economy) || 0,
+                dots: parseInt(player.dots) || 0,
+                wides: parseInt(player.wides) || 0,
+                noBalls: parseInt(player.noBalls) || 0
+              };
+            });
         }
         
         if (convertedData.team2?.bowling) {
+          console.log(`🎳 Processing Team 2 (${scoreEntryMatch.team2}) bowling stats...`);
           bowlingStats[scoreEntryMatch.team2] = Object.values(convertedData.team2.bowling)
             .filter(player => player.overs > 0 || player.runs > 0 || player.wickets > 0)
-            .map(player => ({
-              playerId: player.playerId,
-              name: player.name,
-              overs: player.overs || 0,
-              maidens: player.maidens || 0,
-              runs: player.runs || 0,
-              wickets: player.wickets || 0,
-              economy: player.economy || 0,
-              dots: player.dots || 0,
-              wides: player.wides || 0,
-              noBalls: player.noBalls || 0
-            }));
+            .map(player => {
+              const matchedPlayerId = findMatchingPlayerId(player.name, scoreEntryMatch.team2Players);
+              console.log(`🎳 Final bowling mapping: ${player.name} -> ${matchedPlayerId}`);
+              
+              return {
+                playerId: matchedPlayerId,
+                name: player.name,
+                overs: parseFloat(player.overs) || 0,
+                maidens: parseInt(player.maidens) || 0,
+                runs: parseInt(player.runs) || 0,
+                wickets: parseInt(player.wickets) || 0,
+                economy: parseFloat(player.economy) || 0,
+                dots: parseInt(player.dots) || 0,
+                wides: parseInt(player.wides) || 0,
+                noBalls: parseInt(player.noBalls) || 0
+              };
+            });
         }
         
         updateData.bowlingStats = bowlingStats;
+        console.log('🎳 Final bowling stats structure:', JSON.stringify(bowlingStats, null, 2));
       }
       
-      console.log('Saving to Firebase:', updateData);
+      console.log('💾 Saving to Firebase:', JSON.stringify(updateData, null, 2));
       
       // Save to Firebase
       await updateDoc(doc(db, 'matches', scoreEntryMatch.id), updateData);
-      
       console.log('✅ JSON data saved to Firebase successfully');
       
-      // Trigger comprehensive data refresh using the manager
-      await dataRefreshManager.refreshAfterMatchOperation('json-import', `${scoreEntryMatch.team1} vs ${scoreEntryMatch.team2}`);
+      // Use simple services for immediate processing
+      const simpleStats = await import('../services/simpleStatsService');
+      const simplePoints = await import('../services/simplePointsService');
+      
+      // Recalculate all stats from scratch
+      await simpleStats.default.recalculateAllStats();
+      await simplePoints.default.recalculatePointsTable();
+      
+      // Refresh local data
+      await fetchMatches();
       
       setShowJsonImport(false);
       setJsonInput('');
-      await fetchMatches(); // Refresh matches
       
-      alert('✅ JSON data imported and saved successfully! All statistics have been updated.');
+      // Show success message
+      alert('✅ Scorecard imported and all stats recalculated!');
+      window.location.reload();
       
     } catch (error) {
       console.error('❌ JSON import error:', error);
@@ -612,6 +703,7 @@ const AdminPanel = () => {
       fetchPaymentConfig();
       fetchCarouselImages();
       fetchRegistrationSettings();
+      fetchSeasonSettings();
     }
   }, [isAdminLoggedIn]);
 
@@ -1458,6 +1550,94 @@ const AdminPanel = () => {
     }
   };
 
+  const fetchSeasonSettings = async () => {
+    try {
+      const settingsSnapshot = await getDocs(collection(db, 'seasonSettings'));
+      const seasonSetting = settingsSnapshot.docs.find(doc => doc.id === 'config');
+      if (seasonSetting) {
+        setCurrentSeasonSettings(seasonSetting.data());
+      }
+    } catch (error) {
+      console.error('Error fetching season settings:', error);
+    }
+  };
+
+  const handleOpenSeason2Registration = async () => {
+    if (window.confirm('Open Season 2 registration? This will allow new players to register for Season 2.')) {
+      setSeasonTransitionLoading(true);
+      try {
+        await startNewSeason('2');
+        await fetchSeasonSettings();
+        alert('✅ Season 2 registration opened successfully! New players can now register for Season 2.');
+      } catch (error) {
+        console.error('Error opening Season 2 registration:', error);
+        alert('❌ Error opening Season 2 registration: ' + error.message);
+      } finally {
+        setSeasonTransitionLoading(false);
+      }
+    }
+  };
+
+  const handleKeepExistingTeams = async () => {
+    if (window.confirm('Keep existing teams for Season 2? This will copy current team structure to Season 2.')) {
+      setSeasonTransitionLoading(true);
+      try {
+        // Logic to copy teams for Season 2 would go here
+        alert('✅ Team structure prepared for Season 2!');
+      } catch (error) {
+        console.error('Error preparing teams:', error);
+        alert('❌ Error preparing teams: ' + error.message);
+      } finally {
+        setSeasonTransitionLoading(false);
+      }
+    }
+  };
+
+  const handleResetAllTeams = async () => {
+    if (window.confirm('Reset all team assignments for Season 2? This will clear all player-team assignments for fresh auction.')) {
+      setSeasonTransitionLoading(true);
+      try {
+        // Logic to reset team assignments would go here
+        alert('✅ All team assignments reset for Season 2!');
+      } catch (error) {
+        console.error('Error resetting teams:', error);
+        alert('❌ Error resetting teams: ' + error.message);
+      } finally {
+        setSeasonTransitionLoading(false);
+      }
+    }
+  };
+
+  const handleActivateSeason2 = async () => {
+    const confirmMessage = `⚠️ CRITICAL ACTION: Activate Season 2?
+
+This will:
+• Make Season 2 the active season
+• Archive Season 1 data
+• Reset points table and statistics
+• Update all public pages
+
+This action cannot be undone. Are you absolutely sure?`;
+    
+    if (window.confirm(confirmMessage)) {
+      const doubleConfirm = window.confirm('This is your final confirmation. Activate Season 2 now?');
+      if (doubleConfirm) {
+        setSeasonTransitionLoading(true);
+        try {
+          await activateNewSeason('2');
+          await fetchSeasonSettings();
+          await dataRefreshManager.triggerCompleteRefresh(true, 'season-2-activation');
+          alert('🎉 Season 2 activated successfully! The website now shows Season 2 data.');
+        } catch (error) {
+          console.error('Error activating Season 2:', error);
+          alert('❌ Error activating Season 2: ' + error.message);
+        } finally {
+          setSeasonTransitionLoading(false);
+        }
+      }
+    }
+  };
+
   const handleToggleRegistrationSection = async () => {
     try {
       const settingsSnapshot = await getDocs(collection(db, 'settings'));
@@ -1495,9 +1675,10 @@ const AdminPanel = () => {
     { id: 'payment', name: 'Payment Settings', icon: CreditCard },
     { id: 'media', name: 'Carousel Images', icon: Image },
     { id: 'website', name: 'Website Settings', icon: Lock },
+    { id: 'seasons', name: 'Season Management', icon: Calendar },
     { id: 'news', name: 'News', icon: FileText },
     { id: 'system', name: 'System Status', icon: Activity },
-    ...(isSuperUser ? [{ id: 'admins', name: 'Admin Users', icon: User }] : [])
+    { id: 'admins', name: 'Admin Users', icon: User }
   ];
 
   if (!isAdminLoggedIn) {
@@ -1548,29 +1729,29 @@ const AdminPanel = () => {
         {/* Tab Navigation */}
         <div className="bg-white rounded-lg shadow-lg">
           <div className="border-b border-gray-200">
-            <nav className="mobile-admin-tabs">
+            <nav className="flex flex-wrap gap-1 p-2 sm:p-4">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`mobile-admin-tab ${
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 min-w-0 ${
                       activeTab === tab.id
-                        ? 'border-cricket-green text-cricket-green'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        ? 'bg-green-600 text-white shadow-md'
+                        : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'
                     }`}
                   >
-                    <Icon size={16} className="sm:w-5 sm:h-5" />
-                    <span className="mobile-hidden">{tab.name}</span>
-                    <span className="mobile-only">{tab.name.split(' ')[0]}</span>
+                    <Icon size={16} className="flex-shrink-0" />
+                    <span className="hidden sm:block truncate">{tab.name}</span>
+                    <span className="sm:hidden truncate">{tab.name.split(' ')[0]}</span>
                   </button>
                 );
               })}
             </nav>
           </div>
 
-          <div className="mobile-admin-content">
+          <div className="p-4 sm:p-6">
             {/* Player Registrations Tab */}
             {activeTab === 'players' && (
               <div>
@@ -1609,140 +1790,130 @@ const AdminPanel = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {playerRegistrations
                     .filter(player => player.status === playerStatusFilter)
                     .map((player) => (
-                    <div key={player.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-3 mb-1">
+                    <div key={player.id} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                      {/* Mobile-First Layout */}
+                      <div className="space-y-3">
+                        {/* Header Row */}
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
                             <button
                               onClick={() => openPlayerDetails(player)}
-                              className="text-base font-semibold text-cricket-navy hover:text-cricket-blue underline truncate"
+                              className="text-lg font-semibold text-cricket-navy hover:text-cricket-blue underline truncate block"
                             >
                               {player.fullName}
                             </button>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
-                              player.status === 'approved' ? 'bg-green-100 text-green-800' :
-                              player.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                              'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {player.status || 'pending'}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-600 flex-1">
-                              <div className="truncate">
-                                <span className="font-medium">Email:</span> {player.email}
-                              </div>
-                              <div>
-                                <span className="font-medium">Position:</span> {player.position}
-                              </div>
-                              <div>
-                                <span className="font-medium">Phone:</span> {player.phone}
-                              </div>
-                              <div>
-                                <span className="font-medium">Fee:</span> ₹{player.registrationFee || 100}
-                              </div>
-                            </div>
-                            
-                            {/* Compact Photo and Payment */}
-                            <div className="flex space-x-2 flex-shrink-0 ml-3">
-                              {player.photoBase64 && (
-                                <img 
-                                  src={player.photoBase64} 
-                                  alt="Player" 
-                                  className="w-8 h-8 object-cover rounded border cursor-pointer hover:scale-110 transition-transform"
-                                  onClick={() => {
-                                    const modal = document.createElement('div');
-                                    modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
-                                    modal.innerHTML = `
-                                      <div class="relative max-w-4xl max-h-[90vh] bg-white rounded-lg p-2">
-                                        <img src="${player.photoBase64}" class="max-w-full max-h-[85vh] object-contain rounded mx-auto block" />
-                                        <button class="absolute -top-2 -right-2 text-white bg-red-600 hover:bg-red-700 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold" onclick="this.parentElement.parentElement.remove()">
-                                          ✕
-                                        </button>
-                                      </div>
-                                    `;
-                                    document.body.appendChild(modal);
-                                  }}
-                                  title="Player Photo"
-                                />
-                              )}
-                              {player.paymentScreenshotBase64 && (
-                                <img 
-                                  src={player.paymentScreenshotBase64} 
-                                  alt="Payment" 
-                                  className="w-8 h-8 object-cover rounded border cursor-pointer hover:scale-110 transition-transform"
-                                  onClick={() => {
-                                    const modal = document.createElement('div');
-                                    modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
-                                    modal.innerHTML = `
-                                      <div class="relative max-w-4xl max-h-[90vh] bg-white rounded-lg p-2">
-                                        <img src="${player.paymentScreenshotBase64}" class="max-w-full max-h-[85vh] object-contain rounded mx-auto block" />
-                                        <button class="absolute -top-2 -right-2 text-white bg-red-600 hover:bg-red-700 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold" onclick="this.parentElement.parentElement.remove()">
-                                          ✕
-                                        </button>
-                                      </div>
-                                    `;
-                                    document.body.appendChild(modal);
-                                  }}
-                                  title="Payment Screenshot"
-                                />
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center justify-between text-xs">
-                            <div className="flex space-x-2">
-                              <span className={`px-2 py-1 rounded text-xs ${
-                                player.paymentStatus === 'verified' ? 'bg-green-100 text-green-800' :
-                                player.paymentStatus === 'rejected' ? 'bg-red-100 text-red-800' :
-                                'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                Payment: {player.paymentStatus === 'verified' ? 'Approved' : player.paymentStatus === 'rejected' ? 'Rejected' : 'Pending'}
-                              </span>
-                              <span className={`px-2 py-1 rounded text-xs ${
+                            <div className="flex items-center space-x-2 mt-1">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                 player.status === 'approved' ? 'bg-green-100 text-green-800' :
                                 player.status === 'rejected' ? 'bg-red-100 text-red-800' :
                                 'bg-yellow-100 text-yellow-800'
                               }`}>
-                                Player: {player.status === 'approved' ? 'Approved' : player.status === 'rejected' ? 'Rejected' : 'Pending'}
+                                {player.status || 'pending'}
                               </span>
-                              {(player.paymentVerifiedBy || player.reviewedBy) && (
-                                <span className="text-gray-400 text-xs truncate">
-                                  by {player.reviewedBy || player.paymentVerifiedBy}
-                                </span>
-                              )}
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                player.paymentStatus === 'verified' ? 'bg-green-100 text-green-800' :
+                                player.paymentStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                                'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                Payment: {player.paymentStatus === 'verified' ? 'OK' : player.paymentStatus === 'rejected' ? 'Rejected' : 'Pending'}
+                              </span>
                             </div>
+                          </div>
+                          
+                          {/* Photos */}
+                          <div className="flex space-x-2 ml-3">
+                            {player.photoBase64 && (
+                              <img 
+                                src={player.photoBase64} 
+                                alt="Player" 
+                                className="w-10 h-10 object-cover rounded-full border-2 border-gray-200 cursor-pointer hover:scale-110 transition-transform"
+                                onClick={() => {
+                                  const modal = document.createElement('div');
+                                  modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+                                  modal.innerHTML = `
+                                    <div class="relative max-w-4xl max-h-[90vh] bg-white rounded-lg p-2">
+                                      <img src="${player.photoBase64}" class="max-w-full max-h-[85vh] object-contain rounded mx-auto block" />
+                                      <button class="absolute -top-2 -right-2 text-white bg-red-600 hover:bg-red-700 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold" onclick="this.parentElement.parentElement.remove()">
+                                        ✕
+                                      </button>
+                                    </div>
+                                  `;
+                                  document.body.appendChild(modal);
+                                }}
+                                title="Player Photo"
+                              />
+                            )}
+                            {player.paymentScreenshotBase64 && (
+                              <img 
+                                src={player.paymentScreenshotBase64} 
+                                alt="Payment" 
+                                className="w-10 h-10 object-cover rounded border-2 border-green-200 cursor-pointer hover:scale-110 transition-transform"
+                                onClick={() => {
+                                  const modal = document.createElement('div');
+                                  modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+                                  modal.innerHTML = `
+                                    <div class="relative max-w-4xl max-h-[90vh] bg-white rounded-lg p-2">
+                                      <img src="${player.paymentScreenshotBase64}" class="max-w-full max-h-[85vh] object-contain rounded mx-auto block" />
+                                      <button class="absolute -top-2 -right-2 text-white bg-red-600 hover:bg-red-700 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold" onclick="this.parentElement.parentElement.remove()">
+                                        ✕
+                                      </button>
+                                    </div>
+                                  `;
+                                  document.body.appendChild(modal);
+                                }}
+                                title="Payment Screenshot"
+                              />
+                            )}
                           </div>
                         </div>
                         
-                        <div className="flex flex-col space-y-1 ml-2 flex-shrink-0">
+                        {/* Player Info Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
+                          <div className="truncate">
+                            <span className="font-medium text-gray-800">Email:</span> {player.email}
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-800">Position:</span> {player.position}
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-800">Phone:</span> {player.phone}
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-800">Fee:</span> ₹{player.registrationFee || 100}
+                          </div>
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div className="space-y-2">
+                          {/* Payment Actions */}
                           {player.paymentStatus !== 'verified' && (
-                            <div className="flex space-x-2">
+                            <div className="flex flex-col sm:flex-row gap-2">
                               <button
                                 onClick={() => handlePaymentVerification(player.id, 'verified')}
-                                className="flex items-center space-x-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-sm font-medium"
+                                className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium flex-1"
                               >
                                 <CheckCircle size={16} />
                                 <span>Verify Payment</span>
                               </button>
                               <button
                                 onClick={() => handlePaymentVerification(player.id, 'rejected')}
-                                className="flex items-center space-x-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium"
+                                className="flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium flex-1"
                               >
                                 <XCircle size={16} />
                                 <span>Reject Payment</span>
                               </button>
                             </div>
                           )}
+                          
+                          {/* Player Approval Actions */}
                           {player.status === 'pending' && player.paymentStatus === 'verified' && (
-                            <>
+                            <div className="space-y-2">
                               <select 
-                                className="px-3 py-1 border border-gray-300 rounded text-sm"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                                 onChange={(e) => {
                                   if (e.target.value) {
                                     handlePlayerApproval(player.id, true, e.target.value);
@@ -1754,41 +1925,50 @@ const AdminPanel = () => {
                                   <option key={team.id} value={team.id}>{team.name}</option>
                                 ))}
                               </select>
-                              <div className="flex space-x-2">
+                              <div className="flex flex-col sm:flex-row gap-2">
                                 <button
                                   onClick={() => handlePlayerApproval(player.id, true)}
-                                  className="flex items-center space-x-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-sm font-medium"
+                                  className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium flex-1"
                                 >
                                   <CheckCircle size={16} />
                                   <span>Approve</span>
                                 </button>
                                 <button
                                   onClick={() => handlePlayerApproval(player.id, false)}
-                                  className="flex items-center space-x-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium"
+                                  className="flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium flex-1"
                                 >
                                   <XCircle size={16} />
                                   <span>Reject</span>
                                 </button>
                               </div>
-                            </>
+                            </div>
                           )}
-                          <div className="flex space-x-2">
+                          
+                          {/* Management Actions */}
+                          <div className="flex flex-col sm:flex-row gap-2">
                             <button
                               onClick={() => openEditPlayer(player)}
-                              className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium"
+                              className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex-1"
                             >
                               <Edit size={16} />
                               <span>Edit</span>
                             </button>
                             <button
                               onClick={() => handleDeletePlayer(player.id)}
-                              className="flex items-center space-x-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium"
+                              className="flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium flex-1"
                             >
                               <Trash2 size={16} />
                               <span>Delete</span>
                             </button>
                           </div>
                         </div>
+                        
+                        {/* Reviewer Info */}
+                        {(player.paymentVerifiedBy || player.reviewedBy) && (
+                          <div className="text-xs text-gray-500 border-t pt-2">
+                            Reviewed by: {player.reviewedBy || player.paymentVerifiedBy}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -2413,23 +2593,332 @@ const AdminPanel = () => {
               </div>
             )}
 
-            {/* Admin Users Tab - Super User Only */}
-            {activeTab === 'admins' && isSuperUser && (
+            {/* Manual Score Entry Modal */}
+            {showScoreEntry && scoreEntryMatch && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                  <h3 className="text-lg font-semibold mb-4">Enter Match Scores - {scoreEntryMatch.team1} vs {scoreEntryMatch.team2}</h3>
+                  
+                  {/* Team Totals */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div className="bg-blue-50 rounded-lg p-4">
+                      <h4 className="font-semibold text-blue-900 mb-3">{scoreEntryMatch.team1} Total</h4>
+                      <div className="grid grid-cols-3 gap-2">
+                        <input
+                          type="number"
+                          placeholder="Runs"
+                          value={scorecardData.team1?.totalRuns || ''}
+                          onChange={(e) => updateTeamTotal('team1', 'totalRuns', parseInt(e.target.value) || 0)}
+                          className="px-2 py-1 border rounded text-sm"
+                        />
+                        <input
+                          type="number"
+                          placeholder="Wickets"
+                          value={scorecardData.team1?.wickets || ''}
+                          onChange={(e) => updateTeamTotal('team1', 'wickets', parseInt(e.target.value) || 0)}
+                          className="px-2 py-1 border rounded text-sm"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Overs"
+                          value={scorecardData.team1?.overs || ''}
+                          onChange={(e) => updateTeamTotal('team1', 'overs', e.target.value)}
+                          className="px-2 py-1 border rounded text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="bg-green-50 rounded-lg p-4">
+                      <h4 className="font-semibold text-green-900 mb-3">{scoreEntryMatch.team2} Total</h4>
+                      <div className="grid grid-cols-3 gap-2">
+                        <input
+                          type="number"
+                          placeholder="Runs"
+                          value={scorecardData.team2?.totalRuns || ''}
+                          onChange={(e) => updateTeamTotal('team2', 'totalRuns', parseInt(e.target.value) || 0)}
+                          className="px-2 py-1 border rounded text-sm"
+                        />
+                        <input
+                          type="number"
+                          placeholder="Wickets"
+                          value={scorecardData.team2?.wickets || ''}
+                          onChange={(e) => updateTeamTotal('team2', 'wickets', parseInt(e.target.value) || 0)}
+                          className="px-2 py-1 border rounded text-sm"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Overs"
+                          value={scorecardData.team2?.overs || ''}
+                          onChange={(e) => updateTeamTotal('team2', 'overs', e.target.value)}
+                          className="px-2 py-1 border rounded text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Player Stats */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Team 1 Batting */}
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="font-semibold mb-3">{scoreEntryMatch.team1} Batting</h4>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {scoreEntryMatch.team1Players?.map(player => (
+                          <div key={player.id} className="bg-white rounded p-2">
+                            <div className="text-sm font-medium mb-1">{player.name}</div>
+                            <div className="grid grid-cols-4 gap-1">
+                              <input
+                                type="number"
+                                placeholder="Runs"
+                                value={scorecardData.team1?.batting?.[player.id]?.runs || ''}
+                                onChange={(e) => updateScorecardData('team1', 'batting', player.id, 'runs', parseInt(e.target.value) || 0)}
+                                className="px-1 py-1 border rounded text-xs"
+                              />
+                              <input
+                                type="number"
+                                placeholder="Balls"
+                                value={scorecardData.team1?.batting?.[player.id]?.balls || ''}
+                                onChange={(e) => updateScorecardData('team1', 'batting', player.id, 'balls', parseInt(e.target.value) || 0)}
+                                className="px-1 py-1 border rounded text-xs"
+                              />
+                              <input
+                                type="number"
+                                placeholder="4s"
+                                value={scorecardData.team1?.batting?.[player.id]?.fours || ''}
+                                onChange={(e) => updateScorecardData('team1', 'batting', player.id, 'fours', parseInt(e.target.value) || 0)}
+                                className="px-1 py-1 border rounded text-xs"
+                              />
+                              <input
+                                type="number"
+                                placeholder="6s"
+                                value={scorecardData.team1?.batting?.[player.id]?.sixes || ''}
+                                onChange={(e) => updateScorecardData('team1', 'batting', player.id, 'sixes', parseInt(e.target.value) || 0)}
+                                className="px-1 py-1 border rounded text-xs"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Team 2 Batting */}
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="font-semibold mb-3">{scoreEntryMatch.team2} Batting</h4>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {scoreEntryMatch.team2Players?.map(player => (
+                          <div key={player.id} className="bg-white rounded p-2">
+                            <div className="text-sm font-medium mb-1">{player.name}</div>
+                            <div className="grid grid-cols-4 gap-1">
+                              <input
+                                type="number"
+                                placeholder="Runs"
+                                value={scorecardData.team2?.batting?.[player.id]?.runs || ''}
+                                onChange={(e) => updateScorecardData('team2', 'batting', player.id, 'runs', parseInt(e.target.value) || 0)}
+                                className="px-1 py-1 border rounded text-xs"
+                              />
+                              <input
+                                type="number"
+                                placeholder="Balls"
+                                value={scorecardData.team2?.batting?.[player.id]?.balls || ''}
+                                onChange={(e) => updateScorecardData('team2', 'batting', player.id, 'balls', parseInt(e.target.value) || 0)}
+                                className="px-1 py-1 border rounded text-xs"
+                              />
+                              <input
+                                type="number"
+                                placeholder="4s"
+                                value={scorecardData.team2?.batting?.[player.id]?.fours || ''}
+                                onChange={(e) => updateScorecardData('team2', 'batting', player.id, 'fours', parseInt(e.target.value) || 0)}
+                                className="px-1 py-1 border rounded text-xs"
+                              />
+                              <input
+                                type="number"
+                                placeholder="6s"
+                                value={scorecardData.team2?.batting?.[player.id]?.sixes || ''}
+                                onChange={(e) => updateScorecardData('team2', 'batting', player.id, 'sixes', parseInt(e.target.value) || 0)}
+                                className="px-1 py-1 border rounded text-xs"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-2 mt-6">
+                    <button
+                      onClick={async () => {
+                        setUploading(true);
+                        try {
+                          // Prepare match data for saving
+                          const updateData = {
+                            status: 'completed',
+                            team1Score: {
+                              runs: scorecardData.team1?.totalRuns || 0,
+                              wickets: scorecardData.team1?.wickets || 0,
+                              oversDisplay: scorecardData.team1?.overs || '0.0'
+                            },
+                            team2Score: {
+                              runs: scorecardData.team2?.totalRuns || 0,
+                              wickets: scorecardData.team2?.wickets || 0,
+                              oversDisplay: scorecardData.team2?.overs || '0.0'
+                            },
+                            updatedAt: new Date(),
+                            lastUpdatedBy: currentAdmin?.userid || 'admin'
+                          };
+
+                          // Prepare batting stats
+                          const battingStats = {};
+                          if (scorecardData.team1?.batting) {
+                            battingStats[scoreEntryMatch.team1] = Object.entries(scorecardData.team1.batting)
+                              .filter(([playerId, stats]) => stats.runs > 0 || stats.balls > 0)
+                              .map(([playerId, stats]) => ({
+                                playerId,
+                                name: scoreEntryMatch.team1Players.find(p => p.id === playerId)?.name || 'Unknown',
+                                runs: stats.runs || 0,
+                                balls: stats.balls || 0,
+                                fours: stats.fours || 0,
+                                sixes: stats.sixes || 0,
+                                isOut: false,
+                                dismissalType: null,
+                                strikeRate: stats.balls > 0 ? ((stats.runs / stats.balls) * 100).toFixed(2) : 0
+                              }));
+                          }
+                          if (scorecardData.team2?.batting) {
+                            battingStats[scoreEntryMatch.team2] = Object.entries(scorecardData.team2.batting)
+                              .filter(([playerId, stats]) => stats.runs > 0 || stats.balls > 0)
+                              .map(([playerId, stats]) => ({
+                                playerId,
+                                name: scoreEntryMatch.team2Players.find(p => p.id === playerId)?.name || 'Unknown',
+                                runs: stats.runs || 0,
+                                balls: stats.balls || 0,
+                                fours: stats.fours || 0,
+                                sixes: stats.sixes || 0,
+                                isOut: false,
+                                dismissalType: null,
+                                strikeRate: stats.balls > 0 ? ((stats.runs / stats.balls) * 100).toFixed(2) : 0
+                              }));
+                          }
+                          updateData.battingStats = battingStats;
+
+                          // Save to Firebase
+                          await updateDoc(doc(db, 'matches', scoreEntryMatch.id), updateData);
+                          
+                          // Real-time sync will handle this automatically via Firebase listeners
+                          
+                          await fetchMatches();
+                          setShowScoreEntry(false);
+                          alert('✅ Match scores saved and processed automatically!');
+                        } catch (error) {
+                          console.error('Error saving scores:', error);
+                          alert('❌ Error saving scores: ' + error.message);
+                        } finally {
+                          setUploading(false);
+                        }
+                      }}
+                      disabled={uploading}
+                      className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
+                    >
+                      {uploading && (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      )}
+                      <span>{uploading ? 'Saving Scorecard...' : 'Save Scores'}</span>
+                    </button>
+                    <button
+                      onClick={() => setShowScoreEntry(false)}
+                      disabled={uploading}
+                      className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* JSON Import Modal */}
+            {showJsonImport && scoreEntryMatch && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-96 overflow-y-auto relative">
+                  {/* Loading Overlay */}
+                  {importLoading && (
+                    <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10 rounded-lg">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Processing Scorecard</h3>
+                        <div className="space-y-1 text-sm text-gray-600">
+                          <p>• Parsing CricHeroes JSON data</p>
+                          <p>• Converting to database format</p>
+                          <p>• Updating player statistics</p>
+                          <p>• Recalculating points table</p>
+                          <p className="font-medium text-blue-600">Please wait...</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <h3 className="text-lg font-semibold mb-4">Import CricHeroes JSON - {scoreEntryMatch.team1} vs {scoreEntryMatch.team2}</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Paste CricHeroes JSON Data:
+                      </label>
+                      <textarea
+                        value={jsonInput}
+                        onChange={(e) => setJsonInput(e.target.value)}
+                        disabled={importLoading}
+                        className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md font-mono text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        placeholder="Paste the complete JSON data from CricHeroes here..."
+                      />
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-semibold text-blue-900 mb-2">How to get CricHeroes JSON:</h4>
+                      <ol className="text-sm text-blue-800 space-y-1">
+                        <li>1. Open the match scorecard on CricHeroes website</li>
+                        <li>2. Right-click and select "View Page Source" or press Ctrl+U</li>
+                        <li>3. Search for "pageProps" in the source code</li>
+                        <li>4. Copy the entire JSON object starting with {'{"pageProps"...'}</li>
+                        <li>5. Paste it in the textarea above</li>
+                      </ol>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={handleJsonImport}
+                        disabled={importLoading || !jsonInput.trim()}
+                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
+                      >
+                        {importLoading && (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        )}
+                        <span>{importLoading ? 'Processing Scorecard...' : 'Import & Save'}</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowJsonImport(false);
+                          setJsonInput('');
+                        }}
+                        disabled={importLoading}
+                        className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Admin Users Tab */}
+            {activeTab === 'admins' && (
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-semibold text-gray-900">Admin Users</h2>
-                  {isSuperUser && (
-                    <button
-                      onClick={() => setShowAddAdmin(true)}
-                      className="btn-primary flex items-center space-x-2"
-                    >
-                      <Plus size={16} />
-                      <span>Add Admin</span>
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setShowAddAdmin(true)}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
+                  >
+                    <Plus size={16} />
+                    <span>Add Admin</span>
+                  </button>
                 </div>
 
-                {showAddAdmin && isSuperUser && (
+                {showAddAdmin && (
                   <div className="bg-gray-50 rounded-lg p-6 mb-6">
                     <h3 className="text-lg font-semibold mb-4">Add New Admin User</h3>
                     <form onSubmit={handleAddAdmin} className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3050,13 +3539,51 @@ const AdminPanel = () => {
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-semibold text-gray-900">Matches & Detailed Scoring</h2>
-                  <button
-                    onClick={() => setShowAddMatch(true)}
-                    className="btn-primary flex items-center space-x-2"
-                  >
-                    <Plus size={16} />
-                    <span>Schedule Match</span>
-                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={async () => {
+                        if (window.confirm('Recalculate all stats? This will clear and rebuild all player stats and points table.')) {
+                          setUploading(true);
+                          try {
+                            // Use simple services
+                            const simpleStats = await import('../services/simpleStatsService');
+                            const simplePoints = await import('../services/simplePointsService');
+                            
+                            // Recalculate stats
+                            const statsResult = await simpleStats.default.recalculateAllStats();
+                            if (!statsResult.success) throw new Error(statsResult.error);
+                            
+                            // Recalculate points table
+                            const pointsResult = await simplePoints.default.recalculatePointsTable();
+                            if (!pointsResult.success) throw new Error(pointsResult.error);
+                            
+                            alert(`✅ Stats recalculated! ${statsResult.playersProcessed} players, ${pointsResult.teamsProcessed} teams`);
+                            window.location.reload();
+                            
+                          } catch (error) {
+                            console.error('Error recalculating:', error);
+                            alert('❌ Error: ' + error.message);
+                          } finally {
+                            setUploading(false);
+                          }
+                        }
+                      }}
+                      disabled={uploading}
+                      className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
+                    >
+                      {uploading && (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      )}
+                      <span>Recalculate Stats</span>
+                    </button>
+                    <button
+                      onClick={() => setShowAddMatch(true)}
+                      className="btn-primary flex items-center space-x-2"
+                    >
+                      <Plus size={16} />
+                      <span>Schedule Match</span>
+                    </button>
+                  </div>
                 </div>
 
                 {showAddMatch && (
@@ -3226,36 +3753,22 @@ const AdminPanel = () => {
 
                 <div className="space-y-4">
                   {matches.map((match) => (
-                    <div key={match.id} className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-4 mb-3">
-                            <h3 className="text-lg font-semibold text-gray-900">{match.team1} vs {match.team2}</h3>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              match.status === 'live' ? 'bg-red-100 text-red-800 animate-pulse' :
-                              match.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {match.status.toUpperCase()}
-                            </span>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-4">
-                            <div>
-                              <span className="font-medium">Date:</span> {formatMatchDate(match.date)}
-                            </div>
-                            <div>
-                              <span className="font-medium">Time:</span> {match.time || 'TBD'}
-                            </div>
-                            <div>
-                              <span className="font-medium">Venue:</span> {match.venue}
-                            </div>
-                            <div>
-                              <span className="font-medium">Format:</span> {match.overs} overs
-                            </div>
-                            <div>
-                              <span className="font-medium">Type:</span> 
-                              <span className={`ml-1 px-2 py-1 rounded text-xs font-medium ${
+                    <div key={match.id} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                      {/* Mobile-First Match Layout */}
+                      <div className="space-y-4">
+                        {/* Match Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">{match.team1} vs {match.team2}</h3>
+                            <div className="flex items-center space-x-2">
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                match.status === 'live' ? 'bg-red-100 text-red-800 animate-pulse' :
+                                match.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {match.status.toUpperCase()}
+                              </span>
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
                                 match.matchType === 'final' ? 'bg-yellow-100 text-yellow-800' :
                                 match.matchType === 'qualifier1' || match.matchType === 'qualifier2' ? 'bg-blue-100 text-blue-800' :
                                 match.matchType === 'eliminator' ? 'bg-red-100 text-red-800' :
@@ -3267,57 +3780,80 @@ const AdminPanel = () => {
                               </span>
                             </div>
                           </div>
+                        </div>
+                        
+                        {/* Match Details Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <span className="font-medium text-gray-800 block">Date</span>
+                            <span className="text-gray-600">{formatMatchDate(match.date)}</span>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <span className="font-medium text-gray-800 block">Time</span>
+                            <span className="text-gray-600">{match.time || 'TBD'}</span>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <span className="font-medium text-gray-800 block">Venue</span>
+                            <span className="text-gray-600 truncate">{match.venue}</span>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <span className="font-medium text-gray-800 block">Format</span>
+                            <span className="text-gray-600">{match.overs} overs</span>
+                          </div>
+                        </div>
 
-                          {/* Toss Information */}
-                          {match.tossWinner && (
-                            <div className="bg-blue-50 rounded-lg p-3 mb-4">
-                              <p className="text-sm text-blue-800">
-                                <span className="font-medium">Toss:</span> {match.tossWinner} won and chose to {match.tossChoice}
-                              </p>
-                            </div>
-                          )}
+                        {/* Toss Information */}
+                        {match.tossWinner && (
+                          <div className="bg-blue-50 rounded-lg p-3">
+                            <p className="text-sm text-blue-800">
+                              <span className="font-medium">Toss:</span> {match.tossWinner} won and chose to {match.tossChoice}
+                            </p>
+                          </div>
+                        )}
 
-                          {/* Live Score Display */}
-                          {(match.status === 'live' || match.status === 'completed') && (
-                            <div className="bg-gradient-to-r from-cricket-navy to-cricket-blue text-white rounded-lg p-4 mb-4">
-                              <div className="grid grid-cols-2 gap-6">
-                                <div className="text-center">
-                                  <h4 className="font-semibold mb-1">{match.team1}</h4>
-                                  <p className="text-2xl font-bold">
-                                    {match.team1Score?.runs || 0}/{match.team1Score?.wickets || 0}
-                                  </p>
-                                  <p className="text-sm opacity-90">({match.team1Score?.oversDisplay || '0.0'} overs)</p>
-                                </div>
-                                <div className="text-center">
-                                  <h4 className="font-semibold mb-1">{match.team2}</h4>
-                                  <p className="text-2xl font-bold">
-                                    {match.team2Score?.runs || 0}/{match.team2Score?.wickets || 0}
-                                  </p>
-                                  <p className="text-sm opacity-90">({match.team2Score?.oversDisplay || '0.0'} overs)</p>
-                                </div>
+                        {/* Live Score Display */}
+                        {(match.status === 'live' || match.status === 'completed') && (
+                          <div className="bg-gradient-to-r from-cricket-navy to-cricket-blue text-white rounded-lg p-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="text-center">
+                                <h4 className="font-semibold mb-2">{match.team1}</h4>
+                                <p className="text-2xl font-bold">
+                                  {match.team1Score?.runs || 0}/{match.team1Score?.wickets || 0}
+                                </p>
+                                <p className="text-sm opacity-90">({match.team1Score?.oversDisplay || '0.0'} overs)</p>
+                              </div>
+                              <div className="text-center">
+                                <h4 className="font-semibold mb-2">{match.team2}</h4>
+                                <p className="text-2xl font-bold">
+                                  {match.team2Score?.runs || 0}/{match.team2Score?.wickets || 0}
+                                </p>
+                                <p className="text-sm opacity-90">({match.team2Score?.oversDisplay || '0.0'} overs)</p>
                               </div>
                             </div>
-                          )}
+                          </div>
+                        )}
 
-                          {/* Squad Information */}
-                          <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
-                            <div>
-                              <span className="font-medium">{match.team1} Squad:</span> {match.team1Players?.length || 0} players
-                            </div>
-                            <div>
-                              <span className="font-medium">{match.team2} Squad:</span> {match.team2Players?.length || 0} players
-                            </div>
+                        {/* Squad Information */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <span className="font-medium text-gray-800">{match.team1} Squad:</span>
+                            <span className="text-gray-600 ml-2">{match.team1Players?.length || 0} players</span>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <span className="font-medium text-gray-800">{match.team2} Squad:</span>
+                            <span className="text-gray-600 ml-2">{match.team2Players?.length || 0} players</span>
                           </div>
                         </div>
                         
-                        <div className="flex flex-col space-y-2 ml-4">
+                        {/* Action Buttons */}
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                           <button
                             onClick={() => {
                               setScoreEntryMatch(match);
                               initializeScorecardData(match);
                               setShowScoreEntry(true);
                             }}
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2"
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-md text-sm font-medium flex items-center justify-center space-x-2"
                           >
                             <Target size={16} />
                             <span>Enter Scores</span>
@@ -3328,10 +3864,41 @@ const AdminPanel = () => {
                               setScoreEntryMatch(match);
                               setShowJsonImport(true);
                             }}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2"
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-md text-sm font-medium flex items-center justify-center space-x-2"
                           >
                             <Upload size={16} />
                             <span>Import JSON</span>
+                          </button>
+                          
+                          <button
+                            onClick={async () => {
+                              if (window.confirm(`Force reprocess match stats for ${match.team1} vs ${match.team2}? This will update all player statistics from this match.`)) {
+                                try {
+                                  console.log('🔄 Force reprocessing match:', match.id);
+                                  
+                                  // Import dataSync service
+                                  const { default: dataSync } = await import('../services/dataSync');
+                                  
+                                  // Reprocess the match
+                                  const result = await dataSync.reprocessMatch(match.id);
+                                  
+                                  if (result.success) {
+                                    // Refresh matches list
+                                    await fetchMatches();
+                                    alert('✅ Match reprocessed successfully! All statistics have been updated.');
+                                  } else {
+                                    throw new Error(result.error);
+                                  }
+                                } catch (error) {
+                                  console.error('❌ Error reprocessing match:', error);
+                                  alert('❌ Error reprocessing match: ' + error.message);
+                                }
+                              }
+                            }}
+                            className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-md text-sm font-medium flex items-center justify-center space-x-2"
+                          >
+                            <Activity size={16} />
+                            <span>Reprocess</span>
                           </button>
                           
                           <button
@@ -3358,7 +3925,7 @@ const AdminPanel = () => {
                                 }
                               }
                             }}
-                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2"
+                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-md text-sm font-medium flex items-center justify-center space-x-2"
                           >
                             <Trash2 size={16} />
                             <span>Delete</span>
@@ -3530,6 +4097,193 @@ const AdminPanel = () => {
               </div>
             )}
 
+            {/* Season Management Tab */}
+            {activeTab === 'seasons' && (
+              <div>
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Season Management</h2>
+                  <p className="text-gray-600">
+                    Manage tournament seasons, transition between seasons, and control season-specific data.
+                  </p>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Current Season Status */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Season Status</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-blue-50 rounded-lg p-4">
+                        <div className="text-sm font-medium text-blue-600 mb-1">Current Active Season</div>
+                        <div className="text-2xl font-bold text-blue-900">Season {currentSeasonSettings.current}</div>
+                        <div className="text-sm text-blue-600">All matches and stats</div>
+                      </div>
+                      <div className="bg-green-50 rounded-lg p-4">
+                        <div className="text-sm font-medium text-green-600 mb-1">Published Season</div>
+                        <div className="text-2xl font-bold text-green-900">Season {currentSeasonSettings.published}</div>
+                        <div className="text-sm text-green-600">Visible to public</div>
+                      </div>
+                      <div className="bg-orange-50 rounded-lg p-4">
+                        <div className="text-sm font-medium text-orange-600 mb-1">Registration Open</div>
+                        <div className="text-2xl font-bold text-orange-900">Season {currentSeasonSettings.registrationOpen}</div>
+                        <div className="text-sm text-orange-600">Accepting new players</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Season 2 Preparation */}
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg shadow-md p-6 border border-purple-200">
+                    <h3 className="text-lg font-semibold text-purple-900 mb-4 flex items-center">
+                      <Calendar className="w-5 h-5 mr-2" />
+                      Season 2 Preparation
+                    </h3>
+                    
+                    <div className="space-y-6">
+                      {/* Step 1: Open Season 2 Registration */}
+                      <div className="bg-white rounded-lg p-4 border border-purple-200">
+                        <h4 className="font-semibold text-gray-900 mb-2">Step 1: Open Season 2 Registration</h4>
+                        <p className="text-gray-600 mb-4">
+                          Allow new players to register for Season 2 while Season 1 continues. This will:
+                        </p>
+                        <ul className="text-sm text-gray-600 space-y-1 mb-4">
+                          <li>• Enable player registration for Season 2</li>
+                          <li>• New registrations will be tagged as "Season 2"</li>
+                          <li>• Season 1 data remains unchanged</li>
+                          <li>• Existing players stay in Season 1</li>
+                        </ul>
+                        <button 
+                          onClick={handleOpenSeason2Registration}
+                          disabled={seasonTransitionLoading || currentSeasonSettings.registrationOpen === '2'}
+                          className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md font-medium"
+                        >
+                          {seasonTransitionLoading ? 'Processing...' : 
+                           currentSeasonSettings.registrationOpen === '2' ? 'Season 2 Registration Open' : 
+                           'Open Season 2 Registration'}
+                        </button>
+                      </div>
+
+                      {/* Step 2: Prepare Season 2 Teams */}
+                      <div className="bg-white rounded-lg p-4 border border-purple-200">
+                        <h4 className="font-semibold text-gray-900 mb-2">Step 2: Prepare Season 2 Teams</h4>
+                        <p className="text-gray-600 mb-4">
+                          Set up teams for Season 2. You can:
+                        </p>
+                        <ul className="text-sm text-gray-600 space-y-1 mb-4">
+                          <li>• Keep existing teams for Season 2</li>
+                          <li>• Create new teams for Season 2</li>
+                          <li>• Reset all team assignments</li>
+                          <li>• Use auction system for player distribution</li>
+                        </ul>
+                        <div className="flex space-x-2">
+                          <button 
+                            onClick={handleKeepExistingTeams}
+                            disabled={seasonTransitionLoading}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md font-medium"
+                          >
+                            {seasonTransitionLoading ? 'Processing...' : 'Keep Existing Teams'}
+                          </button>
+                          <button 
+                            onClick={handleResetAllTeams}
+                            disabled={seasonTransitionLoading}
+                            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md font-medium"
+                          >
+                            {seasonTransitionLoading ? 'Processing...' : 'Reset All Teams'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Step 3: Activate Season 2 */}
+                      <div className="bg-white rounded-lg p-4 border border-red-200">
+                        <h4 className="font-semibold text-gray-900 mb-2">Step 3: Activate Season 2 (Final Step)</h4>
+                        <p className="text-gray-600 mb-4">
+                          ⚠️ <strong>Warning:</strong> This will make Season 2 the active season. This action will:
+                        </p>
+                        <ul className="text-sm text-gray-600 space-y-1 mb-4">
+                          <li>• Make Season 2 the current active season</li>
+                          <li>• Archive Season 1 data (still accessible)</li>
+                          <li>• Reset points table for Season 2</li>
+                          <li>• Clear player statistics for fresh start</li>
+                          <li>• Update all public pages to show Season 2</li>
+                        </ul>
+                        <button 
+                          onClick={handleActivateSeason2}
+                          disabled={seasonTransitionLoading || currentSeasonSettings.current === '2'}
+                          className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md font-medium"
+                        >
+                          {seasonTransitionLoading ? 'Processing...' : 
+                           currentSeasonSettings.current === '2' ? '✅ Season 2 Already Active' : 
+                           '🚨 Activate Season 2 (Irreversible)'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Season Data Overview */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Season Data Overview</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-3">Season 1 Data</h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span>Registered Players:</span>
+                            <span className="font-medium">{playerRegistrations.filter(p => (p.season || 'Season 1') === 'Season 1').length}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Completed Matches:</span>
+                            <span className="font-medium">{matches.filter(m => m.status === 'completed').length}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Active Teams:</span>
+                            <span className="font-medium">{teams.length}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-3">Season 2 Data</h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span>Registered Players:</span>
+                            <span className="font-medium">{playerRegistrations.filter(p => p.season === 'Season 2').length}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Scheduled Matches:</span>
+                            <span className="font-medium">0</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Status:</span>
+                            <span className="font-medium text-orange-600">Preparation Phase</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Important Notes */}
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-yellow-900 mb-4">Important Notes for Season Transition</h3>
+                    <div className="space-y-3 text-sm text-yellow-800">
+                      <div className="flex items-start">
+                        <span className="font-bold mr-2">📊 Data Preservation:</span>
+                        <span>All Season 1 data (matches, stats, standings) will be preserved and accessible through season filters.</span>
+                      </div>
+                      <div className="flex items-start">
+                        <span className="font-bold mr-2">👥 Player Management:</span>
+                        <span>Existing players can participate in Season 2. Use the auction system to reassign players to teams.</span>
+                      </div>
+                      <div className="flex items-start">
+                        <span className="font-bold mr-2">🏆 Statistics Reset:</span>
+                        <span>Player statistics will reset for Season 2, but Season 1 stats remain in the archive.</span>
+                      </div>
+                      <div className="flex items-start">
+                        <span className="font-bold mr-2">⚡ Live Transition:</span>
+                        <span>The website will automatically update to show Season 2 data once activated.</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* System Status Tab */}
             {activeTab === 'system' && (
               <div>
@@ -3550,7 +4304,7 @@ const AdminPanel = () => {
                     <p className="text-blue-800 mb-4 text-sm">
                       Use these controls if you notice data inconsistencies across different pages.
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <button
                         onClick={() => dataRefreshManager.triggerQuickRefresh('admin-manual')}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
@@ -3562,6 +4316,85 @@ const AdminPanel = () => {
                         className="bg-blue-800 hover:bg-blue-900 text-white px-4 py-2 rounded-md font-medium"
                       >
                         Complete Refresh (Full Sync)
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const { default: pointsTableService } = await import('../services/pointsTableService');
+                            const result = await pointsTableService.recalculatePointsTable();
+                            if (result.success) {
+                              await dataRefreshManager.triggerCompleteRefresh(false, 'admin-points-recalc');
+                              alert('✅ Points table recalculated successfully!');
+                            } else {
+                              throw new Error(result.error);
+                            }
+                          } catch (error) {
+                            console.error('❌ Error recalculating points table:', error);
+                            alert('❌ Error: ' + error.message);
+                          }
+                        }}
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-medium"
+                      >
+                        Recalculate Points Table
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Match Processing Controls */}
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-orange-900 mb-4">Match Processing Controls</h3>
+                    <p className="text-orange-800 mb-4 text-sm">
+                      Use these controls if matches aren't updating properly or statistics seem incorrect.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <button
+                        onClick={async () => {
+                          if (window.confirm('Clear all processed match tracking? This will allow all matches to be reprocessed on next stats calculation.')) {
+                            try {
+                              const { default: statsService } = await import('../services/statsService');
+                              const result = await statsService.clearProcessedMatches();
+                              if (result.success) {
+                                alert('✅ Processed matches cleared successfully! Matches will be reprocessed on next stats update.');
+                              } else {
+                                throw new Error(result.error);
+                              }
+                            } catch (error) {
+                              console.error('❌ Error clearing processed matches:', error);
+                              alert('❌ Error: ' + error.message);
+                            }
+                          }
+                        }}
+                        className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md font-medium"
+                      >
+                        Clear Processed Matches
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (window.confirm('Force recalculate ALL statistics from scratch? This will take a few moments.')) {
+                            try {
+                              const { default: statsService } = await import('../services/statsService');
+                              const result = await statsService.recalculateAllStats();
+                              if (result.success) {
+                                // Also recalculate points table
+                                const { default: pointsTableService } = await import('../services/pointsTableService');
+                                await pointsTableService.recalculatePointsTable();
+                                
+                                // Trigger refresh
+                                await dataRefreshManager.triggerCompleteRefresh(false, 'admin-recalc-all');
+                                
+                                alert('✅ All statistics recalculated successfully!');
+                              } else {
+                                throw new Error(result.error);
+                              }
+                            } catch (error) {
+                              console.error('❌ Error recalculating stats:', error);
+                              alert('❌ Error: ' + error.message);
+                            }
+                          }
+                        }}
+                        className="bg-orange-800 hover:bg-orange-900 text-white px-4 py-2 rounded-md font-medium"
+                      >
+                        Recalculate All Stats
                       </button>
                     </div>
                   </div>

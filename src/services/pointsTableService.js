@@ -1,25 +1,40 @@
-import { collection, doc, setDoc, getDoc, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, getDocs, query, orderBy, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
 
 class PointsTableService {
   // Update points table based on match result
   async updatePointsTable(matchData) {
     try {
-      const { team1, team2, team1Score, team2Score, status } = matchData;
+      const { team1, team2, team1Score, team2Score, status, matchType } = matchData;
+      
+      console.log('🏆 Updating points table for:', { team1, team2, team1Score, team2Score, status, matchType });
       
       if (status !== 'completed' || !team1Score || !team2Score) {
+        console.log('⚠️ Points table update skipped:', { status, team1Score: !!team1Score, team2Score: !!team2Score });
         return { success: false, error: 'Match not completed or scores missing' };
       }
+      
+      // Only process knockout matches for points table (treat undefined as knockout for backward compatibility)
+      const isPlayoffMatch = ['qualifier1', 'qualifier2', 'eliminator', 'final'].includes(matchType);
+      if (matchType && matchType !== 'knockout' && isPlayoffMatch) {
+        console.log('⚠️ Points table update skipped - playoff match:', { matchType });
+        return { success: false, error: 'Playoff matches do not count for points table' };
+      }
+      
+      console.log('🔍 Processing match for points table:', { matchType: matchType || 'undefined (treated as knockout)' });
 
       // Determine winner
       const team1Runs = team1Score.runs || 0;
       const team2Runs = team2Score.runs || 0;
       const winner = team1Runs > team2Runs ? team1 : team2Runs > team1Runs ? team2 : null;
+      
+      console.log('🏆 Match result:', { team1Runs, team2Runs, winner });
 
       // Update both teams
       await this.updateTeamRecord(team1, team1Score, team2Score, winner === team1);
       await this.updateTeamRecord(team2, team2Score, team1Score, winner === team2);
-
+      
+      console.log('✅ Points table updated successfully for both teams');
       return { success: true };
     } catch (error) {
       console.error('Error updating points table:', error);
@@ -81,7 +96,9 @@ class PointsTableService {
     const parts = oversDisplay.toString().split('.');
     const overs = parseInt(parts[0]) || 0;
     const balls = parseInt(parts[1]) || 0;
-    return overs + (balls / 6);
+    const result = overs + (balls / 6);
+    console.log(`Converting overs: ${oversDisplay} -> ${result} (${overs} overs + ${balls}/6 balls)`);
+    return result;
   }
 
   // Get current points table
@@ -199,8 +216,9 @@ class PointsTableService {
       
       // Clear existing points table
       const pointsSnapshot = await getDocs(collection(db, 'pointsTable'));
-      const deletePromises = pointsSnapshot.docs.map(doc => doc.ref.delete());
+      const deletePromises = pointsSnapshot.docs.map(doc => deleteDoc(doc.ref));
       await Promise.all(deletePromises);
+      console.log(`🗑️ Cleared ${pointsSnapshot.docs.length} existing points table records`);
       
       // Get all teams and matches
       const [matchesSnapshot, teamsSnapshot] = await Promise.all([
@@ -208,26 +226,70 @@ class PointsTableService {
         getDocs(collection(db, 'teams'))
       ]);
       
-      const matches = matchesSnapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(match => match.status === 'completed' && match.team1Score && match.team2Score);
+      const allMatches = matchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log('🔍 All matches found:', allMatches.map(m => ({
+        id: m.id,
+        teams: `${m.team1} vs ${m.team2}`,
+        status: m.status,
+        matchType: m.matchType,
+        hasScores: !!(m.team1Score && m.team2Score)
+      })));
+      
+      const matches = allMatches.filter(match => {
+        const isCompleted = match.status === 'completed';
+        const hasScores = !!(match.team1Score && match.team2Score);
+        const isKnockoutOrUndefined = !match.matchType || match.matchType === 'knockout';
+        const isNotPlayoff = !['qualifier1', 'qualifier2', 'eliminator', 'final'].includes(match.matchType);
+        
+        return isCompleted && hasScores && isKnockoutOrUndefined && isNotPlayoff;
+      });
+      
+      console.log('🔍 Filtered matches for points table:', matches.map(m => ({
+        teams: `${m.team1} vs ${m.team2}`,
+        matchType: m.matchType || 'undefined',
+        willProcess: (m.matchType === 'knockout' || !m.matchType)
+      })));
       
       const allTeams = teamsSnapshot.docs.map(doc => doc.data().name);
       
-      console.log(`🏆 Initializing ${allTeams.length} teams and processing ${matches.length} completed matches...`);
+      console.log(`🏆 Found ${allTeams.length} teams and ${matches.length} completed knockout matches`);
+      
+      if (matches.length > 0) {
+        console.log('📋 Knockout matches for points table:', matches.map(m => `${m.team1} vs ${m.team2} (${m.matchType || 'knockout'}) - ${m.team1Score?.runs}-${m.team1Score?.wickets} vs ${m.team2Score?.runs}-${m.team2Score?.wickets}`));
+      } else {
+        console.log('📋 No knockout matches found - initializing empty points table');
+      }
       
       // Initialize ALL teams first (even those without matches)
       for (const teamName of allTeams) {
         await this.initializeTeam(teamName);
+        console.log(`✅ Initialized team: ${teamName}`);
       }
       
-      // Reprocess all completed matches
-      for (const match of matches) {
-        await this.updatePointsTable(match);
+      // Reprocess all completed knockout matches only (if any exist)
+      if (matches.length > 0) {
+        for (const match of matches) {
+          console.log(`🏆 Processing knockout match: ${match.team1} vs ${match.team2} (${match.matchType || 'knockout'})`);
+          const result = await this.updatePointsTable({
+            team1: match.team1,
+            team2: match.team2,
+            team1Score: match.team1Score,
+            team2Score: match.team2Score,
+            status: 'completed',
+            matchType: match.matchType || 'knockout'
+          });
+          console.log(`📊 Match processing result:`, result);
+        }
+      } else {
+        console.log('📊 No matches to process - all teams initialized with zero stats');
       }
       
-      console.log('✅ Points table recalculated successfully');
-      return { success: true };
+      // Verify final points table
+      const finalPointsTable = await this.getPointsTable();
+      console.log('🏆 Final points table:', finalPointsTable);
+      
+      console.log('✅ Points table recalculated successfully - only knockout matches processed');
+      return { success: true, processedMatches: matches.length, teams: allTeams.length };
     } catch (error) {
       console.error('❌ Error recalculating points table:', error);
       return { success: false, error: error.message };

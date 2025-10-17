@@ -8,14 +8,27 @@ class DataRefreshManager {
   constructor() {
     this.isRefreshing = false;
     this.refreshQueue = [];
+    this.lastRefreshTime = 0;
+    this.debounceTimeout = null;
+    this.DEBOUNCE_DELAY = 2000; // 2 seconds debounce
+    this.MIN_REFRESH_INTERVAL = 5000; // Minimum 5 seconds between refreshes
   }
 
   /**
-   * Trigger a complete data refresh with proper sequencing
+   * Trigger a complete data refresh with proper sequencing and debouncing
    * @param {boolean} forceSync - Whether to force a complete data sync
    * @param {string} source - Source of the refresh request for logging
    */
   async triggerCompleteRefresh(forceSync = true, source = 'unknown') {
+    // Check if we need to debounce this request
+    const now = Date.now();
+    const timeSinceLastRefresh = now - this.lastRefreshTime;
+    
+    if (timeSinceLastRefresh < this.MIN_REFRESH_INTERVAL && !forceSync) {
+      console.log(`⏳ Debouncing refresh request from ${source} (${timeSinceLastRefresh}ms since last refresh)`);
+      return this.debounceRefresh(forceSync, source);
+    }
+    
     if (this.isRefreshing) {
       console.log(`🔄 Data refresh already in progress, queuing request from ${source}`);
       return new Promise((resolve) => {
@@ -24,6 +37,7 @@ class DataRefreshManager {
     }
 
     this.isRefreshing = true;
+    this.lastRefreshTime = now;
     console.log(`🔄 Starting complete data refresh from ${source}...`);
 
     try {
@@ -33,15 +47,10 @@ class DataRefreshManager {
         await dataSync.syncAllData();
       }
 
-      // Step 2: Trigger global refresh
+      // Step 2: Trigger global refresh (single call, no double refresh)
       console.log('🌐 Triggering global component refresh...');
       const { triggerGlobalRefresh } = await import('../hooks/useTournamentData');
       await triggerGlobalRefresh(false); // Don't sync again, just refresh
-
-      // Step 3: Force component updates
-      console.log('🔄 Forcing component updates...');
-      const { forceRefreshAllComponents } = await import('../hooks/useTournamentData');
-      forceRefreshAllComponents();
 
       console.log(`✅ Complete data refresh finished from ${source}`);
 
@@ -85,13 +94,31 @@ class DataRefreshManager {
   }
 
   /**
-   * Refresh after match operations (create, update, delete)
+   * Debounced refresh to prevent multiple rapid calls
+   */
+  debounceRefresh(forceSync, source) {
+    return new Promise((resolve) => {
+      if (this.debounceTimeout) {
+        clearTimeout(this.debounceTimeout);
+      }
+      
+      this.debounceTimeout = setTimeout(async () => {
+        console.log(`⚡ Executing debounced refresh from ${source}`);
+        const result = await this.triggerCompleteRefresh(forceSync, `debounced-${source}`);
+        resolve(result);
+      }, this.DEBOUNCE_DELAY);
+    });
+  }
+
+  /**
+   * Refresh after match operations (create, update, delete) - with debouncing
    * @param {string} operation - The operation performed
    * @param {string} matchInfo - Information about the match
    */
   async refreshAfterMatchOperation(operation, matchInfo = '') {
     const source = `match-${operation}${matchInfo ? `: ${matchInfo}` : ''}`;
-    return await this.triggerCompleteRefresh(true, source);
+    // Use debounced refresh for match operations to prevent spam
+    return await this.triggerCompleteRefresh(false, source);
   }
 
   /**
@@ -126,6 +153,16 @@ class DataRefreshManager {
    */
   getQueueLength() {
     return this.refreshQueue.length;
+  }
+
+  /**
+   * Clear any pending debounced refreshes
+   */
+  clearPendingRefreshes() {
+    if (this.debounceTimeout) {
+      clearTimeout(this.debounceTimeout);
+      this.debounceTimeout = null;
+    }
   }
 }
 

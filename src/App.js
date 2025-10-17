@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AdminProvider } from './context/AdminContext';
 import { SeasonProvider } from './context/SeasonContext';
@@ -6,6 +6,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import LoadingSpinner from './components/LoadingSpinner';
 import ScrollToTop from './components/ScrollToTop';
+import realTimeSync from './services/realTimeSync';
 
 // Lazy load pages for better performance
 const Home = lazy(() => import('./pages/Home'));
@@ -26,6 +27,16 @@ const LoadingFallback = () => (
 );
 
 function App() {
+  useEffect(() => {
+    // Initialize real-time sync system (like Cricbuzz)
+    realTimeSync.initialize();
+    
+    // Cleanup on unmount
+    return () => {
+      realTimeSync.cleanup();
+    };
+  }, []);
+
   return (
     <SeasonProvider>
       <AdminProvider>

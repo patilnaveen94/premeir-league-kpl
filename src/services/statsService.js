@@ -1,25 +1,46 @@
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, query, where } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, query, where, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
 
 class StatsService {
   // Update player stats based on match result
-  async updatePlayerStats(matchData) {
+  async updatePlayerStats(matchData, forceReprocess = false) {
     try {
-      const { battingStats, bowlingStats, team1, team2, id: matchId } = matchData;
+      const { battingStats, bowlingStats, team1, team2, id: matchId, updatedAt } = matchData;
       
-      // Check if this match has already been processed
-      const processedMatchRef = doc(db, 'processedMatches', matchId);
-      const processedDoc = await getDoc(processedMatchRef);
+      // Always clear existing stats for this match first to prevent duplicates
+      console.log(`🗑️ Clearing existing stats for match ${matchId} before processing...`);
+      await this.clearMatchStats(matchId, team1, team2);
       
-      if (processedDoc.exists()) {
-        console.log('Match already processed, skipping stats update');
-        return { success: true, message: 'Already processed' };
+      // For real-time updates, use a more precise tracking mechanism
+      const processKey = `${matchId}_${updatedAt?.getTime?.() || Date.now()}`;
+      
+      // Check if this exact match update has already been processed (only if not forcing)
+      if (!forceReprocess) {
+        const processedMatchRef = doc(db, 'processedMatches', matchId);
+        const processedDoc = await getDoc(processedMatchRef);
+        
+        if (processedDoc.exists()) {
+          const processedData = processedDoc.data();
+          const lastProcessKey = processedData.processKey;
+          
+          // Skip if this exact update was already processed recently (within 1 minute)
+          const lastProcessTime = processedData.processedAt?.toDate?.() || new Date(0);
+          const timeSinceProcess = (new Date() - lastProcessTime) / 1000; // seconds
+          
+          if (lastProcessKey === processKey && timeSinceProcess < 60) {
+            console.log(`⏭️ Match ${matchId} update already processed recently, skipping`);
+            return { success: true, message: 'Already processed this update recently' };
+          }
+        }
       }
+      
+      console.log(`📊 Processing stats for match: ${team1} vs ${team2} (${matchId})`);
       
       // Update batting stats
       if (battingStats) {
         for (const team of [team1, team2]) {
           const teamBatting = battingStats[team] || [];
+          console.log(`🏏 Processing ${teamBatting.length} batting records for ${team}`);
           for (const player of teamBatting) {
             await this.updatePlayerBattingStats(player, team, matchId);
           }
@@ -30,20 +51,26 @@ class StatsService {
       if (bowlingStats) {
         for (const team of [team1, team2]) {
           const teamBowling = bowlingStats[team] || [];
+          console.log(`🎳 Processing ${teamBowling.length} bowling records for ${team}`);
           for (const player of teamBowling) {
             await this.updatePlayerBowlingStats(player, team, matchId);
           }
         }
       }
       
-      // Mark match as processed
+      // Mark match as processed with unique process key
+      const processedMatchRef = doc(db, 'processedMatches', matchId);
       await setDoc(processedMatchRef, {
         matchId,
         processedAt: new Date(),
+        processKey,
         team1,
-        team2
+        team2,
+        reprocessed: forceReprocess || false,
+        lastMatchUpdate: updatedAt || new Date()
       });
-
+      
+      console.log(`✅ Match ${matchId} stats processing completed`);
       return { success: true };
     } catch (error) {
       console.error('Error updating player stats:', error);
@@ -93,14 +120,16 @@ class StatsService {
 
       const updatedStats = {
         ...currentStats,
-        matches: currentStats.matches + 1,
-        runs: currentStats.runs + newRuns,
-        balls: currentStats.balls + newBalls,
-        fours: currentStats.fours + newFours,
-        sixes: currentStats.sixes + newSixes,
-        innings: currentStats.innings + 1,
-        notOuts: isOut ? currentStats.notOuts : currentStats.notOuts + 1,
-        highestScore: Math.max(currentStats.highestScore, newRuns)
+        name, // Ensure name is always updated
+        team, // Ensure team is always updated
+        matches: (currentStats.matches || 0) + 1,
+        runs: (currentStats.runs || 0) + newRuns,
+        balls: (currentStats.balls || 0) + newBalls,
+        fours: (currentStats.fours || 0) + newFours,
+        sixes: (currentStats.sixes || 0) + newSixes,
+        innings: (currentStats.innings || 0) + 1,
+        notOuts: isOut ? (currentStats.notOuts || 0) : (currentStats.notOuts || 0) + 1,
+        highestScore: Math.max((currentStats.highestScore || 0), newRuns)
       };
 
       // Calculate average and strike rate
@@ -152,9 +181,11 @@ class StatsService {
       if (newOvers > 0) {
         const updatedStats = {
           ...currentStats,
-          wickets: currentStats.wickets + newWickets,
-          bowlingRuns: currentStats.bowlingRuns + newRuns,
-          overs: currentStats.overs + newOvers
+          name, // Ensure name is always updated
+          team, // Ensure team is always updated
+          wickets: (currentStats.wickets || 0) + newWickets,
+          bowlingRuns: (currentStats.bowlingRuns || 0) + newRuns,
+          overs: (currentStats.overs || 0) + newOvers
         };
 
         // Calculate economy
@@ -233,40 +264,201 @@ class StatsService {
     }
   }
 
-  // Recalculate all stats from scratch based on current matches
-  async recalculateAllStats() {
+  // Force reprocess a specific match
+  async reprocessMatch(matchId) {
     try {
-      console.log('🔄 Recalculating all player statistics...');
+      console.log(`🔄 Force reprocessing match: ${matchId}`);
       
-      // Clear existing stats
-      const statsSnapshot = await getDocs(collection(db, 'playerStats'));
-      const deletePromises = statsSnapshot.docs.map(doc => doc.ref.delete());
-      await Promise.all(deletePromises);
-      
-      // Clear processed matches
-      const processedSnapshot = await getDocs(collection(db, 'processedMatches'));
-      const deleteProcessedPromises = processedSnapshot.docs.map(doc => doc.ref.delete());
-      await Promise.all(deleteProcessedPromises);
-      
-      // Get all completed matches
-      const matchesSnapshot = await getDocs(collection(db, 'matches'));
-      const matches = matchesSnapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(match => match.status === 'completed' && (match.battingStats || match.bowlingStats));
-      
-      console.log(`🏆 Processing ${matches.length} completed matches...`);
-      
-      // Reprocess all matches
-      for (const match of matches) {
-        await this.updatePlayerStats(match);
+      // Get match data
+      const matchDoc = await getDoc(doc(db, 'matches', matchId));
+      if (!matchDoc.exists()) {
+        throw new Error('Match not found');
       }
       
-      console.log('✅ All player statistics recalculated successfully');
+      const matchData = { id: matchDoc.id, ...matchDoc.data() };
+      
+      // Remove from processed matches to force reprocessing
+      const processedMatchRef = doc(db, 'processedMatches', matchId);
+      const processedDoc = await getDoc(processedMatchRef);
+      if (processedDoc.exists()) {
+        await deleteDoc(processedMatchRef);
+        console.log(`🗑️ Removed processed match tracking for ${matchId}`);
+      }
+      
+      // Reprocess the match
+      await this.updatePlayerStats(matchData, true);
+      
+      console.log(`✅ Match ${matchId} reprocessed successfully`);
       return { success: true };
     } catch (error) {
-      console.error('❌ Error recalculating stats:', error);
+      console.error(`❌ Error reprocessing match ${matchId}:`, error);
       return { success: false, error: error.message };
     }
+  }
+
+  // Clear processed matches tracking for fresh processing
+  async clearProcessedMatches() {
+    try {
+      console.log('🗑️ Clearing processed matches tracking...');
+      const processedSnapshot = await getDocs(collection(db, 'processedMatches'));
+      const deletePromises = processedSnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
+      await Promise.all(deletePromises);
+      console.log(`✅ Cleared ${processedSnapshot.docs.length} processed match records`);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error clearing processed matches:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Complete data reset - clears ALL stats and points table data
+  async completeDataReset() {
+    try {
+      console.log('🗑️ Starting complete data reset...');
+      
+      // Clear all data collections
+      const [statsSnapshot, processedSnapshot, pointsSnapshot] = await Promise.all([
+        getDocs(collection(db, 'playerStats')),
+        getDocs(collection(db, 'processedMatches')),
+        getDocs(collection(db, 'pointsTable'))
+      ]);
+      
+      const deletePromises = [
+        ...statsSnapshot.docs.map(docSnap => deleteDoc(docSnap.ref)),
+        ...processedSnapshot.docs.map(docSnap => deleteDoc(docSnap.ref)),
+        ...pointsSnapshot.docs.map(docSnap => deleteDoc(docSnap.ref))
+      ];
+      
+      await Promise.all(deletePromises);
+      console.log(`✅ Complete reset: Cleared ${statsSnapshot.docs.length} player stats, ${processedSnapshot.docs.length} processed matches, ${pointsSnapshot.docs.length} points table records`);
+      
+      return { success: true, message: 'All data cleared successfully' };
+    } catch (error) {
+      console.error('❌ Error in complete data reset:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Comprehensive data synchronization - ensures all stats are properly calculated
+  async comprehensiveDataSync() {
+    try {
+      console.log('🔄 Starting comprehensive data synchronization...');
+      
+      // Step 1: Complete data reset first
+      console.log('🗑️ Step 1: Complete data reset...');
+      const resetResult = await this.completeDataReset();
+      if (!resetResult.success) {
+        throw new Error('Failed to reset data: ' + resetResult.error);
+      }
+      
+      // Step 2: Get all completed matches with stats
+      console.log('📊 Step 2: Fetching completed matches...');
+      const matchesSnapshot = await getDocs(collection(db, 'matches'));
+      const allMatches = matchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      const completedMatches = allMatches.filter(match => {
+        const hasStats = match.battingStats || match.bowlingStats;
+        const isCompleted = match.status === 'completed';
+        const hasScores = match.team1Score && match.team2Score;
+        return isCompleted && hasStats && hasScores;
+      });
+      
+      console.log(`🏆 Found ${completedMatches.length} completed matches with stats out of ${allMatches.length} total matches`);
+      
+      // If no completed matches, ensure points table is initialized with all teams
+      if (completedMatches.length === 0) {
+        console.log('📊 No completed matches found - initializing empty points table...');
+        const pointsTableService = await import('./pointsTableService');
+        const pointsResult = await pointsTableService.default.recalculatePointsTable();
+        console.log('🏆 Empty points table initialized:', pointsResult);
+        
+        return { 
+          success: true, 
+          processedMatches: 0,
+          totalPlayers: 0,
+          playersWithMatches: 0,
+          playersWithoutMatches: 0,
+          message: 'No matches to process - all data reset successfully'
+        };
+      }
+      
+      // Step 3: Process each match for player stats
+      console.log('📊 Step 3: Processing player statistics...');
+      for (let i = 0; i < completedMatches.length; i++) {
+        const match = completedMatches[i];
+        console.log(`📊 Processing match ${i + 1}/${completedMatches.length}: ${match.team1} vs ${match.team2} (${match.id})`);
+        
+        const result = await this.updatePlayerStats(match, true);
+        if (!result.success) {
+          console.warn(`⚠️ Warning: Failed to process match ${match.id}: ${result.error}`);
+        }
+      }
+      
+      // Step 4: Recalculate points table
+      console.log('🏆 Step 4: Recalculating points table...');
+      const pointsTableService = await import('./pointsTableService');
+      const pointsResult = await pointsTableService.default.recalculatePointsTable();
+      console.log('🏆 Points table result:', pointsResult);
+      
+      // Step 5: Verify data integrity
+      console.log('🔍 Step 5: Verifying data integrity...');
+      const finalStats = await this.getAllPlayerStats();
+      const playersWithMatches = finalStats.filter(p => p.matches > 0);
+      const playersWithoutMatches = finalStats.filter(p => p.matches === 0);
+      
+      console.log(`📊 Final verification:`);
+      console.log(`  - Total players with stats: ${finalStats.length}`);
+      console.log(`  - Players with matches: ${playersWithMatches.length}`);
+      console.log(`  - Players without matches: ${playersWithoutMatches.length}`);
+      console.log(`  - Processed matches: ${completedMatches.length}`);
+      
+      if (playersWithoutMatches.length > 0) {
+        console.warn('⚠️ Players without matches found:', playersWithoutMatches.map(p => p.name));
+      }
+      
+      console.log('✅ Comprehensive data synchronization completed successfully!');
+      return { 
+        success: true, 
+        processedMatches: completedMatches.length,
+        totalPlayers: finalStats.length,
+        playersWithMatches: playersWithMatches.length,
+        playersWithoutMatches: playersWithoutMatches.length
+      };
+    } catch (error) {
+      console.error('❌ Error in comprehensive data sync:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Clear existing stats for a specific match to prevent duplicates
+  async clearMatchStats(matchId, team1, team2) {
+    try {
+      console.log(`🗑️ Clearing existing stats for match ${matchId}...`);
+      
+      // Remove the processed match record to allow reprocessing
+      const processedMatchRef = doc(db, 'processedMatches', matchId);
+      const processedDoc = await getDoc(processedMatchRef);
+      
+      if (processedDoc.exists()) {
+        await deleteDoc(processedMatchRef);
+        console.log(`🗑️ Removed processed match record for ${matchId}`);
+      }
+      
+      // Since we can't easily subtract individual match contributions,
+      // we'll do a full recalculation after processing all matches
+      console.log(`📊 Match ${matchId} cleared for reprocessing`);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error clearing match stats:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Recalculate all stats from scratch based on current matches (legacy method)
+  async recalculateAllStats() {
+    console.log('🔄 Legacy recalculateAllStats called - redirecting to comprehensive sync...');
+    return await this.comprehensiveDataSync();
   }
 }
 

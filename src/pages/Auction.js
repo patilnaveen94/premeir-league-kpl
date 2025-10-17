@@ -313,7 +313,7 @@ const Auction = () => {
         </div>
 
         {/* Enhanced Players Grid with Colorful Professional Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           {filteredPlayers.map((player) => {
             const stats = playerStats[player.fullName] || {};
             
@@ -345,16 +345,7 @@ const Auction = () => {
                   <div className="absolute top-0 right-0 w-20 h-20 bg-white bg-opacity-10 rounded-full -translate-y-10 translate-x-10"></div>
                   <div className="absolute bottom-0 left-0 w-16 h-16 bg-white bg-opacity-10 rounded-full translate-y-8 -translate-x-8"></div>
                   
-                  {/* Status Badge */}
-                  <div className="absolute top-2 sm:top-3 right-2 sm:right-3">
-                    <span className={`px-2 sm:px-3 md:px-4 lg:px-5 py-1 sm:py-2 md:py-3 rounded-full text-xs sm:text-sm md:text-base font-bold text-white shadow-lg ${
-                      player.auctionStatus === 'sold' 
-                        ? 'bg-green-600 bg-opacity-90' 
-                        : 'bg-gray-600 bg-opacity-90'
-                    }`}>
-                      {player.auctionStatus === 'sold' ? '✅ SOLD' : '⏳ AVAILABLE'}
-                    </span>
-                  </div>
+
                   
                   <div className="flex items-center space-x-3 sm:space-x-4 relative z-10">
                     {player.photoBase64 ? (
@@ -374,10 +365,10 @@ const Auction = () => {
                     )}
                     
                     <div className="flex-1 min-w-0 text-white">
-                      <h3 className="font-bold text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl leading-tight drop-shadow-lg truncate player-name-safe" title={player.fullName}>
-                        {player.fullName}
+                      <h3 className="font-bold text-base sm:text-lg md:text-xl lg:text-2xl leading-tight drop-shadow-lg" title={player.fullName}>
+                        {player.fullName.length > 20 ? player.fullName.substring(0, 20) + '...' : player.fullName}
                       </h3>
-                      <p className="text-white text-opacity-90 text-xs sm:text-sm md:text-base lg:text-lg font-medium truncate">{player.position}</p>
+                      <p className="text-white text-opacity-90 text-sm sm:text-base md:text-lg font-medium truncate">{player.position}</p>
                       <div className="flex items-center mt-1">
                         <span className="text-xs sm:text-sm md:text-base bg-white bg-opacity-20 px-2 py-1 rounded-full truncate">
                           {stats.matches || 0} matches
@@ -578,7 +569,7 @@ const Auction = () => {
                     </div>
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-100 p-6 rounded-2xl border border-blue-200 shadow-sm">
                       <div className="text-sm sm:text-base md:text-lg text-blue-600 font-bold uppercase tracking-wide mb-2">Phone Number</div>
-                      <div className="text-blue-900 font-bold text-lg sm:text-xl md:text-2xl phone-safe" title={selectedPlayer.phone}>{selectedPlayer.phone}</div>
+                      <div className="text-blue-900 font-bold text-lg sm:text-xl md:text-2xl break-all" title={selectedPlayer.phone}>{selectedPlayer.phone}</div>
                     </div>
                     <div className="bg-gradient-to-r from-green-50 to-emerald-100 p-6 rounded-2xl border border-green-200 shadow-sm">
                       <div className="text-sm sm:text-base md:text-lg text-green-600 font-bold uppercase tracking-wide mb-2">Playing Position</div>

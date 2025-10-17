@@ -59,6 +59,12 @@ class AuctionService {
   // Update player auction status and team assignment
   async updatePlayerAuction(playerId, teamId, soldPrice = null) {
     try {
+      // Get current player data to check previous team assignment
+      const playerDoc = await getDocs(collection(db, 'playerRegistrations'));
+      const currentPlayer = playerDoc.docs.find(doc => doc.id === playerId)?.data();
+      const previousTeamId = currentPlayer?.teamId;
+
+      // Update player document
       const updateData = {
         teamId: teamId || null,
         auctionStatus: teamId ? 'sold' : 'unsold',
@@ -71,6 +77,41 @@ class AuctionService {
       }
 
       await updateDoc(doc(db, 'playerRegistrations', playerId), updateData);
+
+      // Remove player from previous team if exists
+      if (previousTeamId && previousTeamId !== teamId) {
+        const teamsSnapshot = await getDocs(collection(db, 'teams'));
+        const previousTeam = teamsSnapshot.docs.find(doc => doc.id === previousTeamId);
+        if (previousTeam) {
+          const teamData = previousTeam.data();
+          const updatedPlayers = (teamData.players || []).filter(id => id !== playerId);
+          await updateDoc(doc(db, 'teams', previousTeamId), {
+            players: updatedPlayers,
+            updatedAt: new Date()
+          });
+          console.log(`✅ Removed player ${playerId} from previous team ${previousTeamId}`);
+        }
+      }
+
+      // Add player to new team if teamId is provided
+      if (teamId) {
+        const teamsSnapshot = await getDocs(collection(db, 'teams'));
+        const newTeam = teamsSnapshot.docs.find(doc => doc.id === teamId);
+        if (newTeam) {
+          const teamData = newTeam.data();
+          const currentPlayers = teamData.players || [];
+          
+          // Only add if not already in the team
+          if (!currentPlayers.includes(playerId)) {
+            const updatedPlayers = [...currentPlayers, playerId];
+            await updateDoc(doc(db, 'teams', teamId), {
+              players: updatedPlayers,
+              updatedAt: new Date()
+            });
+            console.log(`✅ Added player ${playerId} to team ${teamId}`);
+          }
+        }
+      }
       
       return { success: true };
     } catch (error) {

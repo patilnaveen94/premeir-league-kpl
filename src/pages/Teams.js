@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { XCircle } from 'lucide-react';
+import { XCircle, ChevronDown } from 'lucide-react';
 import { db } from '../firebase/firebase';
 import { useSeason } from '../context/SeasonContext';
 
@@ -30,7 +30,9 @@ const Teams = () => {
   const [loading, setLoading] = useState(true);
   const [showTeamDetails, setShowTeamDetails] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState(null);
-  const { publishedSeason } = useSeason();
+  const [selectedSeason, setSelectedSeason] = useState('1');
+  const [showSeasonDropdown, setShowSeasonDropdown] = useState(false);
+  const { publishedSeason, currentSeason } = useSeason();
 
   useEffect(() => {
     // Scroll to top when component mounts
@@ -38,14 +40,14 @@ const Teams = () => {
     
     const fetchData = async () => {
       try {
-        // Get teams for published season or teams without season field (legacy data)
-        const teamsQuery = publishedSeason === '1' 
+        // Get teams for selected season or teams without season field (legacy data)
+        const teamsQuery = selectedSeason === '1' 
           ? collection(db, 'teams') // For season 1, get all teams (including legacy without season field)
-          : query(collection(db, 'teams'), where('season', '==', publishedSeason));
+          : query(collection(db, 'teams'), where('season', '==', selectedSeason));
         
-        const playersQuery = publishedSeason === '1'
+        const playersQuery = selectedSeason === '1'
           ? collection(db, 'playerRegistrations') // For season 1, get all players (including legacy)
-          : query(collection(db, 'playerRegistrations'), where('season', '==', publishedSeason));
+          : query(collection(db, 'playerRegistrations'), where('season', '==', selectedSeason));
         
         const [teamsSnapshot, playersSnapshot] = await Promise.all([
           getDocs(teamsQuery),
@@ -71,7 +73,7 @@ const Teams = () => {
     };
 
     fetchData();
-  }, [publishedSeason]);
+  }, [selectedSeason]);
 
   // Default teams if none in database
   const defaultTeams = [
@@ -83,7 +85,7 @@ const Teams = () => {
     { name: 'Rajasthan Royals', city: 'Jaipur', founded: 2008, stadium: 'Sawai Mansingh Stadium' }
   ];
 
-  const displayTeams = teams.length > 0 ? teams : (publishedSeason === '1' ? defaultTeams : []);
+  const displayTeams = teams.length > 0 ? teams : (selectedSeason === '1' ? defaultTeams : []);
 
   if (loading) {
     return (
@@ -102,6 +104,39 @@ const Teams = () => {
         <div className="text-center mb-8 sm:mb-12">
           <h1 className="responsive-heading font-bold text-gray-900 mb-3 sm:mb-4">Khajjidoni Premier League Teams</h1>
           <p className="responsive-text text-gray-600">Meet the teams competing in the Khajjidoni Premier League</p>
+          
+          {/* Season Selector */}
+          <div className="mt-6 flex justify-center">
+            <div className="relative">
+              <button
+                onClick={() => setShowSeasonDropdown(!showSeasonDropdown)}
+                className="bg-gradient-to-r from-cricket-navy to-cricket-orange text-white rounded-lg px-6 py-3 font-medium flex items-center space-x-2 hover:shadow-lg transition-all duration-200"
+              >
+                <span>Season {selectedSeason}</span>
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showSeasonDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {showSeasonDropdown && (
+                <div className="absolute top-full mt-2 left-0 bg-white rounded-lg shadow-xl border border-gray-200 min-w-[120px] z-50">
+                  {['1', '2'].map((season) => (
+                    <button
+                      key={season}
+                      onClick={() => {
+                        setSelectedSeason(season);
+                        setShowSeasonDropdown(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors duration-200 first:rounded-t-lg last:rounded-b-lg ${
+                        selectedSeason === season ? 'bg-cricket-orange text-white' : 'text-gray-700'
+                      }`}
+                    >
+                      Season {season}
+                      {season === currentSeason && <span className="text-xs ml-2 opacity-75">(Current)</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">

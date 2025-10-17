@@ -1,18 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Trophy, Calendar, Users, TrendingUp, Clock, MapPin } from 'lucide-react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase/firebase';
 import cricHeroesService from '../services/cricHeroesService';
 import { formatMatchDate } from '../utils/dateUtils';
+
+// Helper function to generate initials from full name
+const getPlayerInitials = (fullName) => {
+  if (!fullName) return '??';
+  const names = fullName.trim().split(' ');
+  if (names.length === 1) {
+    return names[0].charAt(0).toUpperCase();
+  }
+  return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+};
 
 const CricHeroesHome = () => {
   const [recentMatches, setRecentMatches] = useState([]);
   const [upcomingMatches, setUpcomingMatches] = useState([]);
   const [topPerformers, setTopPerformers] = useState({ batsmen: [], bowlers: [] });
+  const [playerRegistrations, setPlayerRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchHomeData();
+    fetchPlayerRegistrations();
   }, []);
+
+  const fetchPlayerRegistrations = async () => {
+    try {
+      const playersSnapshot = await getDocs(collection(db, 'playerRegistrations'));
+      const playersData = playersSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setPlayerRegistrations(playersData);
+    } catch (error) {
+      console.error('Error fetching player registrations:', error);
+    }
+  };
+
+  // Helper function to get player photo by name
+  const getPlayerPhoto = (playerName) => {
+    const player = playerRegistrations.find(p => 
+      p.fullName?.toLowerCase() === playerName?.toLowerCase()
+    );
+    return player?.photoBase64 || null;
+  };
 
   const fetchHomeData = async () => {
     try {
@@ -36,9 +71,9 @@ const CricHeroesHome = () => {
   };
 
   const quickLinks = [
-    { name: 'Matches', path: '/cricheroes/matches', icon: Calendar, color: 'bg-blue-500' },
-    { name: 'Leaderboard', path: '/cricheroes/leaderboard', icon: Trophy, color: 'bg-yellow-500' },
-    { name: 'Points Table', path: '/cricheroes/points-table', icon: TrendingUp, color: 'bg-green-500' },
+    { name: 'Matches', path: '/stats', icon: Calendar, color: 'bg-blue-500' },
+    { name: 'Leaderboard', path: '/stats', icon: Trophy, color: 'bg-yellow-500' },
+    { name: 'Points Table', path: '/stats', icon: TrendingUp, color: 'bg-green-500' },
     { name: 'Stats', path: '/stats', icon: Users, color: 'bg-purple-500' }
   ];
 
@@ -83,7 +118,7 @@ const CricHeroesHome = () => {
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-gray-900">Recent Matches</h2>
-                  <Link to="/cricheroes/matches" className="text-cricket-orange hover:underline">
+                  <Link to="/stats" className="text-cricket-orange hover:underline">
                     View All
                   </Link>
                 </div>
@@ -130,7 +165,7 @@ const CricHeroesHome = () => {
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-gray-900">Upcoming Matches</h2>
-                  <Link to="/cricheroes/matches" className="text-cricket-orange hover:underline">
+                  <Link to="/stats" className="text-cricket-orange hover:underline">
                     View All
                   </Link>
                 </div>
@@ -181,24 +216,36 @@ const CricHeroesHome = () => {
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-gray-900">Top Batsmen</h2>
-                  <Link to="/cricheroes/leaderboard" className="text-cricket-orange hover:underline">
+                  <Link to="/stats" className="text-cricket-orange hover:underline">
                     View All
                   </Link>
                 </div>
                 <div className="space-y-3">
                   {topPerformers.batsmen.length > 0 ? (
-                    topPerformers.batsmen.map((player, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium">{player.playerName}</p>
-                          <p className="text-sm text-gray-600">Team</p>
+                    topPerformers.batsmen.map((player, index) => {
+                      const playerPhoto = getPlayerPhoto(player.playerName);
+                      return (
+                        <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                          <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-full p-0.5 flex-shrink-0 shadow-md">
+                            {playerPhoto ? (
+                              <img src={playerPhoto} alt={player.playerName} className="w-full h-full object-cover rounded-full border-2 border-white" />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-white">
+                                {getPlayerInitials(player.playerName)}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium">{player.playerName}</p>
+                            <p className="text-sm text-gray-600">Team</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-cricket-orange">{player.runs} runs</p>
+                            <p className="text-xs text-gray-500">Avg: {player.average} | SR: {player.strikeRate}</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-bold text-cricket-orange">{player.runs} runs</p>
-                          <p className="text-xs text-gray-500">Avg: {player.average} | SR: {player.strikeRate}</p>
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="text-center py-8 text-gray-500">
                       <Trophy className="w-12 h-12 mx-auto mb-4 text-gray-300" />
@@ -212,24 +259,36 @@ const CricHeroesHome = () => {
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-gray-900">Top Bowlers</h2>
-                  <Link to="/cricheroes/leaderboard" className="text-cricket-orange hover:underline">
+                  <Link to="/stats" className="text-cricket-orange hover:underline">
                     View All
                   </Link>
                 </div>
                 <div className="space-y-3">
                   {topPerformers.bowlers.length > 0 ? (
-                    topPerformers.bowlers.map((player, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium">{player.playerName}</p>
-                          <p className="text-sm text-gray-600">Team</p>
+                    topPerformers.bowlers.map((player, index) => {
+                      const playerPhoto = getPlayerPhoto(player.playerName);
+                      return (
+                        <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                          <div className="w-12 h-12 bg-gradient-to-br from-red-400 to-red-600 rounded-full p-0.5 flex-shrink-0 shadow-md">
+                            {playerPhoto ? (
+                              <img src={playerPhoto} alt={player.playerName} className="w-full h-full object-cover rounded-full border-2 border-white" />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-white">
+                                {getPlayerInitials(player.playerName)}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium">{player.playerName}</p>
+                            <p className="text-sm text-gray-600">Team</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-cricket-navy">{player.wickets} wickets</p>
+                            <p className="text-xs text-gray-500">Avg: {player.average} | Eco: {player.economy}</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-bold text-cricket-navy">{player.wickets} wickets</p>
-                          <p className="text-xs text-gray-500">Avg: {player.average} | Eco: {player.economy}</p>
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="text-center py-8 text-gray-500">
                       <Trophy className="w-12 h-12 mx-auto mb-4 text-gray-300" />
