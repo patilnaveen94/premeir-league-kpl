@@ -8,6 +8,7 @@ import { getMatchWinMessage } from '../utils/matchUtils';
 import { useTournamentData } from '../hooks/useTournamentData';
 import wallOfFameService from '../services/wallOfFameService';
 import { normalizePlayerName, findPlayerByName } from '../utils/playerUtils';
+import AnimatedCounter from '../components/AnimatedCounter';
 
 const Home = () => {
   const [upcomingMatches, setUpcomingMatches] = useState([]);
@@ -273,22 +274,22 @@ const Home = () => {
           <div className="responsive-grid mb-8 sm:mb-12">
             <div className="mobile-stat-card bg-gradient-to-br from-blue-50 to-blue-100 text-center stagger-item hover-lift">
               <Users className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-blue-600 mx-auto mb-2 sm:mb-3 transition-transform duration-300 hover:scale-110" />
-              <h3 className="mobile-stat-value text-blue-900">{loading ? '...' : teams.length}</h3>
+              <h3 className="mobile-stat-value text-blue-900">{loading ? '...' : <AnimatedCounter end={teams.length} />}</h3>
               <p className="mobile-stat-label text-blue-700">Teams</p>
             </div>
             <div className="mobile-stat-card bg-gradient-to-br from-blue-50 to-blue-100 text-center stagger-item hover-lift">
               <Calendar className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-blue-600 mx-auto mb-2 sm:mb-3 transition-transform duration-300 hover:scale-110" />
-              <h3 className="mobile-stat-value text-blue-900">{loading ? '...' : totalMatches}</h3>
+              <h3 className="mobile-stat-value text-blue-900">{loading ? '...' : <AnimatedCounter end={totalMatches} />}</h3>
               <p className="mobile-stat-label text-blue-700">Matches</p>
             </div>
             <div className="mobile-stat-card bg-gradient-to-br from-orange-50 to-orange-100 text-center stagger-item hover-lift">
               <Target className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-orange-600 mx-auto mb-2 sm:mb-3 transition-transform duration-300 hover:scale-110" />
-              <h3 className="mobile-stat-value text-orange-900">{loading || tournamentLoading ? '...' : playerStats.filter(p => p.matches > 0).length}</h3>
+              <h3 className="mobile-stat-value text-orange-900">{loading || tournamentLoading ? '...' : <AnimatedCounter end={playerStats.filter(p => p.matches > 0).length} />}</h3>
               <p className="mobile-stat-label text-orange-700">Active Players</p>
             </div>
             <div className="mobile-stat-card bg-gradient-to-br from-purple-50 to-purple-100 text-center stagger-item hover-lift">
               <Trophy className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-purple-600 mx-auto mb-2 sm:mb-3 transition-transform duration-300 hover:scale-110" />
-              <h3 className="mobile-stat-value text-purple-900">{loading || tournamentLoading ? '...' : playerStats.reduce((sum, p) => sum + (p.runs || 0), 0)}</h3>
+              <h3 className="mobile-stat-value text-purple-900">{loading || tournamentLoading ? '...' : <AnimatedCounter end={playerStats.reduce((sum, p) => sum + (p.runs || 0), 0)} />}</h3>
               <p className="mobile-stat-label text-purple-700">Total Runs</p>
             </div>
           </div>
