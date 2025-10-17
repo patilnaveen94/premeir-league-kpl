@@ -38,7 +38,7 @@ const Navbar = () => {
 
   return (
     <>
-      <nav className="bg-white shadow-md sticky top-0 z-50 border-b border-gray-100">
+      <nav className="bg-white shadow-md fixed top-0 left-0 right-0 z-50 border-b border-gray-100">
         <div className="responsive-container">
           <div className="flex justify-between h-14 sm:h-16">
             <div className="flex items-center">
@@ -59,9 +59,9 @@ const Navbar = () => {
                 <Link
                   key={link.name}
                   to={link.path}
-                  className={`mobile-transition text-gray-700 hover:text-cricket-green font-medium py-2 px-2 xl:px-3 border-b-2 text-sm xl:text-base transform transition-all duration-300 hover:scale-105 hover:-translate-y-0.5 ${
+                  className={`mobile-transition text-gray-700 hover:text-blue-600 font-medium py-2 px-2 xl:px-3 border-b-2 text-sm xl:text-base transform transition-all duration-300 hover:scale-105 hover:-translate-y-0.5 ${
                     location.pathname === link.path 
-                      ? 'border-cricket-green text-cricket-green' 
+                      ? 'border-blue-600 text-blue-600' 
                       : 'border-transparent'
                   }`}
                   onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -74,9 +74,9 @@ const Navbar = () => {
                 <>
                   <Link 
                     to="/admin" 
-                    className={`mobile-transition text-gray-700 hover:text-cricket-green font-medium py-2 px-2 xl:px-3 border-b-2 text-sm xl:text-base transform transition-all duration-300 hover:scale-105 hover:-translate-y-0.5 ${
+                    className={`mobile-transition text-gray-700 hover:text-blue-600 font-medium py-2 px-2 xl:px-3 border-b-2 text-sm xl:text-base transform transition-all duration-300 hover:scale-105 hover:-translate-y-0.5 ${
                       location.pathname === '/admin' 
-                        ? 'border-cricket-green text-cricket-green' 
+                        ? 'border-blue-600 text-blue-600' 
                         : 'border-transparent'
                     }`}
                     onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -85,7 +85,7 @@ const Navbar = () => {
                   </Link>
                   <button
                     onClick={adminLogout}
-                    className="touch-target text-gray-700 hover:text-cricket-green mobile-transition transform transition-all duration-300 hover:scale-110 hover:rotate-12"
+                    className="touch-target text-gray-700 hover:text-blue-600 mobile-transition transform transition-all duration-300 hover:scale-110 hover:rotate-12"
                   >
                     <LogOut size={18} />
                   </button>
@@ -93,7 +93,7 @@ const Navbar = () => {
               ) : (
                 <button
                   onClick={handleAdminClick}
-                  className="mobile-transition text-gray-700 hover:text-cricket-green font-medium py-2 px-2 xl:px-3 text-sm xl:text-base transform transition-all duration-300 hover:scale-105 hover:-translate-y-0.5"
+                  className="mobile-transition text-gray-700 hover:text-blue-600 font-medium py-2 px-2 xl:px-3 text-sm xl:text-base transform transition-all duration-300 hover:scale-105 hover:-translate-y-0.5"
                 >
                   Admin
                 </button>
@@ -106,8 +106,8 @@ const Navbar = () => {
                 <Link
                   key={link.name}
                   to={link.path}
-                  className={`mobile-transition text-gray-700 hover:text-cricket-green font-medium py-2 px-2 text-xs ${
-                    location.pathname === link.path ? 'text-cricket-green' : ''
+                  className={`mobile-transition text-gray-700 hover:text-blue-600 font-medium py-2 px-2 text-xs ${
+                    location.pathname === link.path ? 'text-blue-600' : ''
                   }`}
                   onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                 >
@@ -116,7 +116,7 @@ const Navbar = () => {
               ))}
               <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="touch-target text-gray-700 hover:text-cricket-green mobile-transition transform transition-all duration-300 hover:scale-110"
+                className="touch-target text-gray-700 hover:text-blue-600 mobile-transition transform transition-all duration-300 hover:scale-110"
               >
                 <Menu size={18} className="transition-transform duration-300 hover:rotate-90" />
               </button>
@@ -126,7 +126,7 @@ const Navbar = () => {
             <div className="md:hidden flex items-center">
               <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="touch-target text-gray-700 hover:text-cricket-green mobile-transition transform transition-all duration-300 hover:scale-110"
+                className="touch-target text-gray-700 hover:text-blue-600 mobile-transition transform transition-all duration-300 hover:scale-110"
                 aria-label="Toggle menu"
               >
                 {isOpen ? 

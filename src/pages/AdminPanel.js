@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, query, where, setDoc } from 'firebase/firestore';
 import { Users, Calendar, Trophy, FileText, CheckCircle, XCircle, Plus, Upload, Image, Edit, Trash2, UserPlus, CreditCard, User, Lock, GripVertical, ArrowUp, ArrowDown, Activity, Target } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import { db } from '../firebase/firebase';
@@ -103,6 +103,43 @@ const AdminPanel = () => {
     registrationOpen: '1'
   });
   const [fixingDuplicates, setFixingDuplicates] = useState(false);
+
+  // Fix duplicate stats function
+  const handleFixDuplicateStats = async () => {
+    if (!window.confirm('⚠️ Fix duplicate player stats?\n\nThis will:\n• Clear all existing player statistics\n• Recalculate stats from all completed matches\n• Fix any duplicate data issues\n• Show detailed match count per player\n\nThis action cannot be undone. Continue?')) {
+      return;
+    }
+    
+    setFixingDuplicates(true);
+    try {
+      console.log('🔧 Starting duplicate stats fix...');
+      
+      // Use the simple stats service that properly tracks unique matches
+      const simpleStatsOnly = await import('../services/simpleStatsOnly');
+      const result = await simpleStatsOnly.default.fixDuplicateStats();
+      
+      if (result.success) {
+        // Recalculate points table
+        console.log('🏆 Recalculating points table...');
+        const simplePoints = await import('../services/simplePointsService');
+        await simplePoints.default.recalculatePointsTable();
+        
+        console.log('📊 Player match counts:', result.playerMatchCounts);
+        alert(`🎉 SUCCESS!\n\nFixed duplicate stats for ${result.playersProcessed} players from ${result.matchesProcessed} matches.\n\nCheck console for detailed match counts per player.\n\nPage will refresh to show updated data.`);
+        
+        // Refresh the page to show updated data
+        window.location.reload();
+      } else {
+        throw new Error(result.error);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error fixing duplicate stats:', error);
+      alert('❌ Error fixing duplicate stats: ' + error.message);
+    } finally {
+      setFixingDuplicates(false);
+    }
+  };
   
   const isSuperUser = currentAdmin?.role === 'superuser';
 
@@ -661,12 +698,21 @@ const AdminPanel = () => {
       await updateDoc(doc(db, 'matches', scoreEntryMatch.id), updateData);
       console.log('✅ JSON data saved to Firebase successfully');
       
-      // Use simple services for immediate processing
-      const simpleStats = await import('../services/simpleStatsService');
+      // Clear any existing processed match record to prevent duplicates
+      const processedMatchRef = doc(db, 'processedMatches', scoreEntryMatch.id);
+      try {
+        await deleteDoc(processedMatchRef);
+        console.log('🗑️ Cleared processed match record to prevent duplicates');
+      } catch (error) {
+        console.log('⚠️ No processed match record to clear (this is normal)');
+      }
+      
+      // Use the simple stats service that properly handles duplicates
+      const simpleStatsOnly = await import('../services/simpleStatsOnly');
       const simplePoints = await import('../services/simplePointsService');
       
-      // Recalculate all stats from scratch
-      await simpleStats.default.recalculateAllStats();
+      // Fix any duplicate stats and recalculate properly
+      await simpleStatsOnly.default.fixDuplicateStats();
       await simplePoints.default.recalculatePointsTable();
       
       // Refresh local data
@@ -2481,11 +2527,11 @@ This action cannot be undone. Are you absolutely sure?`;
                                       <img src={player.photoBase64} alt={player['Full Name']} className="w-10 h-10 object-cover rounded-full border-2 border-gray-200" />
                                     ) : (
                                       <div className="w-10 h-10 bg-cricket-navy rounded-full flex items-center justify-center text-white font-bold text-sm">
-                                        {getPlayerInitials(player['Full Name'] || player.fullName)}
+                                        {getPlayerInitials(player.fullName || player['Full Name'])}
                                       </div>
                                     )}
                                     <div className="flex-1">
-                                      <p className="font-semibold text-sm text-gray-900">{player['Full Name'] || 'Unknown Player'}</p>
+                                      <p className="font-semibold text-sm text-gray-900">{player.fullName || player['Full Name'] || 'Unknown Player'}</p>
                                       <p className="text-xs text-gray-600">{player.position || 'No Position'} • {player.email || 'No Email'}</p>
                                       <p className="text-xs text-gray-500">Phone: {player.phone || 'No Phone'}</p>
                                     </div>
@@ -3541,6 +3587,16 @@ This action cannot be undone. Are you absolutely sure?`;
                   <h2 className="text-xl font-semibold text-gray-900">Matches & Detailed Scoring</h2>
                   <div className="flex space-x-2">
                     <button
+                      onClick={handleFixDuplicateStats}
+                      disabled={fixingDuplicates}
+                      className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
+                    >
+                      {fixingDuplicates && (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      )}
+                      <span>{fixingDuplicates ? 'Fixing Duplicates...' : 'Fix Duplicate Stats'}</span>
+                    </button>
+                    <button
                       onClick={async () => {
                         if (window.confirm('Recalculate all stats? This will clear and rebuild all player stats and points table.')) {
                           setUploading(true);
@@ -3625,7 +3681,7 @@ This action cannot be undone. Are you absolutely sure?`;
                           const player = playerRegistrations.find(p => p.id === playerId);
                           return player ? {
                             id: playerId,
-                            name: player['Full Name'] || player.fullName,
+                            name: player.fullName || player['Full Name'] || 'Unknown Player',
                             position: player.position,
                             bowlingQuota: player.position === 'Bowler' || player.position === 'All-rounder' ? 4 : 0
                           } : null;
@@ -3635,7 +3691,7 @@ This action cannot be undone. Are you absolutely sure?`;
                           const player = playerRegistrations.find(p => p.id === playerId);
                           return player ? {
                             id: playerId,
-                            name: player['Full Name'] || player.fullName,
+                            name: player.fullName || player['Full Name'] || 'Unknown Player',
                             position: player.position,
                             bowlingQuota: player.position === 'Bowler' || player.position === 'All-rounder' ? 4 : 0
                           } : null;

@@ -6,6 +6,8 @@ import { db } from '../firebase/firebase';
 import { formatMatchDate } from '../utils/dateUtils';
 import { getMatchWinMessage } from '../utils/matchUtils';
 import { useTournamentData } from '../hooks/useTournamentData';
+import wallOfFameService from '../services/wallOfFameService';
+import { normalizePlayerName, findPlayerByName } from '../utils/playerUtils';
 
 const Home = () => {
   const [upcomingMatches, setUpcomingMatches] = useState([]);
@@ -20,12 +22,18 @@ const Home = () => {
   
   // Use centralized tournament data hook for consistent data
   const { topPerformers, standings, playerStats, loading: tournamentLoading } = useTournamentData();
+  
+  // Wall of Fame data
+  const [wallOfFame, setWallOfFame] = useState({
+    topBatsmen: [],
+    topBowlers: [],
+    bestAllRounder: null,
+    loading: true
+  });
 
   // Helper function to get player photo by name
   const getPlayerPhoto = (playerName) => {
-    const player = playerRegistrations.find(p => 
-      p.fullName?.toLowerCase() === playerName?.toLowerCase()
-    );
+    const player = findPlayerByName(playerRegistrations, playerName, 'fullName');
     return player?.photoBase64 || null;
   };
 
@@ -50,8 +58,30 @@ const Home = () => {
     if (!tournamentLoading && topPerformers && standings) {
       // Refresh basic data when tournament data changes
       fetchHomeData();
+      fetchWallOfFame();
     }
   }, [topPerformers, standings, tournamentLoading]);
+  
+  // Fetch Wall of Fame data
+  const fetchWallOfFame = async () => {
+    try {
+      setWallOfFame(prev => ({ ...prev, loading: true }));
+      const wallOfFameData = await wallOfFameService.getWallOfFameData();
+      console.log('🏆 Wall of Fame Data:', wallOfFameData);
+      setWallOfFame({
+        ...wallOfFameData,
+        loading: false
+      });
+    } catch (error) {
+      console.error('Error fetching Wall of Fame data:', error);
+      setWallOfFame(prev => ({ ...prev, loading: false }));
+    }
+  };
+  
+  // Initial Wall of Fame fetch
+  useEffect(() => {
+    fetchWallOfFame();
+  }, []);
 
   const fetchHomeData = async () => {
     try {
@@ -219,7 +249,7 @@ const Home = () => {
               The Ultimate Cricket Experience
             </p>
             <div className="responsive-flex justify-center max-w-md mx-auto animate-fade-in-up animation-delay-300">
-              <Link to="/teams" className="mobile-button bg-cricket-green text-white hover:bg-cricket-green/90 shadow-lg mobile-hover w-full sm:w-auto text-center btn-animate">
+              <Link to="/teams" className="mobile-button bg-blue-600 text-white hover:bg-blue-700 shadow-lg mobile-hover w-full sm:w-auto text-center btn-animate">
                 Explore Teams
               </Link>
               <Link to="/stats" className="mobile-button bg-white text-cricket-navy hover:bg-gray-100 shadow-lg mobile-hover w-full sm:w-auto text-center btn-animate">
@@ -246,10 +276,10 @@ const Home = () => {
               <h3 className="mobile-stat-value text-blue-900">{loading ? '...' : teams.length}</h3>
               <p className="mobile-stat-label text-blue-700">Teams</p>
             </div>
-            <div className="mobile-stat-card bg-gradient-to-br from-green-50 to-green-100 text-center stagger-item hover-lift">
-              <Calendar className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-green-600 mx-auto mb-2 sm:mb-3 transition-transform duration-300 hover:scale-110" />
-              <h3 className="mobile-stat-value text-green-900">{loading ? '...' : totalMatches}</h3>
-              <p className="mobile-stat-label text-green-700">Matches</p>
+            <div className="mobile-stat-card bg-gradient-to-br from-blue-50 to-blue-100 text-center stagger-item hover-lift">
+              <Calendar className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-blue-600 mx-auto mb-2 sm:mb-3 transition-transform duration-300 hover:scale-110" />
+              <h3 className="mobile-stat-value text-blue-900">{loading ? '...' : totalMatches}</h3>
+              <p className="mobile-stat-label text-blue-700">Matches</p>
             </div>
             <div className="mobile-stat-card bg-gradient-to-br from-orange-50 to-orange-100 text-center stagger-item hover-lift">
               <Target className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-orange-600 mx-auto mb-2 sm:mb-3 transition-transform duration-300 hover:scale-110" />
@@ -280,6 +310,378 @@ const Home = () => {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+      
+      {/* Wall of Fame Section */}
+      <section className="py-12 sm:py-16 bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-100 relative overflow-hidden">
+        {/* Celebration Animation Background */}
+        <div className="absolute inset-0 pointer-events-none">
+          {/* Confetti particles */}
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 bg-yellow-400 rounded-full animate-bounce"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 3}s`,
+                animationDuration: `${2 + Math.random() * 2}s`
+              }}
+            />
+          ))}
+          {/* Party streamers */}
+          {[...Array(10)].map((_, i) => (
+            <div
+              key={`streamer-${i}`}
+              className="absolute w-1 h-8 bg-gradient-to-b from-pink-400 to-purple-400 rounded-full opacity-60"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                transform: `rotate(${Math.random() * 360}deg)`,
+                animation: `float ${3 + Math.random() * 2}s ease-in-out infinite`
+              }}
+            />
+          ))}
+          {/* Sparkles */}
+          {[...Array(15)].map((_, i) => (
+            <div
+              key={`sparkle-${i}`}
+              className="absolute text-yellow-500 text-xl animate-pulse"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 2}s`
+              }}
+            >
+              ✨
+            </div>
+          ))}
+          {/* Party Poppers */}
+          {[...Array(8)].map((_, i) => (
+            <div
+              key={`popper-${i}`}
+              className="absolute text-2xl"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animation: `popperBurst ${2 + Math.random()}s ease-out infinite`,
+                animationDelay: `${Math.random() * 3}s`
+              }}
+            >
+              🎉
+            </div>
+          ))}
+          {/* Confetti Burst */}
+          {[...Array(25)].map((_, i) => (
+            <div
+              key={`confetti-${i}`}
+              className={`absolute w-1 h-3 animate-bounce opacity-80`}
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                backgroundColor: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#f0932b', '#eb4d4b', '#6c5ce7'][Math.floor(Math.random() * 7)],
+                animationDelay: `${Math.random() * 2}s`,
+                animationDuration: `${1 + Math.random() * 2}s`,
+                transform: `rotate(${Math.random() * 360}deg)`
+              }}
+            />
+          ))}
+          {/* Balloons */}
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={`balloon-${i}`}
+              className="absolute text-3xl"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animation: `balloonFloat ${4 + Math.random() * 2}s ease-in-out infinite`
+              }}
+            >
+              🎈
+            </div>
+          ))}
+          {/* Fireworks */}
+          {[...Array(5)].map((_, i) => (
+            <div
+              key={`firework-${i}`}
+              className="absolute text-2xl animate-ping"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 3}s`
+              }}
+            >
+              🎆
+            </div>
+          ))}
+          {/* Stars */}
+          {[...Array(12)].map((_, i) => (
+            <div
+              key={`star-${i}`}
+              className="absolute text-yellow-400 text-lg animate-spin"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDuration: `${3 + Math.random() * 2}s`,
+                animationDelay: `${Math.random() * 2}s`
+              }}
+            >
+              ⭐
+            </div>
+          ))}
+          {/* Google Doodle Style Elements */}
+          {[...Array(15)].map((_, i) => (
+            <div
+              key={`doodle-${i}`}
+              className="absolute text-4xl"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animation: `doodleWave ${3 + Math.random() * 2}s ease-in-out infinite`,
+                animationDelay: `${Math.random() * 2}s`
+              }}
+            >
+              {['🎪', '🎭', '🎨', '🎯', '🎲', '🎸', '🎺', '🎻'][Math.floor(Math.random() * 8)]}
+            </div>
+          ))}
+          {/* Bouncing Letters */}
+          {['C', 'R', 'I', 'C', 'K', 'E', 'T'].map((letter, i) => (
+            <div
+              key={`letter-${i}`}
+              className="absolute text-6xl font-bold text-yellow-500 opacity-20"
+              style={{
+                left: `${10 + i * 12}%`,
+                top: `${20 + Math.sin(i) * 30}%`,
+                animation: `doodleBounce ${2 + i * 0.2}s ease-in-out infinite`,
+                animationDelay: `${i * 0.1}s`
+              }}
+            >
+              {letter}
+            </div>
+          ))}
+          {/* Floating Shapes */}
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={`shape-${i}`}
+              className="absolute opacity-30"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animation: `doodleFloat ${4 + Math.random() * 3}s ease-in-out infinite`,
+                animationDelay: `${Math.random() * 3}s`
+              }}
+            >
+              <div className={`w-3 h-3 ${
+                ['bg-red-400', 'bg-blue-400', 'bg-green-400', 'bg-yellow-400', 'bg-purple-400', 'bg-pink-400'][Math.floor(Math.random() * 6)]
+              } ${
+                ['rounded-full', 'rounded-lg', ''][Math.floor(Math.random() * 3)]
+              }`}></div>
+            </div>
+          ))}
+        </div>
+        
+        <style jsx>{`
+          @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+          }
+          @keyframes balloonFloat {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-30px) scale(1.1); }
+          }
+          @keyframes popperBurst {
+            0% { transform: scale(0) rotate(0deg); opacity: 0; }
+            20% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+            100% { transform: scale(0.8) rotate(360deg); opacity: 0.7; }
+          }
+          @keyframes doodleWave {
+            0%, 100% { transform: translateY(0px) scaleY(1); }
+            50% { transform: translateY(-15px) scaleY(1.2); }
+          }
+          @keyframes doodleBounce {
+            0%, 100% { transform: translateX(0px) rotate(0deg); }
+            25% { transform: translateX(-10px) rotate(-5deg); }
+            75% { transform: translateX(10px) rotate(5deg); }
+          }
+          @keyframes doodleFloat {
+            0%, 100% { transform: translateY(0px) scale(1) rotate(0deg); }
+            33% { transform: translateY(-20px) scale(1.1) rotate(120deg); }
+            66% { transform: translateY(10px) scale(0.9) rotate(240deg); }
+          }
+        `}</style>
+        <div className="responsive-container relative z-10">
+          <div className="text-center mb-8 sm:mb-12 animate-fade-in-up">
+            <div className="flex items-center justify-center mb-4">
+              <Trophy className="w-8 h-8 sm:w-10 sm:h-10 text-yellow-600 mr-3" />
+              <h2 className="responsive-heading font-bold text-gray-900">Wall of Fame</h2>
+              <Trophy className="w-8 h-8 sm:w-10 sm:h-10 text-yellow-600 ml-3" />
+            </div>
+            <p className="responsive-text text-gray-700 max-w-3xl mx-auto">
+              Celebrating our cricket legends and outstanding performers
+            </p>
+          </div>
+          
+          {wallOfFame.loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1,2,3,4,5,6,7].map(i => (
+                <div key={i} className="animate-pulse bg-white rounded-2xl h-48 shadow-lg"></div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-12">
+              {/* Best All-Rounder - Featured */}
+              {wallOfFame.bestAllRounder && (
+                <div className="text-center">
+                  <h3 className="text-xl sm:text-2xl font-bold text-purple-800 mb-6 flex items-center justify-center">
+                    <Star className="w-6 h-6 mr-2 text-purple-600" />
+                    Best All-Rounder
+                    <Star className="w-6 h-6 ml-2 text-purple-600" />
+                  </h3>
+                  <div className="max-w-md mx-auto">
+                    <div className="bg-gradient-to-br from-purple-500 via-indigo-600 to-purple-700 rounded-3xl p-8 text-white shadow-2xl transform hover:scale-105 transition-all duration-300 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-white bg-opacity-10 rounded-full -translate-y-16 translate-x-16"></div>
+                      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white bg-opacity-10 rounded-full translate-y-12 -translate-x-12"></div>
+                      
+                      <div className="relative z-10">
+                        <div className="mb-4">
+                          {getPlayerPhoto(wallOfFame.bestAllRounder.name) ? (
+                            <div className="w-24 h-24 mx-auto bg-white rounded-full p-1 shadow-xl">
+                              <img 
+                                src={getPlayerPhoto(wallOfFame.bestAllRounder.name)} 
+                                alt={wallOfFame.bestAllRounder.name} 
+                                className="w-full h-full object-cover rounded-full" 
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-24 h-24 mx-auto bg-white bg-opacity-20 rounded-full flex items-center justify-center text-white font-bold text-2xl border-4 border-white">
+                              {getPlayerInitials(wallOfFame.bestAllRounder.name)}
+                            </div>
+                          )}
+                        </div>
+                        <h4 className="text-2xl font-bold mb-2">{wallOfFame.bestAllRounder.name}</h4>
+                        <p className="text-purple-100 mb-4 font-medium">Complete Player</p>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-white bg-opacity-20 rounded-xl p-3">
+                            <div className="text-2xl font-bold">{wallOfFame.bestAllRounder.totalRuns}</div>
+                            <div className="text-sm text-purple-100">Runs</div>
+                          </div>
+                          <div className="bg-white bg-opacity-20 rounded-xl p-3">
+                            <div className="text-2xl font-bold">{wallOfFame.bestAllRounder.totalWickets}</div>
+                            <div className="text-sm text-purple-100">Wickets</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Top Batsmen */}
+              {wallOfFame.topBatsmen.length > 0 && (
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-blue-800 mb-6 text-center flex items-center justify-center">
+                    <Trophy className="w-6 h-6 mr-2 text-blue-600" />
+                    Top Batsmen
+                    <Trophy className="w-6 h-6 ml-2 text-blue-600" />
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {wallOfFame.topBatsmen.map((player, index) => (
+                      <div key={player.name} className="bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-300 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-20 h-20 bg-white bg-opacity-10 rounded-full -translate-y-10 translate-x-10"></div>
+                        
+                        <div className="relative z-10 text-center">
+                          <div className="mb-4">
+                            {getPlayerPhoto(player.name) ? (
+                              <div className="w-20 h-20 mx-auto bg-white rounded-full p-1 shadow-lg">
+                                <img 
+                                  src={getPlayerPhoto(player.name)} 
+                                  alt={player.name} 
+                                  className="w-full h-full object-cover rounded-full" 
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-20 h-20 mx-auto bg-white bg-opacity-20 rounded-full flex items-center justify-center text-white font-bold text-xl border-3 border-white">
+                                {getPlayerInitials(player.name)}
+                              </div>
+                            )}
+                          </div>
+                          <h4 className="text-lg font-bold mb-1">{player.name}</h4>
+                          <p className="text-blue-100 text-sm mb-3">Batsman</p>
+                          <div className="bg-white bg-opacity-20 rounded-lg p-3">
+                            <div className="text-2xl font-bold">{player.totalRuns}</div>
+                            <div className="text-sm text-blue-100">Career Runs</div>
+                          </div>
+                          <div className="mt-2 text-xs text-blue-100">
+                            Avg: {player.battingAverage} | Matches: {player.totalMatches}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Top Bowlers */}
+              {wallOfFame.topBowlers.length > 0 && (
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-red-800 mb-6 text-center flex items-center justify-center">
+                    <Target className="w-6 h-6 mr-2 text-red-600" />
+                    Top Bowlers
+                    <Target className="w-6 h-6 ml-2 text-red-600" />
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {wallOfFame.topBowlers.map((player, index) => (
+                      <div key={player.name} className="bg-gradient-to-br from-red-400 via-rose-500 to-red-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-300 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-20 h-20 bg-white bg-opacity-10 rounded-full -translate-y-10 translate-x-10"></div>
+                        
+                        <div className="relative z-10 text-center">
+                          <div className="mb-4">
+                            {getPlayerPhoto(player.name) ? (
+                              <div className="w-20 h-20 mx-auto bg-white rounded-full p-1 shadow-lg">
+                                <img 
+                                  src={getPlayerPhoto(player.name)} 
+                                  alt={player.name} 
+                                  className="w-full h-full object-cover rounded-full" 
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-20 h-20 mx-auto bg-white bg-opacity-20 rounded-full flex items-center justify-center text-white font-bold text-xl border-3 border-white">
+                                {getPlayerInitials(player.name)}
+                              </div>
+                            )}
+                          </div>
+                          <h4 className="text-lg font-bold mb-1">{player.name}</h4>
+                          <p className="text-red-100 text-sm mb-3">Bowler</p>
+                          <div className="bg-white bg-opacity-20 rounded-lg p-3">
+                            <div className="text-2xl font-bold">{player.totalWickets}</div>
+                            <div className="text-sm text-red-100">Career Wickets</div>
+                          </div>
+                          <div className="mt-2 text-xs text-red-100">
+                            Econ: {player.economy || '0.00'} | Matches: {player.totalMatches}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Empty State */}
+              {wallOfFame.topBatsmen.length === 0 && wallOfFame.topBowlers.length === 0 && !wallOfFame.bestAllRounder && (
+                <div className="text-center py-16">
+                  <div className="bg-white rounded-full w-32 h-32 flex items-center justify-center mx-auto mb-6 shadow-xl">
+                    <Trophy className="w-16 h-16 text-yellow-500" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-800 mb-3">Wall of Fame Awaits</h3>
+                  <p className="text-gray-600 text-lg mb-6">Play matches to earn your place among the legends!</p>
+                  <Link to="/stats" className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-8 py-3 rounded-xl font-bold hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                    View Current Stats
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
       
@@ -343,12 +745,12 @@ const Home = () => {
               )}
             </div>
             
-            {/* Top Performers */}
+            {/* Quick Stats */}
             <div className="card card-entrance hover-lift animation-delay-200">
               <div className="responsive-flex justify-between mb-4 sm:mb-6">
-                <h3 className="responsive-subheading font-bold text-gray-900">Top Performers</h3>
+                <h3 className="responsive-subheading font-bold text-gray-900">Quick Stats</h3>
                 <Link to="/stats" className="text-cricket-blue hover:text-cricket-navy responsive-small font-medium mobile-hidden transition-colors duration-300 hover:scale-105">
-                  View Stats →
+                  View All →
                 </Link>
               </div>
               {loading || tournamentLoading ? (
@@ -359,76 +761,6 @@ const Home = () => {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {/* Top Run Scorer */}
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl p-4 border border-green-200 hover-lift transition-all duration-300">
-                    <div className="flex items-center mb-3">
-                      <Trophy className="w-5 h-5 text-green-600 mr-2 transition-transform duration-300 hover:rotate-12" />
-                      <h4 className="text-sm font-bold text-green-800">Top Run Scorer</h4>
-                    </div>
-                    {topPerformers?.topRunScorers?.[0] ? (
-                      <div className="flex items-center space-x-3">
-                        {getPlayerPhoto(topPerformers.topRunScorers[0].name) ? (
-                          <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-green-700 rounded-full p-0.5 flex-shrink-0">
-                            <img 
-                              src={getPlayerPhoto(topPerformers.topRunScorers[0].name)} 
-                              alt={topPerformers.topRunScorers[0].name} 
-                              className="w-full h-full object-cover rounded-full" 
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                            {getPlayerInitials(topPerformers.topRunScorers[0].name)}
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <div className="font-semibold text-gray-900">{topPerformers.topRunScorers[0].name}</div>
-                          <div className="text-sm text-green-700">{topPerformers.topRunScorers[0].team}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xl font-bold text-green-700">{topPerformers.topRunScorers[0].runs}</div>
-                          <div className="text-xs text-green-600">runs</div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-green-700 text-sm">No data available</div>
-                    )}
-                  </div>
-                  
-                  {/* Top Wicket Taker */}
-                  <div className="bg-gradient-to-br from-red-50 to-rose-100 rounded-xl p-4 border border-red-200 hover-lift transition-all duration-300">
-                    <div className="flex items-center mb-3">
-                      <Target className="w-5 h-5 text-red-600 mr-2 transition-transform duration-300 hover:rotate-12" />
-                      <h4 className="text-sm font-bold text-red-800">Top Wicket Taker</h4>
-                    </div>
-                    {topPerformers?.topWicketTakers?.[0] ? (
-                      <div className="flex items-center space-x-3">
-                        {getPlayerPhoto(topPerformers.topWicketTakers[0].name) ? (
-                          <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-700 rounded-full p-0.5 flex-shrink-0">
-                            <img 
-                              src={getPlayerPhoto(topPerformers.topWicketTakers[0].name)} 
-                              alt={topPerformers.topWicketTakers[0].name} 
-                              className="w-full h-full object-cover rounded-full" 
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-700 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                            {getPlayerInitials(topPerformers.topWicketTakers[0].name)}
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <div className="font-semibold text-gray-900">{topPerformers.topWicketTakers[0].name}</div>
-                          <div className="text-sm text-red-700">{topPerformers.topWicketTakers[0].team}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xl font-bold text-red-700">{topPerformers.topWicketTakers[0].wickets}</div>
-                          <div className="text-xs text-red-600">wickets</div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-red-700 text-sm">No data available</div>
-                    )}
-                  </div>
-                  
                   {/* Current Leader */}
                   <div className="bg-gradient-to-br from-yellow-50 to-amber-100 rounded-xl p-4 border border-yellow-200 hover-lift transition-all duration-300">
                     <div className="flex items-center mb-3">
@@ -454,6 +786,28 @@ const Home = () => {
                     ) : (
                       <div className="text-yellow-700 text-sm">Tournament not started</div>
                     )}
+                  </div>
+                  
+                  {/* Tournament Progress */}
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl p-4 border border-blue-200">
+                    <div className="flex items-center mb-3">
+                      <Calendar className="w-5 h-5 text-blue-600 mr-2" />
+                      <h4 className="text-sm font-bold text-blue-800">Tournament Progress</h4>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-blue-700">Matches Played</span>
+                        <span className="font-bold text-blue-800">{recentMatches.length}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-blue-700">Active Players</span>
+                        <span className="font-bold text-blue-800">{playerStats.filter(p => p.matches > 0).length}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-blue-700">Total Runs</span>
+                        <span className="font-bold text-blue-800">{playerStats.reduce((sum, p) => sum + (p.runs || 0), 0)}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

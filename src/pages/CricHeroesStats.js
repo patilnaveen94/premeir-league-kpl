@@ -443,29 +443,21 @@ const CricHeroesStats = () => {
                 ) : (
                   <>
                     {/* Top Run Scorers */}
-                    <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-green-100 rounded-xl p-4 sm:p-6 shadow-xl border border-green-200">
+                    <div className="bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 rounded-xl p-4 sm:p-6 shadow-xl border border-blue-200">
                       <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-lg sm:text-xl font-bold text-green-800 flex items-center">
+                        <h3 className="text-lg sm:text-xl font-bold text-blue-800 flex items-center">
                           <Trophy className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
                           Top Batsmen
                         </h3>
-                        <span className="bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm font-medium">Leading Scorers</span>
+                        <span className="bg-blue-200 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">Leading Scorers</span>
                       </div>
                       {currentData.topPerformers?.topRunScorers?.length > 0 ? (
                         <div className="grid grid-cols-1 gap-3 sm:gap-4">
                           {currentData.topPerformers?.topRunScorers?.slice(0, 6).map((player, index) => {
                             const playerPhoto = getPlayerPhoto(player.name);
                             return (
-                              <div key={player.playerId} className="bg-white rounded-2xl p-4 flex items-center space-x-4 shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-green-100 hover:border-green-300 transform hover:-translate-y-1">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-lg ${
-                                  index === 0 ? 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600' : 
-                                  index === 1 ? 'bg-gradient-to-r from-gray-400 via-gray-500 to-gray-600' : 
-                                  index === 2 ? 'bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600' : 
-                                  'bg-gradient-to-r from-green-500 via-green-600 to-green-700'
-                                }`}>
-                                  {index + 1}
-                                </div>
-                                <div className="w-16 h-16 bg-gradient-to-br from-green-400 via-green-500 to-green-600 rounded-full p-0.5 flex-shrink-0 shadow-xl">
+                              <div key={player.playerId} className="bg-white rounded-2xl p-4 flex items-center space-x-4 shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-100 hover:border-blue-300 transform hover:-translate-y-1">
+                                <div className="w-16 h-16 bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600 rounded-full p-0.5 flex-shrink-0 shadow-xl">
                                   {playerPhoto ? (
                                     <img src={playerPhoto} alt={player.name} className="w-full h-full object-cover rounded-full border-3 border-white" />
                                   ) : (
@@ -475,16 +467,17 @@ const CricHeroesStats = () => {
                                   )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="font-bold text-gray-900 text-lg truncate">{player.name}</h4>
-                                  <p className="text-sm text-green-600 font-semibold truncate">{player.team}</p>
-                                  <div className="flex items-center space-x-2 mt-2">
-                                    <span className="text-xs bg-gradient-to-r from-green-100 to-green-200 text-green-800 px-3 py-1 rounded-full font-semibold shadow-sm">Avg: {player.average}</span>
-                                    <span className="text-xs bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 px-3 py-1 rounded-full font-semibold shadow-sm">Matches: {player.matches || 0}</span>
-                                    <span className="text-xs bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 px-3 py-1 rounded-full font-semibold shadow-sm">HS: {player.highestScore || 0}</span>
+                                  <h4 className="font-bold text-gray-900 text-sm sm:text-base lg:text-lg leading-tight mb-1">{player.name}</h4>
+                                  <p className="text-xs sm:text-sm text-blue-600 font-semibold mb-2">{player.team}</p>
+                                  <div className="flex flex-wrap items-center gap-1 mt-1">
+                                    <span className="text-xs bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 px-2 py-1 rounded-full font-semibold shadow-sm">Avg: {player.average}</span>
+                                    <span className="text-xs bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 px-2 py-1 rounded-full font-semibold shadow-sm">M: {player.matches || 0}</span>
+                                    <span className="text-xs bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 px-2 py-1 rounded-full font-semibold shadow-sm">HS: {player.highestScore || 0}</span>
+                                    <span className="text-xs bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 px-2 py-1 rounded-full font-semibold shadow-sm">SR: {player.strikeRate || 0}</span>
                                   </div>
                                 </div>
                                 <div className="text-right flex-shrink-0">
-                                  <p className="text-3xl font-bold bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent">{player.runs}</p>
+                                  <p className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">{player.runs}</p>
                                   <p className="text-xs text-gray-500 font-bold tracking-wider">RUNS</p>
                                 </div>
                               </div>
@@ -494,10 +487,10 @@ const CricHeroesStats = () => {
                       ) : (
                         <div className="text-center py-12">
                           <div className="bg-white rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                            <Trophy className="w-10 h-10 text-green-500" />
+                            <Trophy className="w-10 h-10 text-blue-500" />
                           </div>
-                          <h4 className="text-lg font-semibold text-green-800 mb-2">No Batting Stats Yet</h4>
-                          <p className="text-green-700">Batting statistics will appear once matches are played!</p>
+                          <h4 className="text-lg font-semibold text-blue-800 mb-2">No Batting Stats Yet</h4>
+                          <p className="text-blue-700">Batting statistics will appear once matches are played!</p>
                         </div>
                       )}
                     </div>
@@ -517,14 +510,6 @@ const CricHeroesStats = () => {
                             const playerPhoto = getPlayerPhoto(player.name);
                             return (
                               <div key={player.playerId} className="bg-white rounded-2xl p-4 flex items-center space-x-4 shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-red-100 hover:border-red-300 transform hover:-translate-y-1">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-lg ${
-                                  index === 0 ? 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600' : 
-                                  index === 1 ? 'bg-gradient-to-r from-gray-400 via-gray-500 to-gray-600' : 
-                                  index === 2 ? 'bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600' : 
-                                  'bg-gradient-to-r from-red-500 via-red-600 to-red-700'
-                                }`}>
-                                  {index + 1}
-                                </div>
                                 <div className="w-16 h-16 bg-gradient-to-br from-red-400 via-red-500 to-red-600 rounded-full p-0.5 flex-shrink-0 shadow-xl">
                                   {playerPhoto ? (
                                     <img src={playerPhoto} alt={player.name} className="w-full h-full object-cover rounded-full border-3 border-white" />
@@ -535,16 +520,17 @@ const CricHeroesStats = () => {
                                   )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="font-bold text-gray-900 text-lg truncate">{player.name}</h4>
-                                  <p className="text-sm text-red-600 font-semibold truncate">{player.team}</p>
-                                  <div className="flex items-center space-x-2 mt-2">
-                                    <span className="text-xs bg-gradient-to-r from-red-100 to-red-200 text-red-800 px-3 py-1 rounded-full font-semibold shadow-sm">Econ: {player.economy}</span>
-                                    <span className="text-xs bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 px-3 py-1 rounded-full font-semibold shadow-sm">Matches: {player.matches || 0}</span>
-                                    <span className="text-xs bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 px-3 py-1 rounded-full font-semibold shadow-sm">Overs: {player.overs || 0}</span>
+                                  <h4 className="font-bold text-gray-900 text-sm sm:text-base lg:text-lg leading-tight mb-1">{player.name}</h4>
+                                  <p className="text-xs sm:text-sm text-red-600 font-semibold mb-2">{player.team}</p>
+                                  <div className="flex flex-wrap items-center gap-1 mt-1">
+                                    <span className="text-xs bg-gradient-to-r from-red-100 to-red-200 text-red-800 px-2 py-1 rounded-full font-semibold shadow-sm">Econ: {player.economy}</span>
+                                    <span className="text-xs bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 px-2 py-1 rounded-full font-semibold shadow-sm">M: {player.matches || 0}</span>
+                                    <span className="text-xs bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 px-2 py-1 rounded-full font-semibold shadow-sm">Ov: {player.overs || 0}</span>
+                                    <span className="text-xs bg-gradient-to-r from-green-100 to-green-200 text-green-800 px-2 py-1 rounded-full font-semibold shadow-sm">Best: {player.bestBowling || '0/0'}</span>
                                   </div>
                                 </div>
                                 <div className="text-right flex-shrink-0">
-                                  <p className="text-3xl font-bold bg-gradient-to-r from-red-600 to-red-800 bg-clip-text text-transparent">{player.wickets}</p>
+                                  <p className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-red-600 to-red-800 bg-clip-text text-transparent">{player.wickets}</p>
                                   <p className="text-xs text-gray-500 font-bold tracking-wider">WICKETS</p>
                                 </div>
                               </div>
@@ -585,8 +571,8 @@ const CricHeroesStats = () => {
                                     )}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-gray-900 text-base truncate">{player.name}</p>
-                                    <p className="text-sm text-blue-600 font-medium truncate">{player.team}</p>
+                                    <p className="font-bold text-gray-900 text-sm sm:text-base leading-tight">{player.name}</p>
+                                    <p className="text-xs sm:text-sm text-blue-600 font-medium">{player.team}</p>
                                   </div>
                                   <div className="text-right flex-shrink-0">
                                     <p className="font-bold text-blue-700 text-lg">{player.average}</p>
@@ -625,8 +611,8 @@ const CricHeroesStats = () => {
                                     )}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-gray-900 text-base truncate">{player.name}</p>
-                                    <p className="text-sm text-purple-600 font-medium truncate">{player.team}</p>
+                                    <p className="font-bold text-gray-900 text-sm sm:text-base leading-tight">{player.name}</p>
+                                    <p className="text-xs sm:text-sm text-purple-600 font-medium">{player.team}</p>
                                   </div>
                                   <div className="text-right flex-shrink-0">
                                     <p className="font-bold text-purple-700 text-lg">{player.economy}</p>

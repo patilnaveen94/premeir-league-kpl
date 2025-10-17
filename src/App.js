@@ -28,12 +28,13 @@ const LoadingFallback = () => (
 
 function App() {
   useEffect(() => {
-    // Initialize real-time sync system (like Cricbuzz)
-    realTimeSync.initialize();
+    // Temporarily disable real-time sync to prevent duplicate processing
+    // realTimeSync.initialize();
+    console.log('⚠️ Real-time sync disabled to prevent duplicate stats');
     
     // Cleanup on unmount
     return () => {
-      realTimeSync.cleanup();
+      // realTimeSync.cleanup();
     };
   }, []);
 
@@ -43,7 +44,7 @@ function App() {
         <Router>
           <div className="App flex flex-col min-h-screen">
             <Navbar />
-            <main className="flex-1">
+            <main className="flex-1 pt-14 sm:pt-16">
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
                   <Route path="/" element={<Home />} />

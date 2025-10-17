@@ -3,7 +3,9 @@ import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
 import { useAdmin } from '../context/AdminContext';
 import auctionService from '../services/auctionService';
-import { Gavel, Users, Trophy, Target, Calendar, DollarSign, X, Edit, ArrowUp } from 'lucide-react';
+import careerStatsService from '../services/careerStatsService';
+import { normalizePlayerName } from '../utils/playerUtils';
+import { Gavel, Users, Trophy, Target, Calendar, DollarSign, X, Edit, ArrowUp, Star, Award } from 'lucide-react';
 
 const Auction = () => {
   const [players, setPlayers] = useState([]);
@@ -14,6 +16,7 @@ const Auction = () => {
   const [showPlayerModal, setShowPlayerModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [playerStats, setPlayerStats] = useState({});
+  const [careerStats, setCareerStats] = useState({});
 
   const { isAdminLoggedIn } = useAdmin();
 
@@ -30,10 +33,11 @@ const Auction = () => {
       console.log('🔄 Fetching auction data...');
       
       // Fetch ALL players directly from Firebase to debug count issue
-      const [allPlayersSnapshot, teamsSnapshot, statsSnapshot] = await Promise.all([
+      const [allPlayersSnapshot, teamsSnapshot, statsSnapshot, careerStatsData] = await Promise.all([
         getDocs(collection(db, 'playerRegistrations')),
         getDocs(collection(db, 'teams')),
-        getDocs(collection(db, 'playerStats'))
+        getDocs(collection(db, 'playerStats')),
+        careerStatsService.calculateCareerStats()
       ]);
 
       const teamsData = teamsSnapshot.docs.map(doc => ({
@@ -49,7 +53,9 @@ const Auction = () => {
       // Process ALL players and assign default season
       const allPlayers = allPlayersSnapshot.docs.map(doc => {
         const data = doc.data();
-        const playerStats = statsData[data.fullName] || {};
+        const normalizedName = normalizePlayerName(data.fullName);
+        const playerStats = statsData[data.fullName] || statsData[normalizedName] || {};
+        const playerCareerStats = careerStatsData[normalizedName] || careerStatsData[data.fullName] || {};
         return {
           id: doc.id,
           ...data,
@@ -61,7 +67,16 @@ const Auction = () => {
           runs: playerStats.runs || 0,
           wickets: playerStats.wickets || 0,
           average: playerStats.average || '0.00',
-          strikeRate: playerStats.strikeRate || '0.00'
+          strikeRate: playerStats.strikeRate || '0.00',
+          // Career stats
+          careerMatches: playerCareerStats.totalMatches || 0,
+          careerRuns: playerCareerStats.totalRuns || 0,
+          careerWickets: playerCareerStats.totalWickets || 0,
+          careerAverage: playerCareerStats.battingAverage || '0.00',
+          careerStrikeRate: playerCareerStats.strikeRate || '0.00',
+          careerHighestScore: playerCareerStats.highestScore || 0,
+          careerBestBowling: playerCareerStats.bestBowling || '0/0',
+          seasonsPlayed: playerCareerStats.seasonsPlayed || []
         };
       });
 
@@ -70,21 +85,22 @@ const Auction = () => {
       console.log(`✅ Approved players: ${allPlayers.filter(p => p.status === 'approved').length}`);
       console.log(`⏳ Pending players: ${allPlayers.filter(p => p.status === 'pending').length}`);
       console.log(`❌ Rejected players: ${allPlayers.filter(p => p.status === 'rejected').length}`);
-      console.log(`🏆 Season 1 players: ${allPlayers.filter(p => (p.season || 'Season 1') === 'Season 1').length}`);
-      console.log(`🏆 Season 2 players: ${allPlayers.filter(p => p.season === 'Season 2').length}`);
+      console.log(`🏆 Approved Season 1 players: ${allPlayers.filter(p => (p.season || 'Season 1') === 'Season 1' && p.status === 'approved').length}`);
+      console.log(`🏆 Approved Season 2 players: ${allPlayers.filter(p => p.season === 'Season 2' && p.status === 'approved').length}`);
       console.log(`👥 Players with teams: ${allPlayers.filter(p => p.teamId).length}`);
       console.log(`🆓 Players without teams: ${allPlayers.filter(p => !p.teamId).length}`);
       
-      // For Season 1, show ALL players (including those without season assigned)
+      // For Season 1, show ALL approved players (including those without season assigned)
       const seasonPlayers = selectedSeason === 'Season 1' 
-        ? allPlayers // Show all players for Season 1
-        : allPlayers.filter(player => player.season === selectedSeason);
+        ? allPlayers.filter(player => player.status === 'approved') // Show only approved players for Season 1
+        : allPlayers.filter(player => player.season === selectedSeason && player.status === 'approved');
       
       console.log(`🎯 Final result: Showing ${seasonPlayers.length} players for ${selectedSeason}`);
       
       setPlayers(seasonPlayers);
       setTeams(teamsData);
       setPlayerStats(statsData);
+      setCareerStats(careerStatsData);
       
     } catch (error) {
       console.error('❌ Error fetching auction data:', error);
@@ -315,18 +331,16 @@ const Auction = () => {
         {/* Enhanced Players Grid with Colorful Professional Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           {filteredPlayers.map((player) => {
-            const stats = playerStats[player.fullName] || {};
-            
-            // Dynamic gradient colors based on status and performance
+            // Dynamic gradient colors based on status and career performance
             const getCardGradient = () => {
               if (player.auctionStatus === 'sold') {
                 return 'from-emerald-400 via-green-500 to-teal-600';
               }
-              // Color based on performance for unsold players
-              const totalRuns = stats.runs || 0;
-              if (totalRuns > 100) return 'from-purple-400 via-pink-500 to-red-500';
-              if (totalRuns > 50) return 'from-blue-400 via-indigo-500 to-purple-600';
-              if (totalRuns > 20) return 'from-orange-400 via-amber-500 to-yellow-600';
+              // Color based on career performance for unsold players
+              const careerRuns = player.careerRuns || 0;
+              if (careerRuns > 200) return 'from-purple-400 via-pink-500 to-red-500';
+              if (careerRuns > 100) return 'from-blue-400 via-indigo-500 to-purple-600';
+              if (careerRuns > 50) return 'from-orange-400 via-amber-500 to-yellow-600';
               return 'from-gray-400 via-slate-500 to-gray-600';
             };
             
@@ -369,10 +383,16 @@ const Auction = () => {
                         {player.fullName.length > 20 ? player.fullName.substring(0, 20) + '...' : player.fullName}
                       </h3>
                       <p className="text-white text-opacity-90 text-sm sm:text-base md:text-lg font-medium truncate">{player.position}</p>
-                      <div className="flex items-center mt-1">
-                        <span className="text-xs sm:text-sm md:text-base bg-white bg-opacity-20 px-2 py-1 rounded-full truncate">
-                          {stats.matches || 0} matches
+                      <div className="flex items-center space-x-2 mt-1">
+                        <span className="text-xs sm:text-sm md:text-base bg-white bg-opacity-20 px-2 py-1 rounded-full">
+                          {player.careerMatches || 0} matches
                         </span>
+                        {player.seasonsPlayed && player.seasonsPlayed.length > 0 && (
+                          <span className="text-xs bg-white bg-opacity-30 px-2 py-1 rounded-full flex items-center">
+                            <Star className="w-3 h-3 mr-1" />
+                            {player.seasonsPlayed.length} seasons
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -390,33 +410,45 @@ const Auction = () => {
                     </div>
                   )}
 
-                  {/* Enhanced Stats Grid */}
+                  {/* Enhanced Career Stats Grid */}
                   <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-3 sm:mb-4">
                     <div className="text-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg sm:rounded-xl lg:rounded-2xl p-2 sm:p-3 border border-blue-200 shadow-sm">
-                      <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-blue-600">{stats.runs || 0}</div>
+                      <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-blue-600">{player.careerRuns || 0}</div>
                       <div className="text-blue-500 text-xs sm:text-sm md:text-base font-bold uppercase tracking-wide">Runs</div>
                     </div>
                     <div className="text-center bg-gradient-to-br from-red-50 to-red-100 rounded-lg sm:rounded-xl lg:rounded-2xl p-2 sm:p-3 border border-red-200 shadow-sm">
-                      <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-red-600">{stats.wickets || 0}</div>
+                      <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-red-600">{player.careerWickets || 0}</div>
                       <div className="text-red-500 text-xs sm:text-sm md:text-base font-bold uppercase tracking-wide">Wkts</div>
                     </div>
                     <div className="text-center bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg sm:rounded-xl lg:rounded-2xl p-2 sm:p-3 border border-purple-200 shadow-sm">
-                      <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-purple-600">{stats.matches || 0}</div>
+                      <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-purple-600">{player.careerMatches || 0}</div>
                       <div className="text-purple-500 text-xs sm:text-sm md:text-base font-bold uppercase tracking-wide">Mat</div>
                     </div>
                   </div>
                   
-                  {/* Performance Indicators */}
+                  {/* Career Performance Indicators */}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg sm:rounded-xl p-2 border border-orange-200">
                       <div className="text-xs sm:text-sm md:text-base text-orange-600 font-bold uppercase tracking-wide mb-1">Avg</div>
-                      <div className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-orange-700">{stats.average || '0.00'}</div>
+                      <div className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-orange-700">{player.careerAverage || '0.00'}</div>
                     </div>
                     <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg sm:rounded-xl p-2 border border-teal-200">
-                      <div className="text-xs sm:text-sm md:text-base text-teal-600 font-bold uppercase tracking-wide mb-1">SR</div>
-                      <div className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-teal-700">{stats.strikeRate || '0.00'}</div>
+                      <div className="text-xs sm:text-sm md:text-base text-teal-600 font-bold uppercase tracking-wide mb-1">HS</div>
+                      <div className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-teal-700">{player.careerHighestScore || 0}</div>
                     </div>
                   </div>
+                  
+                  {/* Additional Career Stats */}
+                  {(player.careerMatches > 0) && (
+                    <div className="mt-3 p-2 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-indigo-600 font-semibold">Career SR: {player.careerStrikeRate}</span>
+                        {player.careerBestBowling !== '0/0' && (
+                          <span className="text-purple-600 font-semibold">Best: {player.careerBestBowling}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -448,22 +480,22 @@ const Auction = () => {
               selectedPlayer.auctionStatus === 'sold' 
                 ? 'from-emerald-500 via-green-500 to-teal-600'
                 : 'from-purple-500 via-pink-500 to-red-500'
-            } p-8 text-white relative overflow-hidden`}>
+            } p-4 sm:p-6 md:p-8 text-white relative overflow-hidden`}>
               {/* Decorative Background Elements */}
               <div className="absolute top-0 right-0 w-32 h-32 bg-white bg-opacity-10 rounded-full -translate-y-16 translate-x-16"></div>
               <div className="absolute bottom-0 left-0 w-24 h-24 bg-white bg-opacity-10 rounded-full translate-y-12 -translate-x-12"></div>
               
               <button
                 onClick={() => setShowPlayerModal(false)}
-                className="absolute top-6 right-6 text-white hover:text-gray-200 bg-black bg-opacity-30 rounded-full p-3 transition-all duration-300 hover:bg-opacity-50 z-10"
-                style={{ minWidth: '48px', minHeight: '48px', touchAction: 'manipulation' }}
+                className="absolute top-4 right-4 sm:top-6 sm:right-6 text-white hover:text-gray-200 bg-black bg-opacity-30 rounded-full p-3 sm:p-4 transition-all duration-300 hover:bg-opacity-50 z-20 touch-manipulation"
+                style={{ minWidth: '56px', minHeight: '56px' }}
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
               
-              <div className="flex items-center space-x-8 relative z-10">
+              <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6 md:space-x-8 relative z-10">
                 {selectedPlayer.photoBase64 ? (
-                  <div className="w-40 h-40 rounded-full border-6 border-white shadow-2xl overflow-hidden ring-4 ring-white ring-opacity-30">
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-full border-4 sm:border-6 border-white shadow-2xl overflow-hidden ring-2 sm:ring-4 ring-white ring-opacity-30 flex-shrink-0">
                     <img
                       src={selectedPlayer.photoBase64}
                       alt={selectedPlayer.fullName}
@@ -471,33 +503,50 @@ const Auction = () => {
                     />
                   </div>
                 ) : (
-                  <div className="w-40 h-40 bg-white bg-opacity-20 rounded-full flex items-center justify-center border-6 border-white shadow-2xl ring-4 ring-white ring-opacity-30">
-                    <span className="text-white font-bold text-5xl">
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 bg-white bg-opacity-20 rounded-full flex items-center justify-center border-4 sm:border-6 border-white shadow-2xl ring-2 sm:ring-4 ring-white ring-opacity-30 flex-shrink-0">
+                    <span className="text-white font-bold text-2xl sm:text-3xl md:text-5xl">
                       {getPlayerInitials(selectedPlayer.fullName)}
                     </span>
                   </div>
                 )}
                 
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 drop-shadow-lg truncate">{selectedPlayer.fullName}</h2>
-                  <p className="text-white text-opacity-90 text-lg sm:text-xl md:text-2xl lg:text-3xl mb-3 font-medium truncate">{selectedPlayer.position}</p>
-                  <div className="flex items-center space-x-4">
-                    <span className={`inline-block px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 rounded-full text-sm sm:text-base md:text-lg font-bold shadow-lg ${
+                <div className="flex-1 min-w-0 text-center sm:text-left">
+                  <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-2 sm:mb-3 drop-shadow-lg">{selectedPlayer.fullName}</h2>
+                  <div className="flex flex-wrap justify-center sm:justify-start items-center gap-2 mb-3">
+                    {selectedPlayer.position && (
+                      <span className="text-white text-opacity-90 text-sm sm:text-base md:text-lg font-medium bg-white bg-opacity-20 px-2 sm:px-3 py-1 rounded-full">
+                        {selectedPlayer.position}
+                      </span>
+                    )}
+                    {selectedPlayer.preferredHand && (
+                      <span className="text-white text-opacity-90 text-sm sm:text-base md:text-lg font-medium bg-white bg-opacity-20 px-2 sm:px-3 py-1 rounded-full">
+                        {selectedPlayer.preferredHand}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap justify-center sm:justify-start items-center gap-2">
+                    <span className={`inline-block px-3 sm:px-4 md:px-6 py-1 sm:py-2 md:py-3 rounded-full text-xs sm:text-sm md:text-base font-bold shadow-lg ${
                       selectedPlayer.auctionStatus === 'sold' 
                         ? 'bg-green-600 bg-opacity-90 text-white'
                         : 'bg-gray-600 bg-opacity-90 text-white'
                     }`}>
                       {selectedPlayer.auctionStatus === 'sold' ? '✅ SOLD' : '⏳ AVAILABLE'}
                     </span>
-                    <span className="inline-block px-3 sm:px-4 md:px-6 py-1 sm:py-2 md:py-3 rounded-full text-sm sm:text-base md:text-lg font-medium bg-white bg-opacity-20">
-                      {playerStats[selectedPlayer.fullName]?.matches || 0} Matches Played
+                    <span className="inline-block px-2 sm:px-3 md:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm md:text-base font-medium bg-white bg-opacity-20">
+                      {selectedPlayer.careerMatches || 0} Career Matches
                     </span>
+                    {selectedPlayer.seasonsPlayed && selectedPlayer.seasonsPlayed.length > 0 && (
+                      <span className="inline-block px-2 sm:px-3 md:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm md:text-base font-medium bg-white bg-opacity-30">
+                        <Award className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                        {selectedPlayer.seasonsPlayed.length} Seasons
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="p-10">
+            <div className="p-4 sm:p-6 md:p-8 lg:p-10">
               {selectedPlayer.soldTo && (
                 <div className="mb-10 p-8 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-3xl border-2 border-green-200 shadow-xl">
                   <div className="flex items-center">
@@ -512,7 +561,7 @@ const Auction = () => {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-12">
+              <div className="grid grid-cols-1 gap-12">
                 {/* Enhanced Statistics Section */}
                 <div>
                   <h4 className="font-bold text-gray-900 text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-8 flex items-center">
@@ -524,73 +573,60 @@ const Auction = () => {
                   
                   <div className="grid grid-cols-2 gap-6 mb-8">
                     <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-2xl text-white shadow-xl transform hover:scale-105 transition-all duration-300">
-                      <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.runs || 0}</div>
-                      <div className="text-blue-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Total Runs</div>
+                      <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2">{selectedPlayer.careerRuns || 0}</div>
+                      <div className="text-blue-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Career Runs</div>
                     </div>
                     <div className="bg-gradient-to-br from-red-500 to-red-600 p-6 rounded-2xl text-white shadow-xl transform hover:scale-105 transition-all duration-300">
-                      <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.wickets || 0}</div>
-                      <div className="text-red-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Wickets</div>
+                      <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2">{selectedPlayer.careerWickets || 0}</div>
+                      <div className="text-red-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Career Wickets</div>
                     </div>
                     <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-2xl text-white shadow-xl transform hover:scale-105 transition-all duration-300">
-                      <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.matches || 0}</div>
-                      <div className="text-green-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Matches</div>
+                      <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2">{selectedPlayer.careerMatches || 0}</div>
+                      <div className="text-green-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Career Matches</div>
                     </div>
                     <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-2xl text-white shadow-xl transform hover:scale-105 transition-all duration-300">
-                      <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.average || '0.00'}</div>
-                      <div className="text-purple-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Average</div>
+                      <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2">{selectedPlayer.careerAverage || '0.00'}</div>
+                      <div className="text-purple-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Career Average</div>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-6">
                     <div className="bg-gradient-to-br from-orange-500 to-amber-600 p-6 rounded-2xl text-white shadow-xl transform hover:scale-105 transition-all duration-300">
-                      <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.strikeRate || '0.00'}</div>
-                      <div className="text-orange-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Strike Rate</div>
+                      <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2">{selectedPlayer.careerStrikeRate || '0.00'}</div>
+                      <div className="text-orange-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Career Strike Rate</div>
                     </div>
                     <div className="bg-gradient-to-br from-teal-500 to-cyan-600 p-6 rounded-2xl text-white shadow-xl transform hover:scale-105 transition-all duration-300">
-                      <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2">{playerStats[selectedPlayer.fullName]?.economy || '0.00'}</div>
-                      <div className="text-teal-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Economy</div>
+                      <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2">{selectedPlayer.careerHighestScore || 0}</div>
+                      <div className="text-teal-100 font-bold uppercase tracking-wide text-sm sm:text-base md:text-lg">Highest Score</div>
                     </div>
                   </div>
-                </div>
-
-                {/* Enhanced Personal Information */}
-                <div>
-                  <h4 className="font-bold text-gray-900 text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-8 flex items-center">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mr-3">
-                      <Users className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-white" />
-                    </div>
-                    Personal Information
-                  </h4>
                   
-                  <div className="space-y-6">
-                    <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-2xl border border-gray-200 shadow-sm">
-                      <div className="text-sm sm:text-base md:text-lg text-gray-500 font-bold uppercase tracking-wide mb-2">Email Address</div>
-                      <div className="text-gray-900 font-bold text-lg sm:text-xl md:text-2xl email-safe" title={selectedPlayer.email}>{selectedPlayer.email}</div>
-                    </div>
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-100 p-6 rounded-2xl border border-blue-200 shadow-sm">
-                      <div className="text-sm sm:text-base md:text-lg text-blue-600 font-bold uppercase tracking-wide mb-2">Phone Number</div>
-                      <div className="text-blue-900 font-bold text-lg sm:text-xl md:text-2xl break-all" title={selectedPlayer.phone}>{selectedPlayer.phone}</div>
-                    </div>
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-100 p-6 rounded-2xl border border-green-200 shadow-sm">
-                      <div className="text-sm sm:text-base md:text-lg text-green-600 font-bold uppercase tracking-wide mb-2">Playing Position</div>
-                      <div className="text-green-900 font-bold text-lg sm:text-xl md:text-2xl">{selectedPlayer.position}</div>
-                    </div>
-                    <div className="bg-gradient-to-r from-purple-50 to-pink-100 p-6 rounded-2xl border border-purple-200 shadow-sm">
-                      <div className="text-sm sm:text-base md:text-lg text-purple-600 font-bold uppercase tracking-wide mb-2">Preferred Hand</div>
-                      <div className="text-purple-900 font-bold text-lg sm:text-xl md:text-2xl">{selectedPlayer.preferredHand || 'Not specified'}</div>
-                    </div>
-                    <div className="bg-gradient-to-r from-orange-50 to-amber-100 p-6 rounded-2xl border border-orange-200 shadow-sm">
-                      <div className="text-sm sm:text-base md:text-lg text-orange-600 font-bold uppercase tracking-wide mb-2">Registration Status</div>
-                      <div className={`font-bold text-lg sm:text-xl md:text-2xl ${
-                        selectedPlayer.status === 'approved' ? 'text-green-700' :
-                        selectedPlayer.status === 'pending' ? 'text-yellow-700' :
-                        'text-red-700'
-                      }`}>
-                        {selectedPlayer.status?.charAt(0).toUpperCase() + selectedPlayer.status?.slice(1) || 'Unknown'}
+                  {/* Career Highlights */}
+                  {(selectedPlayer.careerBestBowling !== '0/0' || selectedPlayer.seasonsPlayed?.length > 0) && (
+                    <div className="mt-6 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border border-indigo-200">
+                      <h5 className="font-bold text-indigo-800 text-lg mb-4 flex items-center">
+                        <Award className="w-5 h-5 mr-2" />
+                        Career Highlights
+                      </h5>
+                      <div className="grid grid-cols-2 gap-4">
+                        {selectedPlayer.careerBestBowling !== '0/0' && (
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-purple-700">{selectedPlayer.careerBestBowling}</div>
+                            <div className="text-sm text-purple-600 font-medium">Best Bowling</div>
+                          </div>
+                        )}
+                        {selectedPlayer.seasonsPlayed?.length > 0 && (
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-indigo-700">{selectedPlayer.seasonsPlayed.length}</div>
+                            <div className="text-sm text-indigo-600 font-medium">Seasons Played</div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
+
+
               </div>
 
               {isAdminLoggedIn && (
