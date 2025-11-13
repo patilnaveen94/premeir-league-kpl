@@ -44,7 +44,6 @@ const Contact = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Contact Information */}
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Get In Touch</h2>
             <p className="text-gray-600 mb-8">
@@ -70,8 +69,8 @@ const Contact = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Phone</h3>
-                  <p className="text-gray-600">+44 20 7864 9000</p>
-                  <p className="text-gray-600">Mon - Fri, 9:00 AM - 6:00 PM</p>
+                  <p className="text-gray-600">99999999999</p>
+                  <p className="text-gray-600">88888888888</p>
                 </div>
               </div>
 
@@ -82,17 +81,16 @@ const Contact = () => {
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Address</h3>
                   <p className="text-gray-600">
-                    Premier League<br />
-                    30 Gloucester Place<br />
-                    London W1U 8PL<br />
-                    United Kingdom
+                    Friends Cricket Club<br />
+                    Khajjidoni<br />
+                    Bagalkot<br />
+                    587204
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Contact Form */}
           <div className="bg-white rounded-lg shadow-lg p-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Send us a Message</h2>
             
@@ -180,6 +178,52 @@ const Contact = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+
+        <div className="mt-16">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Meet the Team</h2>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+              Behind every successful digital transformation there is a dedicated team. Despite their busy lives, 
+              these passionate individuals dedicated their time to build this platform and make the KPL League digital.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <div className="bg-white rounded-lg shadow-lg p-8 border border-gray-200">
+              <div className="flex items-center space-x-4 mb-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-premier-purple to-premier-pink rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-2xl">NP</span>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">Naveen Patil</h3>
+                  <p className="text-premier-purple font-medium text-lg">Lead Developer</p>
+                </div>
+              </div>
+              <p className="text-gray-600">
+                Naveen brought the vision to life with his expertise in Web Development. 
+                His dedication to clean code and user experience made this platform possible, 
+                balancing innovation with practicality.
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-lg p-8 border border-gray-200">
+              <div className="flex items-center space-x-4 mb-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-premier-pink to-premier-purple rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-2xl">LH</span>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">Laxman Hunashikatti</h3>
+                  <p className="text-premier-pink font-medium text-lg">Quality Assurance</p>
+                </div>
+              </div>
+              <p className="text-gray-600">
+                Laxman ensured every feature works flawlessly through rigorous testing. 
+                His attention to detail and commitment to quality guarantees a smooth 
+                experience for all league participants.
+              </p>
+            </div>
           </div>
         </div>
       </div>
