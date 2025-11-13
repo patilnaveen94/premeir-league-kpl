@@ -97,13 +97,7 @@ const AdminPanel = () => {
   const [showJsonImport, setShowJsonImport] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
   const [importLoading, setImportLoading] = useState(false);
-  const [seasonTransitionLoading, setSeasonTransitionLoading] = useState(false);
-  const [currentSeasonSettings, setCurrentSeasonSettings] = useState({
-    current: '1',
-    published: '1',
-    registrationOpen: '1'
-  });
-  const [currentSeason, setCurrentSeason] = useState('Season 1');
+
   const [fixingDuplicates, setFixingDuplicates] = useState(false);
   const [resettingData, setResettingData] = useState(false);
 
@@ -752,8 +746,6 @@ const AdminPanel = () => {
       fetchPaymentConfig();
       fetchCarouselImages();
       fetchRegistrationSettings();
-      fetchSeasonSettings();
-      fetchCurrentSeason();
     }
   }, [isAdminLoggedIn]);
 
@@ -1600,93 +1592,7 @@ const AdminPanel = () => {
     }
   };
 
-  const fetchSeasonSettings = async () => {
-    try {
-      const settingsSnapshot = await getDocs(collection(db, 'seasonSettings'));
-      const seasonSetting = settingsSnapshot.docs.find(doc => doc.id === 'config');
-      if (seasonSetting) {
-        setCurrentSeasonSettings(seasonSetting.data());
-      }
-    } catch (error) {
-      console.error('Error fetching season settings:', error);
-    }
-  };
 
-  const handleOpenSeason2Registration = async () => {
-    if (window.confirm('Open Season 2 registration? This will allow new players to register for Season 2.')) {
-      setSeasonTransitionLoading(true);
-      try {
-        await startNewSeason('2');
-        await fetchSeasonSettings();
-        alert('✅ Season 2 registration opened successfully! New players can now register for Season 2.');
-      } catch (error) {
-        console.error('Error opening Season 2 registration:', error);
-        alert('❌ Error opening Season 2 registration: ' + error.message);
-      } finally {
-        setSeasonTransitionLoading(false);
-      }
-    }
-  };
-
-  const handleKeepExistingTeams = async () => {
-    if (window.confirm('Keep existing teams for Season 2? This will copy current team structure to Season 2.')) {
-      setSeasonTransitionLoading(true);
-      try {
-        // Logic to copy teams for Season 2 would go here
-        alert('✅ Team structure prepared for Season 2!');
-      } catch (error) {
-        console.error('Error preparing teams:', error);
-        alert('❌ Error preparing teams: ' + error.message);
-      } finally {
-        setSeasonTransitionLoading(false);
-      }
-    }
-  };
-
-  const handleResetAllTeams = async () => {
-    if (window.confirm('Reset all team assignments for Season 2? This will clear all player-team assignments for fresh auction.')) {
-      setSeasonTransitionLoading(true);
-      try {
-        // Logic to reset team assignments would go here
-        alert('✅ All team assignments reset for Season 2!');
-      } catch (error) {
-        console.error('Error resetting teams:', error);
-        alert('❌ Error resetting teams: ' + error.message);
-      } finally {
-        setSeasonTransitionLoading(false);
-      }
-    }
-  };
-
-  const handleActivateSeason2 = async () => {
-    const confirmMessage = `⚠️ CRITICAL ACTION: Activate Season 2?
-
-This will:
-• Make Season 2 the active season
-• Archive Season 1 data
-• Reset points table and statistics
-• Update all public pages
-
-This action cannot be undone. Are you absolutely sure?`;
-    
-    if (window.confirm(confirmMessage)) {
-      const doubleConfirm = window.confirm('This is your final confirmation. Activate Season 2 now?');
-      if (doubleConfirm) {
-        setSeasonTransitionLoading(true);
-        try {
-          await activateNewSeason('2');
-          await fetchSeasonSettings();
-          await dataRefreshManager.triggerCompleteRefresh(true, 'season-2-activation');
-          alert('🎉 Season 2 activated successfully! The website now shows Season 2 data.');
-        } catch (error) {
-          console.error('Error activating Season 2:', error);
-          alert('❌ Error activating Season 2: ' + error.message);
-        } finally {
-          setSeasonTransitionLoading(false);
-        }
-      }
-    }
-  };
 
   const handleToggleRegistrationSection = async () => {
     try {
@@ -1705,54 +1611,7 @@ This action cannot be undone. Are you absolutely sure?`;
     }
   };
 
-  const fetchCurrentSeason = async () => {
-    try {
-      const currentSeasonService = await import('../services/currentSeasonService');
-      const season = await currentSeasonService.default.getCurrentSeason();
-      setCurrentSeason(season);
-    } catch (error) {
-      console.error('Error fetching current season:', error);
-      setCurrentSeason('Season 1');
-    }
-  };
 
-  const handleSeasonChange = async (newSeason) => {
-    const confirmMessage = `⚠️ REVERSIBLE ACTION: Switch to ${newSeason}?
-
-This will:
-• Make ${newSeason} the active season across the website
-• Update all public pages to show ${newSeason} data
-• Change the default season for new registrations
-
-This action is REVERSIBLE - you can switch back anytime.
-
-Continue?`;
-    
-    if (window.confirm(confirmMessage)) {
-      setSeasonTransitionLoading(true);
-      try {
-        const currentSeasonService = await import('../services/currentSeasonService');
-        const result = await currentSeasonService.default.setCurrentSeason(newSeason);
-        
-        if (result.success) {
-          setCurrentSeason(newSeason);
-          alert(`✅ Successfully switched to ${newSeason}!\n\nThe website now shows ${newSeason} data by default.\nYou can switch back to any other season anytime.`);
-          
-          // Refresh the page to show updated data
-          setTimeout(() => {
-            window.location.reload();
-          }, 1000);
-        } else {
-          throw new Error(result.error);
-        }
-      } catch (error) {
-        console.error('Error changing season:', error);
-        alert('❌ Error changing season: ' + error.message);
-      } finally {
-        setSeasonTransitionLoading(false);
-      }
-    }
-  };
 
   const tabs = [
     { id: 'players', name: 'Player Registrations', icon: Users },
