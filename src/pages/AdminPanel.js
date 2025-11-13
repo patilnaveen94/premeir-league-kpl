@@ -13,7 +13,8 @@ import addSLVStrikersData from '../utils/addSLVStrikersData';
 import { formatMatchDate } from '../utils/dateUtils';
 import dataRefreshManager from '../utils/dataRefresh';
 import DataConsistencyChecker from '../components/DataConsistencyChecker';
-import { startNewSeason, activateNewSeason } from '../utils/seasonUtils';
+// Season utilities removed
+import dataResetService from '../services/dataResetService';
 import '../styles/admin-mobile.css';
 
 
@@ -102,7 +103,9 @@ const AdminPanel = () => {
     published: '1',
     registrationOpen: '1'
   });
+  const [currentSeason, setCurrentSeason] = useState('Season 1');
   const [fixingDuplicates, setFixingDuplicates] = useState(false);
+  const [resettingData, setResettingData] = useState(false);
 
   // Fix duplicate stats function
   const handleFixDuplicateStats = async () => {
@@ -750,6 +753,7 @@ const AdminPanel = () => {
       fetchCarouselImages();
       fetchRegistrationSettings();
       fetchSeasonSettings();
+      fetchCurrentSeason();
     }
   }, [isAdminLoggedIn]);
 
@@ -838,7 +842,7 @@ const AdminPanel = () => {
         approved,
         status: approved ? 'approved' : 'rejected',
         teamId: approved && teamId ? teamId : null,
-        season: 'Season 1', // Default to Season 1 for existing players
+        // No season assignment needed
         reviewedAt: new Date(),
         reviewedBy: currentAdmin?.userid
       });
@@ -1686,28 +1690,67 @@ This action cannot be undone. Are you absolutely sure?`;
 
   const handleToggleRegistrationSection = async () => {
     try {
-      const settingsSnapshot = await getDocs(collection(db, 'settings'));
-      const registrationDoc = settingsSnapshot.docs.find(doc => doc.id === 'playerRegistration');
-      
-      if (registrationDoc) {
-        await updateDoc(doc(db, 'settings', 'playerRegistration'), {
-          visible: !registrationSectionVisible,
-          updatedAt: new Date(),
-          updatedBy: currentAdmin?.userid
-        });
-      } else {
-        await addDoc(collection(db, 'settings'), {
-          visible: !registrationSectionVisible,
-          createdAt: new Date(),
-          createdBy: currentAdmin?.userid
-        });
-      }
+      const settingsRef = doc(db, 'settings', 'playerRegistration');
+      await setDoc(settingsRef, {
+        visible: !registrationSectionVisible,
+        updatedAt: new Date(),
+        updatedBy: currentAdmin?.userid
+      }, { merge: true });
       
       setRegistrationSectionVisible(!registrationSectionVisible);
       alert(`Registration section ${!registrationSectionVisible ? 'enabled' : 'disabled'} successfully!`);
     } catch (error) {
       console.error('Error updating registration settings:', error);
       alert('Error updating registration settings');
+    }
+  };
+
+  const fetchCurrentSeason = async () => {
+    try {
+      const currentSeasonService = await import('../services/currentSeasonService');
+      const season = await currentSeasonService.default.getCurrentSeason();
+      setCurrentSeason(season);
+    } catch (error) {
+      console.error('Error fetching current season:', error);
+      setCurrentSeason('Season 1');
+    }
+  };
+
+  const handleSeasonChange = async (newSeason) => {
+    const confirmMessage = `⚠️ REVERSIBLE ACTION: Switch to ${newSeason}?
+
+This will:
+• Make ${newSeason} the active season across the website
+• Update all public pages to show ${newSeason} data
+• Change the default season for new registrations
+
+This action is REVERSIBLE - you can switch back anytime.
+
+Continue?`;
+    
+    if (window.confirm(confirmMessage)) {
+      setSeasonTransitionLoading(true);
+      try {
+        const currentSeasonService = await import('../services/currentSeasonService');
+        const result = await currentSeasonService.default.setCurrentSeason(newSeason);
+        
+        if (result.success) {
+          setCurrentSeason(newSeason);
+          alert(`✅ Successfully switched to ${newSeason}!\n\nThe website now shows ${newSeason} data by default.\nYou can switch back to any other season anytime.`);
+          
+          // Refresh the page to show updated data
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        console.error('Error changing season:', error);
+        alert('❌ Error changing season: ' + error.message);
+      } finally {
+        setSeasonTransitionLoading(false);
+      }
     }
   };
 
@@ -1721,7 +1764,7 @@ This action cannot be undone. Are you absolutely sure?`;
     { id: 'payment', name: 'Payment Settings', icon: CreditCard },
     { id: 'media', name: 'Carousel Images', icon: Image },
     { id: 'website', name: 'Website Settings', icon: Lock },
-    { id: 'seasons', name: 'Season Management', icon: Calendar },
+
     { id: 'news', name: 'News', icon: FileText },
     { id: 'system', name: 'System Status', icon: Activity },
     { id: 'admins', name: 'Admin Users', icon: User }
@@ -3587,9 +3630,56 @@ This action cannot be undone. Are you absolutely sure?`;
                   <h2 className="text-xl font-semibold text-gray-900">Matches & Detailed Scoring</h2>
                   <div className="flex space-x-2">
                     <button
+                      onClick={async () => {
+                        if (window.confirm('⚠️ CLEAR ALL DATA EXCEPT PLAYER STATS?\n\nThis will DELETE:\n• All player registrations\n• All teams\n• All matches\n• All sponsors\n• All carousel images\n\nBUT PRESERVE:\n• Player statistics (for mobile number linking)\n\nThis action cannot be undone. Continue?')) {
+                          const doubleConfirm = window.confirm('This is your final confirmation. Clear all data except player stats?');
+                          if (doubleConfirm) {
+                            setResettingData(true);
+                            try {
+                              // Clear all collections except playerStats and careerStats
+                              const collectionsToDelete = [
+                                'playerRegistrations',
+                                'teams', 
+                                'matches',
+                                'sponsors',
+                                'carouselImages',
+                                'standings',
+                                'adminUsers',
+                                'formFields',
+                                'paymentConfig',
+                                'settings'
+                              ];
+                              
+                              for (const collectionName of collectionsToDelete) {
+                                const snapshot = await getDocs(collection(db, collectionName));
+                                const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+                                await Promise.all(deletePromises);
+                                console.log(`✅ Cleared ${collectionName}: ${snapshot.docs.length} documents`);
+                              }
+                              
+                              alert('✅ All data cleared except player stats! New registrations will link to existing stats by mobile number.');
+                              window.location.reload();
+                            } catch (error) {
+                              console.error('❌ Error clearing data:', error);
+                              alert('❌ Error clearing data: ' + error.message);
+                            } finally {
+                              setResettingData(false);
+                            }
+                          }
+                        }
+                      }}
+                      disabled={resettingData}
+                      className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
+                    >
+                      {resettingData && (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      )}
+                      <span>{resettingData ? 'Clearing Data...' : 'Clear All Data (Keep Stats)'}</span>
+                    </button>
+                    <button
                       onClick={handleFixDuplicateStats}
                       disabled={fixingDuplicates}
-                      className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
+                      className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
                     >
                       {fixingDuplicates && (
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -4506,7 +4596,6 @@ This action cannot be undone. Are you absolutely sure?`;
                   value={editPlayerData.fullName || ''}
                   onChange={(e) => setEditPlayerData({...editPlayerData, fullName: e.target.value})}
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-cricket-navy focus:border-cricket-navy"
-                  required
                 />
                 <input
                   type="email"
@@ -4514,7 +4603,6 @@ This action cannot be undone. Are you absolutely sure?`;
                   value={editPlayerData.email || ''}
                   onChange={(e) => setEditPlayerData({...editPlayerData, email: e.target.value})}
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-cricket-navy focus:border-cricket-navy"
-                  required
                 />
                 <input
                   type="tel"
@@ -4522,20 +4610,17 @@ This action cannot be undone. Are you absolutely sure?`;
                   value={editPlayerData.phone || ''}
                   onChange={(e) => setEditPlayerData({...editPlayerData, phone: e.target.value})}
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-cricket-navy focus:border-cricket-navy"
-                  required
                 />
                 <input
                   type="date"
                   value={editPlayerData.dateOfBirth || ''}
                   onChange={(e) => setEditPlayerData({...editPlayerData, dateOfBirth: e.target.value})}
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-cricket-navy focus:border-cricket-navy"
-                  required
                 />
                 <select
                   value={editPlayerData.position || ''}
                   onChange={(e) => setEditPlayerData({...editPlayerData, position: e.target.value})}
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-cricket-navy focus:border-cricket-navy"
-                  required
                 >
                   <option value="">Select Position</option>
                   <option value="Batsman">Batsman</option>
@@ -4572,7 +4657,6 @@ This action cannot be undone. Are you absolutely sure?`;
                   value={editPlayerData.emergencyContact || ''}
                   onChange={(e) => setEditPlayerData({...editPlayerData, emergencyContact: e.target.value})}
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-cricket-navy focus:border-cricket-navy"
-                  required
                 />
                 <input
                   type="tel"
@@ -4580,7 +4664,6 @@ This action cannot be undone. Are you absolutely sure?`;
                   value={editPlayerData.emergencyPhone || ''}
                   onChange={(e) => setEditPlayerData({...editPlayerData, emergencyPhone: e.target.value})}
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-cricket-navy focus:border-cricket-navy"
-                  required
                 />
                 <textarea
                   placeholder="Address"
@@ -5349,3 +5432,28 @@ This action cannot be undone. Are you absolutely sure?`;
 };
 
 export default AdminPanel;
+  const fetchCurrentSeason = async () => {
+    try {
+      const season = await currentSeasonService.getCurrentSeason();
+      setCurrentSeason(season);
+    } catch (error) {
+      console.error('Error fetching current season:', error);
+    }
+  };
+  
+  const handleSetCurrentSeason = async (season) => {
+    if (window.confirm(`Set ${season} as the current active season? This will update the auction page and other season-specific features.`)) {
+      try {
+        await setDoc(doc(db, 'settings', 'currentSeason'), {
+          season,
+          updatedAt: new Date(),
+          updatedBy: currentAdmin?.userid
+        });
+        setCurrentSeason(season);
+        alert(`✅ ${season} is now the active season!`);
+      } catch (error) {
+        console.error('Error setting current season:', error);
+        alert('❌ Error setting current season: ' + error.message);
+      }
+    }
+  };

@@ -1,7 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AdminProvider } from './context/AdminContext';
-import { SeasonProvider } from './context/SeasonContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -39,33 +38,31 @@ function App() {
   }, []);
 
   return (
-    <SeasonProvider>
-      <AdminProvider>
-        <Router>
-          <div className="App flex flex-col min-h-screen">
-            <Navbar />
-            <main className="flex-1 pt-14 sm:pt-16">
-              <Suspense fallback={<LoadingFallback />}>
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/teams" element={<Teams />} />
-                  <Route path="/stats" element={<CricHeroesStats />} />
-                  <Route path="/auction" element={<Auction />} />
-                  <Route path="/cricheroes" element={<CricHeroesHome />} />
-                  <Route path="/news" element={<News />} />
-                  <Route path="/sponsors" element={<Sponsors />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="/player-registration" element={<PlayerRegistration />} />
-                  <Route path="/admin" element={<AdminPanel />} />
-                </Routes>
-              </Suspense>
-            </main>
-            <Footer />
-            <ScrollToTop />
-          </div>
-        </Router>
-      </AdminProvider>
-    </SeasonProvider>
+    <AdminProvider>
+      <Router>
+        <div className="App flex flex-col min-h-screen">
+          <Navbar />
+          <main className="flex-1 pt-14 sm:pt-16">
+            <Suspense fallback={<LoadingFallback />}>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/teams" element={<Teams />} />
+                <Route path="/stats" element={<CricHeroesStats />} />
+                <Route path="/auction" element={<Auction />} />
+                <Route path="/cricheroes" element={<CricHeroesHome />} />
+                <Route path="/news" element={<News />} />
+                <Route path="/sponsors" element={<Sponsors />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/player-registration" element={<PlayerRegistration />} />
+                <Route path="/admin" element={<AdminPanel />} />
+              </Routes>
+            </Suspense>
+          </main>
+          <Footer />
+          <ScrollToTop />
+        </div>
+      </Router>
+    </AdminProvider>
   );
 }
 

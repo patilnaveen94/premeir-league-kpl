@@ -3,7 +3,7 @@ import { Trophy, Target, Users, TrendingUp, Award, Calendar, Star, Medal, Chevro
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
 import { useTournamentData } from '../hooks/useTournamentData';
-import { useSeason } from '../context/SeasonContext';
+// Season context removed
 
 // Helper function to generate initials from full name
 const getPlayerInitials = (fullName) => {
@@ -17,8 +17,9 @@ const getPlayerInitials = (fullName) => {
 
 const CricHeroesStats = () => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [selectedSeason, setSelectedSeason] = useState('1');
+  const [selectedSeason, setSelectedSeason] = useState('current');
   const [showSeasonDropdown, setShowSeasonDropdown] = useState(false);
+  const [viewMode, setViewMode] = useState('season'); // 'season' or 'career'
   const [playerRegistrations, setPlayerRegistrations] = useState([]);
   const [directData, setDirectData] = useState({
     matches: [],
@@ -28,36 +29,57 @@ const CricHeroesStats = () => {
     loading: true
   });
   
-  // Use season context
-  const { currentSeason, publishedSeason } = useSeason();
+  // Season context removed - using default values
+  const currentSeason = null;
+  const publishedSeason = null;
   
   // Use centralized tournament data hook for consistent data
   const { topPerformers, playerStats, standings: pointsTable, loading } = useTournamentData();
   
-  // Direct data fetching as fallback with season filter
-  const fetchDirectData = async (season = selectedSeason) => {
+  // Direct data fetching with season filter or career stats
+  const fetchDirectData = async (season = selectedSeason, mode = viewMode) => {
     try {
-      console.log(`🔄 Fetching direct data for League Stats (Season ${season})...`);
+      console.log(`🔄 Fetching direct data for League Stats (${mode === 'career' ? 'Career Stats' : `Season ${season}`})...`);
       setDirectData(prev => ({ ...prev, loading: true }));
       
-      // Fetch all collections with season filter
-      const [matchesSnapshot, teamsSnapshot, standingsSnapshot, statsSnapshot] = await Promise.all([
-        getDocs(query(collection(db, 'matches'), where('season', '==', season))),
-        getDocs(query(collection(db, 'teams'), where('season', '==', season))),
-        getDocs(query(collection(db, 'standings'), where('season', '==', season))),
-        getDocs(query(collection(db, 'playerStats'), where('season', '==', season)))
-      ]);
+      let matchesSnapshot, teamsSnapshot, standingsSnapshot, statsSnapshot;
+      
+      if (mode === 'career') {
+        // Fetch all data for career stats (no season filter)
+        [matchesSnapshot, teamsSnapshot, standingsSnapshot, statsSnapshot] = await Promise.all([
+          getDocs(collection(db, 'matches')),
+          getDocs(collection(db, 'teams')),
+          getDocs(collection(db, 'standings')),
+          getDocs(collection(db, 'playerStats'))
+        ]);
+      } else {
+        // Fetch season-specific data
+        const seasonValue = season === 'current' ? publishedSeason : `Season ${season}`;
+        [matchesSnapshot, teamsSnapshot, standingsSnapshot, statsSnapshot] = await Promise.all([
+          getDocs(query(collection(db, 'matches'), where('season', '==', seasonValue))),
+          getDocs(query(collection(db, 'teams'), where('season', '==', seasonValue))),
+          getDocs(query(collection(db, 'standings'), where('season', '==', seasonValue))),
+          getDocs(query(collection(db, 'playerStats'), where('season', '==', seasonValue)))
+        ]);
+      }
       
       const matches = matchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const teams = teamsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const standings = standingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const playerStats = statsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
-      console.log(`✅ Direct data fetched for Season ${season}:`, {
+      // Calculate top performers from the fetched data
+      const topPerformers = calculateTopPerformers(playerStats);
+      
+      console.log(`✅ Direct data fetched for ${mode === 'career' ? 'Career Stats' : `Season ${season}`}:`, {
         matches: matches.length,
         teams: teams.length,
         standings: standings.length,
-        playerStats: playerStats.length
+        playerStats: playerStats.length,
+        topPerformers: {
+          topRunScorers: topPerformers.topRunScorers.length,
+          topWicketTakers: topPerformers.topWicketTakers.length
+        }
       });
       
       setDirectData({
@@ -65,11 +87,132 @@ const CricHeroesStats = () => {
         standings,
         playerStats,
         teams,
+        topPerformers,
         loading: false
       });
     } catch (error) {
       console.error('❌ Error fetching direct data:', error);
       setDirectData(prev => ({ ...prev, loading: false }));
+    }
+  };
+  
+  // Calculate top performers from player stats
+  const calculateTopPerformers = (playerStats) => {
+    if (viewMode === 'career') {
+      // For career stats, aggregate by player name across all seasons
+      const playerMap = new Map();
+      
+      playerStats.forEach(p => {
+        const playerName = p.playerName || p.name || 'Unknown Player';
+        if (!playerMap.has(playerName)) {
+          playerMap.set(playerName, {
+            name: playerName,
+            team: p.teamName || p.team || 'Unknown Team',
+            runs: 0,
+            wickets: 0,
+            matches: 0,
+            ballsFaced: 0,
+            oversBowled: 0,
+            runsConceded: 0,
+            highestScore: 0
+          });
+        }
+        
+        const player = playerMap.get(playerName);
+        player.runs += p.runs || 0;
+        player.wickets += p.wickets || 0;
+        player.matches += p.matches || 0;
+        player.ballsFaced += p.ballsFaced || 0;
+        player.oversBowled += p.overs || 0;
+        player.runsConceded += p.runsConceded || 0;
+        player.highestScore = Math.max(player.highestScore, p.highestScore || 0);
+      });
+      
+      const aggregatedStats = Array.from(playerMap.values()).map(p => ({
+        ...p,
+        average: p.runs > 0 && p.matches > 0 ? (p.runs / p.matches).toFixed(2) : '0.00',
+        strikeRate: p.ballsFaced > 0 ? ((p.runs / p.ballsFaced) * 100).toFixed(2) : '0.00',
+        economy: p.oversBowled > 0 ? (p.runsConceded / p.oversBowled).toFixed(2) : '0.00'
+      }));
+      
+      const topRunScorers = aggregatedStats
+        .filter(p => p.runs > 0)
+        .sort((a, b) => b.runs - a.runs)
+        .slice(0, 10);
+        
+      const topWicketTakers = aggregatedStats
+        .filter(p => p.wickets > 0)
+        .sort((a, b) => b.wickets - a.wickets)
+        .slice(0, 10);
+        
+      const bestBatsmen = aggregatedStats
+        .filter(p => p.runs >= 50 && p.matches >= 3)
+        .sort((a, b) => parseFloat(b.average) - parseFloat(a.average))
+        .slice(0, 5);
+        
+      const bestBowlers = aggregatedStats
+        .filter(p => p.wickets >= 3 && p.oversBowled >= 5)
+        .sort((a, b) => parseFloat(a.economy) - parseFloat(b.economy))
+        .slice(0, 5);
+        
+      return { topRunScorers, topWicketTakers, bestBatsmen, bestBowlers };
+    } else {
+      // Season-specific stats
+      const topRunScorers = playerStats
+        .filter(p => p.runs > 0)
+        .sort((a, b) => b.runs - a.runs)
+        .slice(0, 10)
+        .map(p => ({
+          playerId: p.playerId,
+          name: p.playerName || p.name || 'Unknown Player',
+          team: p.teamName || p.team || 'Unknown Team',
+          runs: p.runs,
+          matches: p.matches,
+          average: p.battingAverage,
+          strikeRate: p.strikeRate,
+          highestScore: p.highestScore
+        }));
+        
+      const topWicketTakers = playerStats
+        .filter(p => p.wickets > 0)
+        .sort((a, b) => b.wickets - a.wickets)
+        .slice(0, 10)
+        .map(p => ({
+          playerId: p.playerId,
+          name: p.playerName || p.name || 'Unknown Player',
+          team: p.teamName || p.team || 'Unknown Team',
+          wickets: p.wickets,
+          matches: p.matches,
+          economy: p.economy,
+          overs: p.overs,
+          bestBowling: p.bestBowling
+        }));
+        
+      const bestBatsmen = playerStats
+        .filter(p => p.runs >= 50 && p.matches >= 3)
+        .sort((a, b) => parseFloat(b.battingAverage || 0) - parseFloat(a.battingAverage || 0))
+        .slice(0, 5)
+        .map(p => ({
+          playerId: p.playerId,
+          name: p.playerName || p.name || 'Unknown Player',
+          team: p.teamName || p.team || 'Unknown Team',
+          average: p.battingAverage,
+          runs: p.runs
+        }));
+        
+      const bestBowlers = playerStats
+        .filter(p => p.wickets >= 3 && p.overs >= 5)
+        .sort((a, b) => parseFloat(a.economy || 999) - parseFloat(b.economy || 999))
+        .slice(0, 5)
+        .map(p => ({
+          playerId: p.playerId,
+          name: p.playerName || p.name || 'Unknown Player',
+          team: p.teamName || p.team || 'Unknown Team',
+          economy: p.economy,
+          wickets: p.wickets
+        }));
+        
+      return { topRunScorers, topWicketTakers, bestBatsmen, bestBowlers };
     }
   };
   
@@ -88,8 +231,11 @@ const CricHeroesStats = () => {
 
   useEffect(() => {
     fetchPlayerRegistrations();
-    fetchDirectData(selectedSeason);
-  }, [selectedSeason]);
+    // Only fetch direct data for stats tab with season/career filtering
+    if (activeTab === 'stats') {
+      fetchDirectData(selectedSeason, viewMode);
+    }
+  }, [selectedSeason, viewMode, activeTab]);
 
   // Refresh player registrations when tournament data updates
   useEffect(() => {
@@ -120,14 +266,14 @@ const CricHeroesStats = () => {
     return player?.photoBase64 || null;
   };
   
-  // Use direct data if hook data is not available
+  // Use hook data for non-stats tabs (current published season), direct data for stats tab
   const currentData = {
-    matches: directData.matches || [],
-    standings: pointsTable?.length > 0 ? pointsTable : directData.standings || [],
-    playerStats: playerStats?.length > 0 ? playerStats : directData.playerStats || [],
-    topPerformers: topPerformers,
+    matches: activeTab === 'stats' ? directData.matches || [] : [],
+    standings: activeTab === 'points' ? (pointsTable?.length > 0 ? pointsTable : []) : (activeTab === 'stats' ? directData.standings || [] : []),
+    playerStats: activeTab === 'stats' ? directData.playerStats || [] : (playerStats || []),
+    topPerformers: activeTab === 'stats' ? directData.topPerformers : topPerformers,
     teams: directData.teams || [],
-    loading: loading && directData.loading
+    loading: activeTab === 'stats' ? directData.loading : loading
   };
 
   const tabs = [
@@ -142,44 +288,11 @@ const CricHeroesStats = () => {
   return (
     <div className="min-h-screen cricket-bg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tournament Header with Season Selector */}
+        {/* Tournament Header */}
         <div className="bg-gradient-to-r from-cricket-navy to-cricket-orange rounded-xl p-6 mb-8 text-white">
           <div className="text-center">
             <h1 className="text-3xl font-bold">Khajjidoni Premier League 2025</h1>
             <p className="text-white/90 mt-2">Tournament Statistics</p>
-            
-            {/* Season Selector */}
-            <div className="mt-4 flex justify-center">
-              <div className="relative">
-                <button
-                  onClick={() => setShowSeasonDropdown(!showSeasonDropdown)}
-                  className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg px-4 py-2 text-white font-medium flex items-center space-x-2 hover:bg-white/30 transition-all duration-200"
-                >
-                  <span>Season {selectedSeason}</span>
-                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showSeasonDropdown ? 'rotate-180' : ''}`} />
-                </button>
-                
-                {showSeasonDropdown && (
-                  <div className="absolute top-full mt-2 left-0 bg-white rounded-lg shadow-xl border border-gray-200 min-w-[120px] z-50">
-                    {['1', '2'].map((season) => (
-                      <button
-                        key={season}
-                        onClick={() => {
-                          setSelectedSeason(season);
-                          setShowSeasonDropdown(false);
-                        }}
-                        className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors duration-200 first:rounded-t-lg last:rounded-b-lg ${
-                          selectedSeason === season ? 'bg-cricket-orange text-white' : 'text-gray-700'
-                        }`}
-                      >
-                        Season {season}
-                        {season === currentSeason && <span className="text-xs ml-2 opacity-75">(Current)</span>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         </div>
 
@@ -435,6 +548,72 @@ const CricHeroesStats = () => {
             {/* Player Stats Tab */}
             {activeTab === 'stats' && (
               <div className="space-y-8">
+                {/* View Mode Toggle - Only in Player Stats Tab */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-100 rounded-xl p-6 shadow-lg border border-blue-200">
+                  <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                    <div className="flex bg-white/80 backdrop-blur-sm rounded-lg p-1 shadow-md">
+                      <button
+                        onClick={() => setViewMode('season')}
+                        className={`px-4 py-2 rounded-md font-medium transition-all duration-200 ${
+                          viewMode === 'season' ? 'bg-blue-600 text-white shadow-md' : 'text-blue-700 hover:bg-blue-100'
+                        }`}
+                      >
+                        Season Stats
+                      </button>
+                      <button
+                        onClick={() => setViewMode('career')}
+                        className={`px-4 py-2 rounded-md font-medium transition-all duration-200 ${
+                          viewMode === 'career' ? 'bg-blue-600 text-white shadow-md' : 'text-blue-700 hover:bg-blue-100'
+                        }`}
+                      >
+                        Career Stats
+                      </button>
+                    </div>
+                    
+                    {/* Season Selector - Only show for season view */}
+                    {viewMode === 'season' && (
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowSeasonDropdown(!showSeasonDropdown)}
+                          className="bg-white/80 backdrop-blur-sm border border-blue-200 rounded-lg px-4 py-2 text-blue-700 font-medium flex items-center space-x-2 hover:bg-white transition-all duration-200 shadow-md"
+                        >
+                          <span>{selectedSeason === 'current' ? 'Current Season' : `Season ${selectedSeason}`}</span>
+                          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showSeasonDropdown ? 'rotate-180' : ''}`} />
+                        </button>
+                        
+                        {showSeasonDropdown && (
+                          <div className="absolute top-full mt-2 left-0 bg-white rounded-lg shadow-xl border border-gray-200 min-w-[140px] z-50">
+                            <button
+                              onClick={() => {
+                                setSelectedSeason('current');
+                                setShowSeasonDropdown(false);
+                              }}
+                              className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors duration-200 first:rounded-t-lg ${
+                                selectedSeason === 'current' ? 'bg-blue-600 text-white' : 'text-gray-700'
+                              }`}
+                            >
+                              Current Season
+                            </button>
+                            {['1', '2'].map((season) => (
+                              <button
+                                key={season}
+                                onClick={() => {
+                                  setSelectedSeason(season);
+                                  setShowSeasonDropdown(false);
+                                }}
+                                className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors duration-200 last:rounded-b-lg ${
+                                  selectedSeason === season ? 'bg-blue-600 text-white' : 'text-gray-700'
+                                }`}
+                              >
+                                Season {season}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 {currentData.loading ? (
                   <div className="text-center py-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cricket-orange mx-auto mb-4"></div>

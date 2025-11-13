@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
-import { User, Mail, Phone, Calendar, MapPin, Upload, CreditCard, QrCode } from 'lucide-react';
+import { User, Mail, Phone, Calendar, CreditCard } from 'lucide-react';
 import { db } from '../firebase/firebase';
 
 const PlayerRegistration = () => {
@@ -21,27 +21,23 @@ const PlayerRegistration = () => {
     emergencyPhone: ''
   });
   const [photo, setPhoto] = useState(null);
-  const [paymentScreenshot, setPaymentScreenshot] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [formFields, setFormFields] = useState([]);
-  const [paymentConfig, setPaymentConfig] = useState({
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [paymentConfig] = useState({
     fee: 100,
-    instructions: '1. Pay ₹100 registration fee via UPI/Bank Transfer\n2. Take a screenshot of the payment confirmation\n3. Upload the screenshot below',
-    qrCodeBase64: '',
-    showQrCode: false
+    upiId: 'your-upi-id@paytm' // Replace with actual UPI ID
   });
-  const [showQrCode, setShowQrCode] = useState(false);
 
   const generateUserId = () => `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const navigate = useNavigate();
   
-  // Fetch form fields and payment config on component mount
+  // Fetch form fields on component mount
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     fetchFormFields();
-    fetchPaymentConfig();
   }, []);
 
   const fetchFormFields = async () => {
@@ -64,17 +60,7 @@ const PlayerRegistration = () => {
     }
   };
 
-  const fetchPaymentConfig = async () => {
-    try {
-      const configSnapshot = await getDocs(collection(db, 'paymentConfig'));
-      if (!configSnapshot.empty) {
-        const configData = configSnapshot.docs[0].data();
-        setPaymentConfig(configData);
-      }
-    } catch (error) {
-      console.error('Error fetching payment config:', error);
-    }
-  };
+
 
   const handleInputChange = (e) => {
     setFormData({
@@ -131,10 +117,19 @@ const PlayerRegistration = () => {
     }
   };
 
-  const handlePaymentScreenshotChange = (e) => {
-    if (e.target.files[0]) {
-      setPaymentScreenshot(e.target.files[0]);
-    }
+  const handlePayment = () => {
+    const upiUrl = `upi://pay?pa=${paymentConfig.upiId}&pn=Cricket League&am=${paymentConfig.fee}&cu=INR&tn=Player Registration Fee`;
+    
+    // Open UPI app
+    window.open(upiUrl, '_blank');
+    
+    // Show payment completion confirmation after a delay
+    setTimeout(() => {
+      const confirmed = window.confirm('Have you completed the payment of ₹100? Click OK if payment is successful.');
+      if (confirmed) {
+        setPaymentCompleted(true);
+      }
+    }, 3000);
   };
 
   const checkDuplicatePhone = async (phone) => {
@@ -163,15 +158,14 @@ const PlayerRegistration = () => {
         return;
       }
 
-      // Validate payment screenshot
-      if (!paymentScreenshot) {
-        setError(`Payment screenshot is required. Registration fee: ₹${paymentConfig.fee}`);
+      // Validate payment completion
+      if (!paymentCompleted) {
+        setError(`Please complete the payment of ₹${paymentConfig.fee} before submitting.`);
         setLoading(false);
         return;
       }
 
       let photoBase64 = '';
-      let paymentScreenshotBase64 = '';
       
       const userId = generateUserId();
       
@@ -180,22 +174,36 @@ const PlayerRegistration = () => {
         photoBase64 = await convertToBase64(photo);
       }
 
-      // Convert payment screenshot to base64
-      paymentScreenshotBase64 = await convertToBase64(paymentScreenshot);
+      // Check for existing player stats by mobile number
+      let existingStats = null;
+      try {
+        const statsQuery = query(
+          collection(db, 'playerStats'),
+          where('phone', '==', formData.phone)
+        );
+        const statsSnapshot = await getDocs(statsQuery);
+        if (!statsSnapshot.empty) {
+          existingStats = statsSnapshot.docs[0].data();
+          console.log('Found existing stats for phone:', formData.phone, existingStats);
+        }
+      } catch (error) {
+        console.log('No existing stats found for phone:', formData.phone);
+      }
 
-      // Create payload with all form data and files
+      // Create payload with all form data
       const payload = {
         ...formData,
         photoBase64,
-        paymentScreenshotBase64,
         registrationFee: paymentConfig.fee,
-        paymentStatus: 'pending_verification',
+        paymentStatus: 'completed',
+        paymentCompleted: true,
         userId,
         userEmail: formData.email,
         status: 'pending',
-        season: '2', // New registrations go to Season 2
         createdAt: new Date(),
-        approved: false
+        approved: false,
+        hasExistingStats: !!existingStats,
+        linkedStatsName: existingStats?.name || null
       };
       
       console.log('Registration payload:', payload); // Debug log
@@ -339,56 +347,41 @@ const PlayerRegistration = () => {
             {/* Payment Section */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Payment Screenshot * (Registration Fee: ₹{paymentConfig.fee})
+                Registration Fee: ₹{paymentConfig.fee} *
               </label>
-              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-3">
-                <p className="text-sm text-yellow-800">
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
+                <p className="text-sm text-blue-800 mb-3">
                   <strong>Payment Instructions:</strong><br/>
-                  <pre className="whitespace-pre-wrap font-sans">{paymentConfig.instructions}</pre>
+                  Click the button below to pay ₹{paymentConfig.fee} via UPI. You will be redirected to your UPI app.
                 </p>
-              </div>
-              
-              {paymentConfig.showQrCode && paymentConfig.qrCodeBase64 && (
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Payment QR Code:</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowQrCode(!showQrCode)}
-                      className="flex items-center space-x-1 text-cricket-green hover:text-cricket-navy text-sm"
-                    >
-                      <QrCode size={16} />
-                      <span>{showQrCode ? 'Hide QR Code' : 'Show QR Code'}</span>
-                    </button>
+                
+                {!paymentCompleted ? (
+                  <button
+                    type="button"
+                    onClick={handlePayment}
+                    className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md font-medium transition-colors"
+                  >
+                    <CreditCard size={20} />
+                    <span>Pay ₹{paymentConfig.fee} via UPI</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center space-x-2 text-green-600">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span className="font-medium">Payment Completed ✓</span>
                   </div>
-                  {showQrCode && (
-                    <div className="bg-white p-4 rounded-lg border text-center">
-                      <img src={paymentConfig.qrCodeBase64} alt="Payment QR Code" className="w-48 h-48 mx-auto border rounded" />
-                      <p className="text-xs text-gray-500 mt-2">Scan to pay ₹{paymentConfig.fee}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              <div className="relative">
-                <input
-                  type="file"
-                  accept="image/*"
-                  required
-                  onChange={handlePaymentScreenshotChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-cricket-green focus:border-cricket-green"
-                />
-                <CreditCard className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+                )}
               </div>
             </div>
 
             <div className="flex justify-end">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !paymentCompleted}
                 className="btn-primary disabled:opacity-50"
               >
-                {loading ? 'Submitting...' : 'Submit Registration'}
+                {loading ? 'Submitting...' : !paymentCompleted ? 'Complete Payment First' : 'Submit Registration'}
               </button>
             </div>
           </form>

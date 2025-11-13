@@ -4,25 +4,27 @@ import { db } from '../firebase/firebase';
 import { useAdmin } from '../context/AdminContext';
 import auctionService from '../services/auctionService';
 import careerStatsService from '../services/careerStatsService';
+// Current season service removed
 import { normalizePlayerName } from '../utils/playerUtils';
 import { Gavel, Users, Trophy, Target, Calendar, DollarSign, X, Edit, ArrowUp, Star, Award } from 'lucide-react';
 
 const Auction = () => {
   const [players, setPlayers] = useState([]);
   const [teams, setTeams] = useState([]);
-  const [selectedSeason, setSelectedSeason] = useState('Season 1');
+
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [showPlayerModal, setShowPlayerModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [playerStats, setPlayerStats] = useState({});
   const [careerStats, setCareerStats] = useState({});
+  const [currentSeason, setCurrentSeason] = useState('Season 1');
 
   const { isAdminLoggedIn } = useAdmin();
 
   useEffect(() => {
     fetchAuctionData();
-  }, [selectedSeason]);
+  }, []);
 
 
 
@@ -32,13 +34,15 @@ const Auction = () => {
     try {
       console.log('🔄 Fetching auction data...');
       
-      // Fetch ALL players directly from Firebase to debug count issue
+      // Fetch data without season service
       const [allPlayersSnapshot, teamsSnapshot, statsSnapshot, careerStatsData] = await Promise.all([
         getDocs(collection(db, 'playerRegistrations')),
         getDocs(collection(db, 'teams')),
         getDocs(collection(db, 'playerStats')),
         careerStatsService.calculateCareerStats()
       ]);
+      
+      setCurrentSeason('Current Season');
 
       const teamsData = teamsSnapshot.docs.map(doc => ({
         id: doc.id,
@@ -50,25 +54,33 @@ const Auction = () => {
         statsData[doc.data().name] = doc.data();
       });
 
-      // Process ALL players and assign default season
+      // Process ALL players with career stats (including linked stats by phone)
       const allPlayers = allPlayersSnapshot.docs.map(doc => {
         const data = doc.data();
         const normalizedName = normalizePlayerName(data.fullName);
-        const playerStats = statsData[data.fullName] || statsData[normalizedName] || {};
-        const playerCareerStats = careerStatsData[normalizedName] || careerStatsData[data.fullName] || {};
+        
+        // Try to get career stats by name first, then by linked stats name, then by phone
+        let playerCareerStats = careerStatsData[normalizedName] || careerStatsData[data.fullName] || {};
+        
+        // If no stats found by name but has linked stats, try linked name
+        if (!playerCareerStats.totalMatches && data.linkedStatsName) {
+          playerCareerStats = careerStatsData[data.linkedStatsName] || {};
+        }
+        
+        // If still no stats and has phone, try to find stats by phone in statsData
+        if (!playerCareerStats.totalMatches && data.phone) {
+          const phoneStats = Object.values(careerStatsData).find(stats => stats.phone === data.phone);
+          if (phoneStats) {
+            playerCareerStats = phoneStats;
+          }
+        }
+        
         return {
           id: doc.id,
           ...data,
-          season: data.season || 'Season 1', // Default all to Season 1
-          needsSeasonUpdate: !data.season, // Flag for players needing season update
           auctionStatus: data.teamId ? 'sold' : 'unsold',
           soldTo: data.teamId ? teamsData.find(t => t.id === data.teamId)?.name : null,
-          matches: playerStats.matches || 0,
-          runs: playerStats.runs || 0,
-          wickets: playerStats.wickets || 0,
-          average: playerStats.average || '0.00',
-          strikeRate: playerStats.strikeRate || '0.00',
-          // Career stats
+          // Career stats (linked by phone if available)
           careerMatches: playerCareerStats.totalMatches || 0,
           careerRuns: playerCareerStats.totalRuns || 0,
           careerWickets: playerCareerStats.totalWickets || 0,
@@ -76,28 +88,24 @@ const Auction = () => {
           careerStrikeRate: playerCareerStats.strikeRate || '0.00',
           careerHighestScore: playerCareerStats.highestScore || 0,
           careerBestBowling: playerCareerStats.bestBowling || '0/0',
-          seasonsPlayed: playerCareerStats.seasonsPlayed || []
+          seasonsPlayed: playerCareerStats.seasonsPlayed || [],
+          hasLinkedStats: !!playerCareerStats.totalMatches
         };
       });
 
-      console.log('🔍 DETAILED PLAYER COUNT DEBUG:');
       console.log(`📊 Total players in database: ${allPlayers.length}`);
-      console.log(`✅ Approved players: ${allPlayers.filter(p => p.status === 'approved').length}`);
-      console.log(`⏳ Pending players: ${allPlayers.filter(p => p.status === 'pending').length}`);
-      console.log(`❌ Rejected players: ${allPlayers.filter(p => p.status === 'rejected').length}`);
-      console.log(`🏆 Approved Season 1 players: ${allPlayers.filter(p => (p.season || 'Season 1') === 'Season 1' && p.status === 'approved').length}`);
-      console.log(`🏆 Approved Season 2 players: ${allPlayers.filter(p => p.season === 'Season 2' && p.status === 'approved').length}`);
-      console.log(`👥 Players with teams: ${allPlayers.filter(p => p.teamId).length}`);
-      console.log(`🆓 Players without teams: ${allPlayers.filter(p => !p.teamId).length}`);
+      console.log(`📊 Approved players: ${allPlayers.filter(p => p.status === 'approved').length}`);
+      console.log(`📊 Players with linked stats: ${allPlayers.filter(p => p.hasLinkedStats).length}`);
+      console.log(`📊 Players without stats: ${allPlayers.filter(p => !p.hasLinkedStats).length}`);
       
-      // For Season 1, show ALL approved players (including those without season assigned)
-      const seasonPlayers = selectedSeason === 'Season 1' 
-        ? allPlayers.filter(player => player.status === 'approved') // Show only approved players for Season 1
-        : allPlayers.filter(player => player.season === selectedSeason && player.status === 'approved');
+      // Show ALL approved players regardless of season
+      const currentSeasonPlayers = allPlayers.filter(player => {
+        return player.status === 'approved';
+      });
       
-      console.log(`🎯 Final result: Showing ${seasonPlayers.length} players for ${selectedSeason}`);
+      console.log(`🎯 Showing ${currentSeasonPlayers.length} approved players for auction`);
       
-      setPlayers(seasonPlayers);
+      setPlayers(currentSeasonPlayers);
       setTeams(teamsData);
       setPlayerStats(statsData);
       setCareerStats(careerStatsData);
@@ -199,87 +207,43 @@ const Auction = () => {
                 <Gavel className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 mr-2 sm:mr-3 md:mr-4" />
                 Player Auction
               </h1>
-              <p className="text-orange-100 mt-1 sm:mt-2 text-sm sm:text-base md:text-lg lg:text-xl">Khajjidoni Premier League Player Auction System</p>
+              <p className="text-orange-100 mt-1 sm:mt-2 text-sm sm:text-base md:text-lg lg:text-xl">All Players with Complete Career Statistics</p>
             </div>
             <div className="text-right">
               <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold">{filteredPlayers.length}</div>
-              <div className="text-orange-100 text-xs sm:text-sm md:text-base lg:text-lg">Total Players</div>
+              <div className="text-orange-100 text-xs sm:text-sm md:text-base lg:text-lg">Available Players</div>
+              <div className="text-xs text-orange-200 mt-1">{filteredPlayers.filter(p => p.hasLinkedStats).length} with previous stats</div>
             </div>
           </div>
         </div>
 
         {/* Enhanced Controls with Modern Design */}
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 border border-gray-100">
-          {/* Season Update Notice */}
-          {players.filter(p => p.needsSeasonUpdate).length > 0 && (
-            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-yellow-800 font-medium">
-                    📋 {players.filter(p => p.needsSeasonUpdate).length} players need season assignment
-                  </p>
-                  <p className="text-yellow-600 text-sm">Click to assign all unassigned players to Season 1</p>
-                </div>
-                <button
-                  onClick={updatePlayersToSeason1}
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium"
-                >
-                  Update All to Season 1
-                </button>
-              </div>
-            </div>
-          )}
           <div className="space-y-8">
-            {/* Season & Status Selection Row */}
-            <div className="space-y-6">
-              {/* Season Selection with Gradient Buttons */}
-              <div>
-                <label className="block text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-800 mb-3 sm:mb-4 uppercase tracking-wide">Tournament Season</label>
-                <div className="flex flex-wrap gap-2 sm:gap-3">
-                  {['Season 1', 'Season 2'].map(season => (
-                    <button
-                      key={season}
-                      onClick={() => setSelectedSeason(season)}
-                      className={`px-4 sm:px-6 md:px-8 lg:px-10 py-2 sm:py-3 md:py-4 lg:py-5 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base md:text-lg lg:text-xl transition-all duration-300 flex-shrink-0 ${
-                        selectedSeason === season
-                          ? 'bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 text-white shadow-xl'
-                          : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300 shadow-lg'
-                      }`}
-                    >
-                      <span className="flex items-center space-x-1 sm:space-x-2">
-                        <span>🏆</span>
-                        <span className="whitespace-nowrap">{season}</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Status Filter with Colorful Buttons */}
-              <div>
-                <label className="block text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-800 mb-3 sm:mb-4 uppercase tracking-wide">Player Status</label>
-                <div className="flex flex-wrap gap-2 sm:gap-3">
-                  {[
-                    { value: 'all', label: 'All', gradient: 'from-blue-500 to-purple-600', icon: '👥' },
-                    { value: 'sold', label: 'Sold', gradient: 'from-green-500 to-emerald-600', icon: '✅' },
-                    { value: 'unsold', label: 'Unsold', gradient: 'from-gray-500 to-slate-600', icon: '⏳' }
-                  ].map(status => (
-                    <button
-                      key={status.value}
-                      onClick={() => setStatusFilter(status.value)}
-                      className={`px-3 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-3 md:py-4 lg:py-5 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm md:text-base lg:text-lg transition-all duration-300 flex-shrink-0 ${
-                        statusFilter === status.value
-                          ? `bg-gradient-to-r ${status.gradient} text-white shadow-xl`
-                          : 'bg-white text-gray-600 hover:bg-gray-50 shadow-md border-2 border-gray-200'
-                      }`}
-                    >
-                      <span className="flex items-center space-x-1 sm:space-x-2">
-                        <span>{status.icon}</span>
-                        <span className="whitespace-nowrap">{status.label}</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
+            {/* Status Filter Only */}
+            <div>
+              <label className="block text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-800 mb-3 sm:mb-4 uppercase tracking-wide">Player Status</label>
+              <div className="flex flex-wrap gap-2 sm:gap-3">
+                {[
+                  { value: 'all', label: 'All Players', gradient: 'from-blue-500 to-purple-600', icon: '👥' },
+                  { value: 'sold', label: 'Sold', gradient: 'from-green-500 to-emerald-600', icon: '✅' },
+                  { value: 'unsold', label: 'Available', gradient: 'from-orange-500 to-red-600', icon: '🎯' }
+                ].map(status => (
+                  <button
+                    key={status.value}
+                    onClick={() => setStatusFilter(status.value)}
+                    className={`px-3 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-3 md:py-4 lg:py-5 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm md:text-base lg:text-lg transition-all duration-300 flex-shrink-0 ${
+                      statusFilter === status.value
+                        ? `bg-gradient-to-r ${status.gradient} text-white shadow-xl`
+                        : 'bg-white text-gray-600 hover:bg-gray-50 shadow-md border-2 border-gray-200'
+                    }`}
+                  >
+                    <span className="flex items-center space-x-1 sm:space-x-2">
+                      <span>{status.icon}</span>
+                      <span className="whitespace-nowrap">{status.label}</span>
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
             
@@ -461,10 +425,10 @@ const Auction = () => {
               <Users className="w-16 h-16 text-gray-400" />
             </div>
             <h3 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">No Players Found</h3>
-            <p className="text-gray-600 text-lg sm:text-xl md:text-2xl lg:text-3xl mb-6">No players match the selected criteria for {selectedSeason}.</p>
+            <p className="text-gray-600 text-lg sm:text-xl md:text-2xl lg:text-3xl mb-6">No players match the selected status filter.</p>
             <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 max-w-md mx-auto">
               <p className="text-blue-800 text-sm sm:text-base md:text-lg">
-                💡 Try selecting a different season or status filter to see more players.
+                💡 Try selecting "All Players" to see all available players.
               </p>
             </div>
           </div>

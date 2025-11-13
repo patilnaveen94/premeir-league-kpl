@@ -9,7 +9,7 @@ A modern, responsive Cricket League website built with React.js, Tailwind CSS, a
 - **Teams**: Display all Cricket League teams with details
 - **Schedule**: Upcoming fixtures and match schedules
 - **Results**: Latest match results and scores
-- **Points Table**: Current league standings with season selection
+- **Points Table**: Current league standings
 - **News**: Latest Cricket League news and updates
 - **Contact**: Contact form and information
 

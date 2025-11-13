@@ -267,7 +267,7 @@ const Home = () => {
           <div className="text-center mobile-margin animate-fade-in-up">
             <h2 className="responsive-subheading font-bold text-gray-900 mb-3 sm:mb-4">Tournament 2025</h2>
             <p className="responsive-text text-gray-600 max-w-3xl mx-auto">
-              Experience the thrill of cricket at its finest. 7 teams, unlimited passion, one champion.
+              Current Season Highlights - Experience the thrill of cricket at its finest. 7 teams, unlimited passion, one champion.
             </p>
           </div>
           
@@ -1006,63 +1006,113 @@ const Home = () => {
 
       {/* Player Registration Section */}
       {showRegistrationSection && (
-        <section className="py-12 sm:py-16 bg-gradient-to-br from-orange-500 via-red-500 to-pink-600">
-          <div className="responsive-container">
-            <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 sm:p-12 text-white text-center">
-              <div className="max-w-4xl mx-auto">
-                <div className="mb-8">
-                  <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Users className="w-10 h-10 text-white" />
+        <section className="py-16 sm:py-20 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 relative overflow-hidden">
+          <div className="absolute inset-0 bg-black/20"></div>
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mb-6 shadow-lg">
+                <Users className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight">
+                Join the <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">League</span>
+              </h2>
+              <p className="text-xl text-white/80 max-w-2xl mx-auto leading-relaxed">
+                Be part of Khajjidoni Premier League 2025 - Where cricket dreams come alive
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+              {/* Tournament Info Card */}
+              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
+                <h3 className="text-2xl font-bold text-white mb-6">Tournament Highlights</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-blue-500 rounded-lg flex items-center justify-center">
+                      <Trophy className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white">₹50,000 Prize Pool</h4>
+                      <p className="text-white/70 text-sm">Winner takes ₹25,000</p>
+                    </div>
                   </div>
-                  <h2 className="text-3xl sm:text-4xl font-bold mb-4">Join the League</h2>
-                  <p className="text-xl text-white/90 mb-8">
-                    Register now for Khajjidoni Premier League 2025 and be part of cricket history
-                  </p>
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-pink-500 rounded-lg flex items-center justify-center">
+                      <Calendar className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white">March 2025</h4>
+                      <p className="text-white/70 text-sm">15-day tournament</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-gradient-to-r from-orange-400 to-red-500 rounded-lg flex items-center justify-center">
+                      <MapPin className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white">Nutan Vidyalaya Khajjidoni</h4>
+                      <p className="text-white/70 text-sm">Professional cricket ground</p>
+                    </div>
+                  </div>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                  <div className="bg-white/10 rounded-xl p-6">
-                    <Trophy className="w-8 h-8 text-white mx-auto mb-3" />
-                    <h3 className="font-bold text-lg mb-2">Prize Money</h3>
-                    <p className="text-white/90">₹50,000 total prize pool</p>
+              </div>
+
+              {/* Registration Benefits */}
+              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
+                <h3 className="text-2xl font-bold text-white mb-6">Why Join Us?</h3>
+                <div className="space-y-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mt-0.5">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white">Professional Experience</h4>
+                      <p className="text-white/70 text-sm">Play with experienced cricketers</p>
+                    </div>
                   </div>
-                  <div className="bg-white/10 rounded-xl p-6">
-                    <Calendar className="w-8 h-8 text-white mx-auto mb-3" />
-                    <h3 className="font-bold text-lg mb-2">Tournament</h3>
-                    <p className="text-white/90">March 2025</p>
+                  <div className="flex items-start space-x-3">
+                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mt-0.5">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white">Live Statistics</h4>
+                      <p className="text-white/70 text-sm">Real-time scoring and player stats</p>
+                    </div>
                   </div>
-                  <div className="bg-white/10 rounded-xl p-6">
-                    <MapPin className="w-8 h-8 text-white mx-auto mb-3" />
-                    <h3 className="font-bold text-lg mb-2">Venue</h3>
-                    <p className="text-white/90">Nutan Vidyalaya Khajjidoni</p>
+                  <div className="flex items-start space-x-3">
+                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mt-0.5">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white">Team Selection</h4>
+                      <p className="text-white/70 text-sm">Fair team allocation process</p>
+                    </div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Registration Fee & CTA */}
+            <div className="bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl p-8 text-center">
+              <div className="max-w-3xl mx-auto">
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Registration Fee: ₹100 Only</h3>
+                <p className="text-gray-800 mb-6">Secure your spot in the most exciting cricket tournament of 2025</p>
                 
-                <div className="space-y-4 mb-8">
-                  <div className="flex items-center justify-center space-x-3">
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                    <span>Open to all cricket enthusiasts</span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-3">
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                    <span>Professional tournament format</span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-3">
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                    <span>Live scoring and statistics</span>
-                  </div>
-                </div>
-                
-                <div className="responsive-flex justify-center animate-fade-in-up animation-delay-500">
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link 
                     to="/player-registration" 
-                    className="bg-white text-orange-600 hover:bg-gray-100 px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 w-full sm:w-auto text-center btn-animate"
+                    className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
                   >
-                    Register as Player
+                    Register Now - ₹100
                   </Link>
                   <Link 
                     to="/teams" 
-                    className="bg-white/20 hover:bg-white/30 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 w-full sm:w-auto text-center btn-animate"
+                    className="bg-white/20 hover:bg-white/30 text-gray-900 px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 border-2 border-gray-900/20"
                   >
                     View Teams
                   </Link>
@@ -1073,71 +1123,6 @@ const Home = () => {
         </section>
       )}
 
-      {/* CTA Section */}
-      <section className="bg-gradient-to-r from-cricket-navy to-cricket-blue text-white py-12 sm:py-16">
-        <div className="responsive-container">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-            <div>
-              <h2 className="responsive-subheading font-bold mobile-margin">
-                Be Part of the Action
-              </h2>
-              <p className="responsive-text mb-4 sm:mb-6 text-white/90">
-                Join Khajjidoni Premier League and showcase your cricket skills on the biggest stage
-              </p>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-cricket-orange rounded-full"></div>
-                  <span>Professional tournament experience</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-cricket-orange rounded-full"></div>
-                  <span>Live scoring and statistics tracking</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-cricket-orange rounded-full"></div>
-                  <span>Prize money and recognition</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-cricket-orange rounded-full"></div>
-                  <span>Network with cricket enthusiasts</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="text-center lg:text-right">
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 mb-6">
-                <h3 className="text-2xl font-bold mb-4">Tournament 2025</h3>
-                <div className="space-y-2 text-white/90">
-                  <p>📅 Registration: Open Now</p>
-                  <p>🏏 Tournament: March 2025</p>
-                  <p>🏆 Prize Pool: ₹50,000</p>
-                  <p>📍 Venue: Nutan Vidyalaya Khajjidoni</p>
-                </div>
-              </div>
-              
-              <div className="responsive-flex justify-center lg:justify-end animate-fade-in-up animation-delay-300">
-                <Link 
-                  to="/player-registration" 
-                  className="mobile-button bg-cricket-orange hover:bg-cricket-orange/90 text-white shadow-lg mobile-hover w-full sm:w-auto text-center btn-animate"
-                  onClick={() => {
-                    setTimeout(() => {
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }, 100);
-                  }}
-                >
-                  Register Now
-                </Link>
-                <Link 
-                  to="/stats" 
-                  className="mobile-button bg-white/20 hover:bg-white/30 text-white mobile-hover w-full sm:w-auto text-center btn-animate"
-                >
-                  View Stats
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };

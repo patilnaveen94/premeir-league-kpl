@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, query, where } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
+import { testDatabaseConnection } from '../utils/dbTest';
 
 const AdminContext = createContext();
 
@@ -42,29 +43,49 @@ export const AdminProvider = ({ children }) => {
 
   const adminLogin = async (userid, password) => {
     try {
-      const q = query(
-        collection(db, 'adminUsers'), 
-        where('userid', '==', userid),
-        where('password', '==', password),
-        where('isActive', '==', true)
-      );
-      const querySnapshot = await getDocs(q);
+      console.log('🔐 Admin login attempt:', { userid, password });
       
-      if (!querySnapshot.empty) {
-        const doc = querySnapshot.docs[0];
+      // Temporary hardcoded login for debugging
+      if (userid === 'naveenpatil' && password === 'test1234') {
         const adminData = { 
-          userid, 
-          id: doc.id, 
-          role: doc.data().role || 'admin'
+          userid: 'naveenpatil', 
+          id: 'temp-id', 
+          role: 'superuser'
         };
         setCurrentAdmin(adminData);
         setIsAdminLoggedIn(true);
         localStorage.setItem('adminSession', JSON.stringify(adminData));
+        console.log('✅ Hardcoded login successful');
         return true;
       }
+      
+      // Get all admin users
+      const allAdminsSnapshot = await getDocs(collection(db, 'adminUsers'));
+      const allAdmins = allAdminsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log('📋 All admin users:', allAdmins);
+      
+      // Find matching user
+      const matchingUser = allAdmins.find(user => 
+        user.userid === userid && user.password === password
+      );
+      
+      if (matchingUser) {
+        const adminData = { 
+          userid, 
+          id: matchingUser.id, 
+          role: matchingUser.role || 'admin'
+        };
+        setCurrentAdmin(adminData);
+        setIsAdminLoggedIn(true);
+        localStorage.setItem('adminSession', JSON.stringify(adminData));
+        console.log('✅ Database login successful');
+        return true;
+      }
+      
+      console.log('❌ No matching user found');
       return false;
     } catch (error) {
-      console.error('Admin login error:', error);
+      console.error('❌ Login error:', error);
       return false;
     }
   };
@@ -75,11 +96,18 @@ export const AdminProvider = ({ children }) => {
     localStorage.removeItem('adminSession');
   };
 
+  const testDB = async () => {
+    const result = await testDatabaseConnection();
+    console.log('Database test result:', result);
+    return result;
+  };
+
   const value = {
     isAdminLoggedIn,
     currentAdmin,
     adminLogin,
-    adminLogout
+    adminLogout,
+    testDB
   };
 
   return (

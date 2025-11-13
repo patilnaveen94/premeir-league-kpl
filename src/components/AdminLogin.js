@@ -90,6 +90,26 @@ const AdminLogin = ({ onClose }) => {
               Cancel
             </button>
           </div>
+          
+          <button
+            type="button"
+            onClick={async () => {
+              console.log('Testing database connection...');
+              try {
+                const { collection, getDocs } = await import('firebase/firestore');
+                const { db } = await import('../firebase/firebase');
+                const snapshot = await getDocs(collection(db, 'adminUsers'));
+                console.log('✅ Database test successful:', snapshot.docs.length, 'admin users found');
+                alert('Database connection working! Check console for details.');
+              } catch (error) {
+                console.error('❌ Database test failed:', error);
+                alert('Database connection failed: ' + error.message);
+              }
+            }}
+            className="w-full mt-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-md"
+          >
+            Test Database Connection
+          </button>
         </form>
       </div>
     </div>
