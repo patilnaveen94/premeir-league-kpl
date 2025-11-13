@@ -28,7 +28,7 @@ const PlayerRegistration = () => {
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [paymentConfig] = useState({
     fee: 100,
-    upiId: 'your-upi-id@paytm' // Replace with actual UPI ID
+    upiId: '7829399506@ybl' // Replace with actual UPI ID
   });
 
   const generateUserId = () => `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
