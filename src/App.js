@@ -15,7 +15,7 @@ const Contact = lazy(() => import('./pages/Contact'));
 const Sponsors = lazy(() => import('./pages/Sponsors'));
 const PlayerRegistration = lazy(() => import('./pages/PlayerRegistration'));
 const AdminPanel = lazy(() => import('./pages/AdminPanel'));
-const CricHeroesStats = lazy(() => import('./pages/CricHeroesStats'));
+const CombinedStatsPage = lazy(() => import('./pages/CombinedStatsPage'));
 const CricHeroesHome = lazy(() => import('./pages/CricHeroesHome'));
 const Auction = lazy(() => import('./pages/Auction'));
 
@@ -47,7 +47,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/teams" element={<Teams />} />
-                <Route path="/stats" element={<CricHeroesStats />} />
+                <Route path="/stats" element={<CombinedStatsPage />} />
                 <Route path="/auction" element={<Auction />} />
                 <Route path="/cricheroes" element={<CricHeroesHome />} />
                 <Route path="/news" element={<News />} />

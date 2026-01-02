@@ -103,17 +103,17 @@ const AdminPanel = () => {
 
   // Fix duplicate stats function
   const handleFixDuplicateStats = async () => {
-    if (!window.confirm('⚠️ Fix duplicate player stats?\n\nThis will:\n• Clear all existing player statistics\n• Recalculate stats from all completed matches\n• Fix any duplicate data issues\n• Show detailed match count per player\n\nThis action cannot be undone. Continue?')) {
+    if (!window.confirm('⚠️ Fix duplicate player stats?\n\nThis will:\n• Clear all existing player statistics\n• Recalculate stats from all completed matches\n• Process each player exactly once per match\n• Fix match count and runs total issues\n\nThis action cannot be undone. Continue?')) {
       return;
     }
     
     setFixingDuplicates(true);
     try {
-      console.log('🔧 Starting duplicate stats fix...');
+      console.log('🔧 Starting CORRECT stats fix...');
       
-      // Use the simple stats service that properly tracks unique matches
-      const simpleStatsOnly = await import('../services/simpleStatsOnly');
-      const result = await simpleStatsOnly.default.fixDuplicateStats();
+      // Use the corrected stats service
+      const correctStatsService = await import('../services/correctStatsService');
+      const result = await correctStatsService.default.fixDuplicateStats();
       
       if (result.success) {
         // Recalculate points table
@@ -121,8 +121,7 @@ const AdminPanel = () => {
         const simplePoints = await import('../services/simplePointsService');
         await simplePoints.default.recalculatePointsTable();
         
-        console.log('📊 Player match counts:', result.playerMatchCounts);
-        alert(`🎉 SUCCESS!\n\nFixed duplicate stats for ${result.playersProcessed} players from ${result.matchesProcessed} matches.\n\nCheck console for detailed match counts per player.\n\nPage will refresh to show updated data.`);
+        alert(`🎉 SUCCESS!\n\nFixed stats for ${result.playersProcessed} players from ${result.matchesProcessed} matches.\n\nEach player processed exactly once per match.\n\nPage will refresh to show updated data.`);
         
         // Refresh the page to show updated data
         window.location.reload();
@@ -131,8 +130,8 @@ const AdminPanel = () => {
       }
       
     } catch (error) {
-      console.error('❌ Error fixing duplicate stats:', error);
-      alert('❌ Error fixing duplicate stats: ' + error.message);
+      console.error('❌ Error fixing stats:', error);
+      alert('❌ Error fixing stats: ' + error.message);
     } finally {
       setFixingDuplicates(false);
     }
@@ -3490,53 +3489,68 @@ const AdminPanel = () => {
                   <div className="flex space-x-2">
                     <button
                       onClick={async () => {
-                        if (window.confirm('⚠️ CLEAR ALL DATA EXCEPT PLAYER STATS?\n\nThis will DELETE:\n• All player registrations\n• All teams\n• All matches\n• All sponsors\n• All carousel images\n\nBUT PRESERVE:\n• Player statistics (for mobile number linking)\n\nThis action cannot be undone. Continue?')) {
-                          const doubleConfirm = window.confirm('This is your final confirmation. Clear all data except player stats?');
-                          if (doubleConfirm) {
-                            setResettingData(true);
-                            try {
-                              // Clear all collections except playerStats and careerStats
-                              const collectionsToDelete = [
-                                'playerRegistrations',
-                                'teams', 
-                                'matches',
-                                'sponsors',
-                                'carouselImages',
-                                'standings',
-                                'adminUsers',
-                                'formFields',
-                                'paymentConfig',
-                                'settings'
-                              ];
-                              
-                              for (const collectionName of collectionsToDelete) {
-                                const snapshot = await getDocs(collection(db, collectionName));
-                                const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-                                await Promise.all(deletePromises);
-                                console.log(`✅ Cleared ${collectionName}: ${snapshot.docs.length} documents`);
-                              }
-                              
-                              alert('✅ All data cleared except player stats! New registrations will link to existing stats by mobile number.');
+                        if (window.confirm('⚠️ RESET SEASON DATA?\n\nThis will:\n• Clear all matches and results\n• Reset team player assignments\n• Reset current season stats to 0\n• Clear standings and points table\n\nBUT PRESERVE:\n• Player career statistics\n• Team information\n• Player registrations\n\nThis action cannot be undone. Continue?')) {
+                          setResettingData(true);
+                          try {
+                            const result = await dataResetService.resetTournamentData();
+                            
+                            if (result.success) {
+                              alert(`✅ Season reset completed!\n\n${result.message}\n\nDetails:\n• Collections reset: ${result.details.collectionsReset.join(', ')}\n• Documents deleted: ${result.details.documentsDeleted}\n• Teams reset: ${result.details.teamsReset}\n• Players reset: ${result.details.playersReset}\n• Stats reset: ${result.details.statsReset}`);
                               window.location.reload();
-                            } catch (error) {
-                              console.error('❌ Error clearing data:', error);
-                              alert('❌ Error clearing data: ' + error.message);
-                            } finally {
-                              setResettingData(false);
+                            } else {
+                              throw new Error(result.error);
                             }
+                          } catch (error) {
+                            console.error('❌ Error resetting season:', error);
+                            alert('❌ Error resetting season: ' + error.message);
+                          } finally {
+                            setResettingData(false);
                           }
                         }
                       }}
                       disabled={resettingData}
-                      className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
+                      className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
                     >
                       {resettingData && (
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       )}
-                      <span>{resettingData ? 'Clearing Data...' : 'Clear All Data (Keep Stats)'}</span>
+                      <span>{resettingData ? 'Resetting Season...' : 'Reset Season Data'}</span>
                     </button>
                     <button
-                      onClick={handleFixDuplicateStats}
+                      onClick={async () => {
+                        if (!window.confirm('⚠️ Fix duplicate stats with season tracking?\n\nThis will:\n• Clear all existing player statistics\n• Recalculate stats from matches (avoiding duplicates)\n• Track both career and current season stats\n• Fix match count and runs total issues\n• Show detailed processing log\n\nThis action cannot be undone. Continue?')) {
+                          return;
+                        }
+                        
+                        setFixingDuplicates(true);
+                        try {
+                          console.log('🔧 Starting CORRECT stats fix...');
+                          
+                          // Use the corrected stats service
+                          const correctStatsService = await import('../services/correctStatsService');
+                          const result = await correctStatsService.default.fixDuplicateStats();
+                          
+                          if (result.success) {
+                            // Recalculate points table
+                            console.log('🏆 Recalculating points table...');
+                            const simplePoints = await import('../services/simplePointsService');
+                            await simplePoints.default.recalculatePointsTable();
+                            
+                            alert(`🎉 SUCCESS!\n\nFixed stats for ${result.playersProcessed} players from ${result.matchesProcessed} matches.\n\nEach player processed exactly once per match.\n\nPage will refresh to show updated data.`);
+                            
+                            // Refresh the page to show updated data
+                            window.location.reload();
+                          } else {
+                            throw new Error(result.error);
+                          }
+                          
+                        } catch (error) {
+                          console.error('❌ Error fixing stats:', error);
+                          alert('❌ Error fixing stats: ' + error.message);
+                        } finally {
+                          setFixingDuplicates(false);
+                        }
+                      }}
                       disabled={fixingDuplicates}
                       className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
                     >
@@ -3547,39 +3561,13 @@ const AdminPanel = () => {
                     </button>
                     <button
                       onClick={async () => {
-                        if (window.confirm('Recalculate all stats? This will clear and rebuild all player stats and points table.')) {
-                          setUploading(true);
-                          try {
-                            // Use simple services
-                            const simpleStats = await import('../services/simpleStatsService');
-                            const simplePoints = await import('../services/simplePointsService');
-                            
-                            // Recalculate stats
-                            const statsResult = await simpleStats.default.recalculateAllStats();
-                            if (!statsResult.success) throw new Error(statsResult.error);
-                            
-                            // Recalculate points table
-                            const pointsResult = await simplePoints.default.recalculatePointsTable();
-                            if (!pointsResult.success) throw new Error(pointsResult.error);
-                            
-                            alert(`✅ Stats recalculated! ${statsResult.playersProcessed} players, ${pointsResult.teamsProcessed} teams`);
-                            window.location.reload();
-                            
-                          } catch (error) {
-                            console.error('Error recalculating:', error);
-                            alert('❌ Error: ' + error.message);
-                          } finally {
-                            setUploading(false);
-                          }
-                        }
+                        const debugService = await import('../services/debugMatchScores');
+                        const result = await debugService.default.checkMatchScores();
+                        alert(`Tournament Totals:\n\nFrom Team Scores: ${result.tournamentTotalFromTeamScores}\nFrom Player Stats: ${result.tournamentTotalFromPlayerStats}\nDifference: ${result.difference}\n\nCheck console for detailed breakdown.`);
                       }}
-                      disabled={uploading}
-                      className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
                     >
-                      {uploading && (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      )}
-                      <span>Recalculate Stats</span>
+                      <span>Debug Match Scores</span>
                     </button>
                     <button
                       onClick={() => setShowAddMatch(true)}

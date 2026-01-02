@@ -30,7 +30,6 @@ const Navbar = () => {
     { name: 'Teams', path: '/teams' },
     { name: 'Stats', path: '/stats' },
     { name: 'Auction', path: '/auction' },
-    { name: 'League Stats', path: '/cricheroes' },
     { name: 'News', path: '/news' },
     { name: 'Sponsors', path: '/sponsors' },
     { name: 'Contact', path: '/contact' },

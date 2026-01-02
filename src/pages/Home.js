@@ -20,6 +20,7 @@ const Home = () => {
   const [sponsors, setSponsors] = useState([]);
   const [playerRegistrations, setPlayerRegistrations] = useState([]);
   const [showRegistrationSection, setShowRegistrationSection] = useState(true);
+  const [tournamentStats, setTournamentStats] = useState(null);
   
   // Use centralized tournament data hook for consistent data
   const { topPerformers, standings, playerStats, loading: tournamentLoading } = useTournamentData();
@@ -52,6 +53,7 @@ const Home = () => {
 
   useEffect(() => {
     fetchHomeData();
+    fetchTournamentStats();
   }, []);
 
   // Refresh home data when tournament data updates
@@ -83,6 +85,25 @@ const Home = () => {
   useEffect(() => {
     fetchWallOfFame();
   }, []);
+
+  const fetchTournamentStats = async () => {
+    try {
+      const matchesSnapshot = await getDocs(collection(db, 'matches'));
+      const matches = matchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const completedMatches = matches.filter(match => match.status === 'completed');
+
+      let totalRuns = 0;
+      for (const match of completedMatches) {
+        const team1Runs = parseInt(match.team1Score?.runs) || 0;
+        const team2Runs = parseInt(match.team2Score?.runs) || 0;
+        totalRuns += team1Runs + team2Runs;
+      }
+      
+      setTournamentStats({ totalRuns });
+    } catch (error) {
+      console.error('Error fetching tournament stats:', error);
+    }
+  };
 
   const fetchHomeData = async () => {
     try {
@@ -253,6 +274,11 @@ const Home = () => {
               <Link to="/teams" className="mobile-button bg-blue-600 text-white hover:bg-blue-700 shadow-lg mobile-hover w-full sm:w-auto text-center btn-animate">
                 Explore Teams
               </Link>
+              {showRegistrationSection && (
+                <Link to="/player-registration" className="mobile-button bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-600 hover:to-orange-600 shadow-lg mobile-hover w-full sm:w-auto text-center btn-animate">
+                  Register Now
+                </Link>
+              )}
               <Link to="/stats" className="mobile-button bg-white text-cricket-navy hover:bg-gray-100 shadow-lg mobile-hover w-full sm:w-auto text-center btn-animate">
                 View Stats
               </Link>
@@ -289,7 +315,7 @@ const Home = () => {
             </div>
             <div className="mobile-stat-card bg-gradient-to-br from-purple-50 to-purple-100 text-center stagger-item hover-lift">
               <Trophy className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-purple-600 mx-auto mb-2 sm:mb-3 transition-transform duration-300 hover:scale-110" />
-              <h3 className="mobile-stat-value text-purple-900">{loading || tournamentLoading ? '...' : <AnimatedCounter end={playerStats.reduce((sum, p) => sum + (p.runs || 0), 0)} />}</h3>
+              <h3 className="mobile-stat-value text-purple-900">{loading || !tournamentStats ? '...' : <AnimatedCounter end={tournamentStats.totalRuns} />}</h3>
               <p className="mobile-stat-label text-purple-700">Total Runs</p>
             </div>
           </div>
@@ -805,8 +831,8 @@ const Home = () => {
                         <span className="font-bold text-blue-800">{playerStats.filter(p => p.matches > 0).length}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-blue-700">Total Runs</span>
-                        <span className="font-bold text-blue-800">{playerStats.reduce((sum, p) => sum + (p.runs || 0), 0)}</span>
+                        <span className="text-blue-700">Tournament Total Runs</span>
+                        <span className="font-bold text-blue-800">{tournamentStats?.totalRuns || 'Loading...'}</span>
                       </div>
                     </div>
                   </div>
@@ -817,182 +843,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-12 sm:py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8 sm:mb-12 animate-fade-in-up">
-            <h2 className="responsive-heading font-bold text-gray-900 mb-3 sm:mb-4">
-              Everything Cricket
-            </h2>
-            <p className="responsive-text text-gray-600 max-w-2xl mx-auto">
-              Your complete cricket experience - from live scores to player stats
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-            {features.map((feature, index) => (
-              <div key={index} className="mobile-card sm:card text-center hover:shadow-lg transition-all duration-300 hover:scale-105 stagger-item card-hover">
-                <div className="flex justify-center mb-3 sm:mb-4">
-                  <div className="transition-transform duration-300 hover:scale-110 hover:rotate-6">
-                    {feature.icon}
-                  </div>
-                </div>
-                <h3 className="text-lg sm:text-xl font-semibold mb-2 text-gray-900">
-                  {feature.title}
-                </h3>
-                <p className="responsive-text text-gray-600">
-                  {feature.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-      
-      {/* Sponsors Section */}
-      <section className="py-12 sm:py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12 animate-fade-in-up">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Our Sponsors</h2>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              Proud partners supporting Khajjidoni Premier League
-            </p>
-          </div>
-          
-          {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {[1,2,3,4].map(i => (
-                <div key={i} className="animate-pulse bg-gray-200 h-32 rounded-lg"></div>
-              ))}
-            </div>
-          ) : sponsors.length > 0 ? (
-            <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-                {sponsors.filter(s => s.type === 'title').map((sponsor, index) => (
-                  <div key={sponsor.id} className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-6 text-center border-2 border-yellow-200 hover-lift stagger-item">
-                    {sponsor.photoBase64 && (
-                      <img src={sponsor.photoBase64} alt={sponsor.name} className="w-16 h-16 object-contain mx-auto mb-3 rounded transition-transform duration-300 hover:scale-110" />
-                    )}
-                    <h3 className="font-bold text-yellow-800 mb-1">{sponsor.name}</h3>
-                    <p className="text-xs text-yellow-600 uppercase font-medium">Title Sponsor</p>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
-                {sponsors.filter(s => s.type !== 'title').slice(0, 12).map((sponsor, index) => (
-                  <div key={sponsor.id} className="bg-white rounded-lg p-4 text-center hover:shadow-md transition-all duration-300 hover-scale stagger-item">
-                    {sponsor.photoBase64 ? (
-                      <img src={sponsor.photoBase64} alt={sponsor.name} className="w-12 h-12 object-contain mx-auto mb-2 rounded transition-transform duration-300 hover:scale-110" />
-                    ) : (
-                      <div className="w-12 h-12 bg-gray-200 rounded mx-auto mb-2 flex items-center justify-center">
-                        <Star className="w-6 h-6 text-gray-400 transition-transform duration-300 hover:rotate-12" />
-                      </div>
-                    )}
-                    <h4 className="text-sm font-medium text-gray-900 truncate">{sponsor.name}</h4>
-                    <p className="text-xs text-gray-500 capitalize">{sponsor.type}</p>
-                  </div>
-                ))}
-              </div>
-              
-              {sponsors.length > 12 && (
-                <div className="text-center mt-6">
-                  <p className="text-gray-600">And {sponsors.length - 12} more amazing sponsors!</p>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="text-center py-12">
-              <Star className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Become Our Sponsor</h3>
-              <p className="text-gray-600">Join us in supporting cricket excellence</p>
-            </div>
-          )}
-        </div>
-      </section>
-      
-      {/* Heroes Section */}
-      <section className="py-12 sm:py-16 bg-gradient-to-br from-cricket-navy via-cricket-blue to-cricket-orange">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12 animate-fade-in-up">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Cricket Heroes</h2>
-            <p className="text-xl text-white/90 max-w-3xl mx-auto">
-              Celebrating the legends who make cricket beautiful
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center text-white hover-lift stagger-item">
-              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 transition-transform duration-300 hover:scale-110">
-                <Trophy className="w-10 h-10 text-white transition-transform duration-300 hover:rotate-12" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Tournament MVP</h3>
-              <p className="text-white/90 mb-4">Outstanding performance across all matches</p>
-              <div className="bg-white/20 rounded-lg p-3">
-                {loading || tournamentLoading ? (
-                  <p className="font-semibold">Loading...</p>
-                ) : topPerformers?.topRunScorers?.[0] && topPerformers?.topWicketTakers?.[0] ? (
-                  <>
-                    <p className="font-semibold">{topPerformers?.topRunScorers?.[0]?.runs > (topPerformers?.topWicketTakers?.[0]?.wickets || 0) * 10 ? topPerformers?.topRunScorers?.[0]?.name : topPerformers?.topWicketTakers?.[0]?.name}</p>
-                    <p className="text-sm text-white/80">Current leader</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="font-semibold">Tournament starting</p>
-                    <p className="text-sm text-white/80">Play matches to compete</p>
-                  </>
-                )}
-              </div>
-            </div>
-            
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center text-white hover-lift stagger-item">
-              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 transition-transform duration-300 hover:scale-110">
-                <Target className="w-10 h-10 text-white transition-transform duration-300 hover:rotate-12" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Best Bowler</h3>
-              <p className="text-white/90 mb-4">Most wickets with best economy rate</p>
-              <div className="bg-white/20 rounded-lg p-3">
-                {loading || tournamentLoading ? (
-                  <p className="font-semibold">Loading...</p>
-                ) : topPerformers?.topWicketTakers?.[0] ? (
-                  <>
-                    <p className="font-semibold">{topPerformers?.topWicketTakers?.[0]?.name}</p>
-                    <p className="text-sm text-white/80">{topPerformers?.topWicketTakers?.[0]?.wickets} wickets</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="font-semibold">No wickets yet</p>
-                    <p className="text-sm text-white/80">Tournament starting</p>
-                  </>
-                )}
-              </div>
-            </div>
-            
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center text-white hover-lift stagger-item">
-              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 transition-transform duration-300 hover:scale-110">
-                <Users className="w-10 h-10 text-white transition-transform duration-300 hover:rotate-12" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Best Batsman</h3>
-              <p className="text-white/90 mb-4">Highest runs with best average</p>
-              <div className="bg-white/20 rounded-lg p-3">
-                {loading || tournamentLoading ? (
-                  <p className="font-semibold">Loading...</p>
-                ) : topPerformers?.topRunScorers?.[0] ? (
-                  <>
-                    <p className="font-semibold">{topPerformers?.topRunScorers?.[0]?.name}</p>
-                    <p className="text-sm text-white/80">{topPerformers?.topRunScorers?.[0]?.runs} runs</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="font-semibold">No runs yet</p>
-                    <p className="text-sm text-white/80">Tournament starting</p>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+     
 
 
 

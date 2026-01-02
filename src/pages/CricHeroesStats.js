@@ -3,6 +3,7 @@ import { Trophy, Target, Users, TrendingUp, Award, Calendar, Star, Medal, Chevro
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
 import { useTournamentData } from '../hooks/useTournamentData';
+import TeamDisplay from '../components/TeamDisplay';
 // Season context removed
 
 // Helper function to generate initials from full name
@@ -36,62 +37,18 @@ const CricHeroesStats = () => {
   // Use centralized tournament data hook for consistent data
   const { topPerformers, playerStats, standings: pointsTable, loading } = useTournamentData();
   
-  // Direct data fetching with season filter or career stats
-  const fetchDirectData = async (season = selectedSeason, mode = viewMode) => {
+  // Direct data fetching without season filters
+  const fetchDirectData = async () => {
     try {
-      console.log(`🔄 Fetching direct data for League Stats (${mode === 'career' ? 'Career Stats' : `Season ${season}`})...`);
+      console.log('🔄 Fetching stats data...');
       setDirectData(prev => ({ ...prev, loading: true }));
       
-      let matchesSnapshot, teamsSnapshot, standingsSnapshot, statsSnapshot;
+      const { fetchAllStatsData } = await import('../services/simpleStatsData');
+      const data = await fetchAllStatsData();
       
-      if (mode === 'career') {
-        // Fetch all data for career stats (no season filter)
-        [matchesSnapshot, teamsSnapshot, standingsSnapshot, statsSnapshot] = await Promise.all([
-          getDocs(collection(db, 'matches')),
-          getDocs(collection(db, 'teams')),
-          getDocs(collection(db, 'standings')),
-          getDocs(collection(db, 'playerStats'))
-        ]);
-      } else {
-        // Fetch season-specific data
-        const seasonValue = season === 'current' ? publishedSeason : `Season ${season}`;
-        [matchesSnapshot, teamsSnapshot, standingsSnapshot, statsSnapshot] = await Promise.all([
-          getDocs(query(collection(db, 'matches'), where('season', '==', seasonValue))),
-          getDocs(query(collection(db, 'teams'), where('season', '==', seasonValue))),
-          getDocs(query(collection(db, 'standings'), where('season', '==', seasonValue))),
-          getDocs(query(collection(db, 'playerStats'), where('season', '==', seasonValue)))
-        ]);
-      }
-      
-      const matches = matchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const teams = teamsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const standings = standingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const playerStats = statsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      // Calculate top performers from the fetched data
-      const topPerformers = calculateTopPerformers(playerStats);
-      
-      console.log(`✅ Direct data fetched for ${mode === 'career' ? 'Career Stats' : `Season ${season}`}:`, {
-        matches: matches.length,
-        teams: teams.length,
-        standings: standings.length,
-        playerStats: playerStats.length,
-        topPerformers: {
-          topRunScorers: topPerformers.topRunScorers.length,
-          topWicketTakers: topPerformers.topWicketTakers.length
-        }
-      });
-      
-      setDirectData({
-        matches,
-        standings,
-        playerStats,
-        teams,
-        topPerformers,
-        loading: false
-      });
+      setDirectData(data);
     } catch (error) {
-      console.error('❌ Error fetching direct data:', error);
+      console.error('❌ Error fetching data:', error);
       setDirectData(prev => ({ ...prev, loading: false }));
     }
   };
@@ -231,11 +188,8 @@ const CricHeroesStats = () => {
 
   useEffect(() => {
     fetchPlayerRegistrations();
-    // Only fetch direct data for stats tab with season/career filtering
-    if (activeTab === 'stats') {
-      fetchDirectData(selectedSeason, viewMode);
-    }
-  }, [selectedSeason, viewMode, activeTab]);
+    fetchDirectData();
+  }, [activeTab]);
 
   // Refresh player registrations when tournament data updates
   useEffect(() => {
@@ -266,14 +220,14 @@ const CricHeroesStats = () => {
     return player?.photoBase64 || null;
   };
   
-  // Use hook data for non-stats tabs (current published season), direct data for stats tab
+  // Use direct data for all tabs
   const currentData = {
-    matches: activeTab === 'stats' ? directData.matches || [] : [],
-    standings: activeTab === 'points' ? (pointsTable?.length > 0 ? pointsTable : []) : (activeTab === 'stats' ? directData.standings || [] : []),
-    playerStats: activeTab === 'stats' ? directData.playerStats || [] : (playerStats || []),
-    topPerformers: activeTab === 'stats' ? directData.topPerformers : topPerformers,
+    matches: directData.matches || [],
+    standings: directData.standings || [],
+    playerStats: directData.playerStats || [],
+    topPerformers: directData.topPerformers,
     teams: directData.teams || [],
-    loading: activeTab === 'stats' ? directData.loading : loading
+    loading: directData.loading
   };
 
   const tabs = [
@@ -333,7 +287,7 @@ const CricHeroesStats = () => {
                   </div>
                   <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-3 sm:p-6 text-center">
                     <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mx-auto mb-2" />
-                    <h3 className="text-lg sm:text-2xl font-bold text-green-900">{playerStats.reduce((sum, p) => sum + (p.runs || 0), 0)}</h3>
+                    <h3 className="text-lg sm:text-2xl font-bold text-green-900">{currentData.matches.filter(m => m.status === 'completed').reduce((sum, match) => sum + (parseInt(match.team1Score?.runs) || 0) + (parseInt(match.team2Score?.runs) || 0), 0)}</h3>
                     <p className="text-xs sm:text-sm text-green-700">Total Runs</p>
                   </div>
                   <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-3 sm:p-6 text-center">
@@ -371,58 +325,155 @@ const CricHeroesStats = () => {
                 ) : (
                   <>
                     {/* Live Matches Section */}
-                    <div className="bg-gradient-to-r from-red-50 to-pink-100 rounded-xl p-6 shadow-lg border border-red-200">
-                      <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xl font-bold text-red-800 flex items-center">
-                          <div className="w-3 h-3 bg-red-500 rounded-full mr-2 animate-pulse"></div>
-                          Live Matches
-                        </h3>
-                        <span className="bg-red-200 text-red-800 px-3 py-1 rounded-full text-sm font-medium animate-pulse">LIVE</span>
-                      </div>
-                      <div className="text-center py-12">
-                        <div className="bg-white rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                          <Calendar className="w-10 h-10 text-red-500" />
+                    {currentData.matches.filter(m => m.status === 'live').length > 0 ? (
+                      <div className="bg-gradient-to-r from-red-50 to-pink-100 rounded-xl p-6 shadow-lg border border-red-200">
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-xl font-bold text-red-800 flex items-center">
+                            <div className="w-3 h-3 bg-red-500 rounded-full mr-2 animate-pulse"></div>
+                            Live Matches
+                          </h3>
+                          <span className="bg-red-200 text-red-800 px-3 py-1 rounded-full text-sm font-medium animate-pulse">LIVE</span>
                         </div>
-                        <h4 className="text-lg font-semibold text-red-800 mb-2">No Live Matches</h4>
-                        <p className="text-red-700 max-w-md mx-auto">Live match updates and real-time scores will appear here during active matches.</p>
+                        <div className="space-y-4">
+                          {currentData.matches.filter(m => m.status === 'live').map(match => (
+                            <div key={match.id} className="bg-white rounded-lg p-4 shadow-md">
+                              <div className="flex justify-between items-center">
+                                <div className="flex-1">
+                                  <TeamDisplay teamName={match.team1} teams={currentData.teams} size="md" />
+                                  <div className="text-sm text-gray-600 mt-1 ml-13">{match.team1Score?.runs || 0}/{match.team1Score?.wickets || 0}</div>
+                                </div>
+                                <div className="px-4 text-red-600 font-bold">VS</div>
+                                <div className="flex-1">
+                                  <TeamDisplay teamName={match.team2} teams={currentData.teams} size="md" />
+                                  <div className="text-sm text-gray-600 mt-1 ml-13">{match.team2Score?.runs || 0}/{match.team2Score?.wickets || 0}</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="bg-gradient-to-r from-red-50 to-pink-100 rounded-xl p-6 shadow-lg border border-red-200">
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-xl font-bold text-red-800 flex items-center">
+                            <div className="w-3 h-3 bg-red-500 rounded-full mr-2 animate-pulse"></div>
+                            Live Matches
+                          </h3>
+                          <span className="bg-red-200 text-red-800 px-3 py-1 rounded-full text-sm font-medium animate-pulse">LIVE</span>
+                        </div>
+                        <div className="text-center py-12">
+                          <div className="bg-white rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <Calendar className="w-10 h-10 text-red-500" />
+                          </div>
+                          <h4 className="text-lg font-semibold text-red-800 mb-2">No Live Matches</h4>
+                          <p className="text-red-700 max-w-md mx-auto">Live match updates and real-time scores will appear here during active matches.</p>
+                        </div>
+                      </div>
+                    )}
                     
                     {/* Recent Matches */}
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-100 rounded-xl p-6 shadow-lg border border-green-200">
-                      <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xl font-bold text-green-800 flex items-center">
-                          <Trophy className="w-6 h-6 mr-2" />
-                          Recent Matches
-                        </h3>
-                        <span className="bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm font-medium">Latest Results</span>
-                      </div>
-                      <div className="text-center py-12">
-                        <div className="bg-white rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                          <Calendar className="w-10 h-10 text-green-500" />
+                    {currentData.matches.filter(m => m.status === 'completed').length > 0 ? (
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-100 rounded-xl p-4 sm:p-6 shadow-lg border border-green-200">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-2 sm:space-y-0">
+                          <h3 className="text-lg sm:text-xl font-bold text-green-800 flex items-center">
+                            <Trophy className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
+                            Recent Matches
+                          </h3>
+                          <span className="bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm font-medium w-fit">Latest Results</span>
                         </div>
-                        <h4 className="text-lg font-semibold text-green-800 mb-2">No Recent Matches</h4>
-                        <p className="text-green-700 max-w-md mx-auto">Recent match results and scorecards will appear here once matches are completed. Check back after the tournament begins!</p>
+                        <div className="space-y-3 sm:space-y-4">
+                          {currentData.matches.filter(m => m.status === 'completed').slice(0, 5).map(match => (
+                            <div key={match.id} className="bg-white rounded-lg p-3 sm:p-4 shadow-md">
+                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0 mb-2">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-2">
+                                    <TeamDisplay teamName={match.team1} teams={currentData.teams} size="sm" />
+                                    <div className="text-sm font-semibold text-gray-800">{match.team1Score?.runs || 0}/{match.team1Score?.wickets || 0}</div>
+                                  </div>
+                                </div>
+                                <div className="px-2 sm:px-4 text-green-600 font-bold text-sm sm:text-base">VS</div>
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-2 sm:justify-end">
+                                    <TeamDisplay teamName={match.team2} teams={currentData.teams} size="sm" />
+                                    <div className="text-sm font-semibold text-gray-800">{match.team2Score?.runs || 0}/{match.team2Score?.wickets || 0}</div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-center text-sm text-green-700 font-medium border-t border-green-100 pt-2">
+                                {match.winner ? `${match.winner} won` : 'Match completed'}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-100 rounded-xl p-4 sm:p-6 shadow-lg border border-green-200">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-2 sm:space-y-0">
+                          <h3 className="text-lg sm:text-xl font-bold text-green-800 flex items-center">
+                            <Trophy className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
+                            Recent Matches
+                          </h3>
+                          <span className="bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm font-medium w-fit">Latest Results</span>
+                        </div>
+                        <div className="text-center py-8 sm:py-12">
+                          <div className="bg-white rounded-full w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <Calendar className="w-8 h-8 sm:w-10 sm:h-10 text-green-500" />
+                          </div>
+                          <h4 className="text-base sm:text-lg font-semibold text-green-800 mb-2">No Recent Matches</h4>
+                          <p className="text-sm sm:text-base text-green-700 max-w-md mx-auto px-4">Recent match results and scorecards will appear here once matches are completed.</p>
+                        </div>
+                      </div>
+                    )}
                     
                     {/* Upcoming Matches */}
-                    <div className="bg-gradient-to-r from-blue-50 to-cyan-100 rounded-xl p-6 shadow-lg border border-blue-200">
-                      <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xl font-bold text-blue-800 flex items-center">
-                          <Calendar className="w-6 h-6 mr-2" />
-                          Upcoming Matches
-                        </h3>
-                        <span className="bg-blue-200 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">Fixtures</span>
-                      </div>
-                      <div className="text-center py-12">
-                        <div className="bg-white rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                          <Calendar className="w-10 h-10 text-blue-500" />
+                    {currentData.matches.filter(m => m.status === 'upcoming').length > 0 ? (
+                      <div className="bg-gradient-to-r from-blue-50 to-cyan-100 rounded-xl p-4 sm:p-6 shadow-lg border border-blue-200">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-2 sm:space-y-0">
+                          <h3 className="text-lg sm:text-xl font-bold text-blue-800 flex items-center">
+                            <Calendar className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
+                            Upcoming Matches
+                          </h3>
+                          <span className="bg-blue-200 text-blue-800 px-3 py-1 rounded-full text-sm font-medium w-fit">Fixtures</span>
                         </div>
-                        <h4 className="text-lg font-semibold text-blue-800 mb-2">No Scheduled Matches</h4>
-                        <p className="text-blue-700 max-w-md mx-auto">Tournament fixtures and match schedules will be displayed here once they are announced. Stay tuned for exciting matches!</p>
+                        <div className="space-y-3 sm:space-y-4">
+                          {currentData.matches.filter(m => m.status === 'upcoming').slice(0, 5).map(match => (
+                            <div key={match.id} className="bg-white rounded-lg p-3 sm:p-4 shadow-md">
+                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0 mb-2">
+                                <div className="flex-1">
+                                  <TeamDisplay teamName={match.team1} teams={currentData.teams} size="sm" />
+                                </div>
+                                <div className="px-2 sm:px-4 text-blue-600 font-bold text-sm sm:text-base">VS</div>
+                                <div className="flex-1">
+                                  <div className="sm:text-right">
+                                    <TeamDisplay teamName={match.team2} teams={currentData.teams} size="sm" />
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-center text-sm text-blue-700 border-t border-blue-100 pt-2">
+                                {match.date} {match.time && `at ${match.time}`}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="bg-gradient-to-r from-blue-50 to-cyan-100 rounded-xl p-4 sm:p-6 shadow-lg border border-blue-200">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-2 sm:space-y-0">
+                          <h3 className="text-lg sm:text-xl font-bold text-blue-800 flex items-center">
+                            <Calendar className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
+                            Upcoming Matches
+                          </h3>
+                          <span className="bg-blue-200 text-blue-800 px-3 py-1 rounded-full text-sm font-medium w-fit">Fixtures</span>
+                        </div>
+                        <div className="text-center py-8 sm:py-12">
+                          <div className="bg-white rounded-full w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <Calendar className="w-8 h-8 sm:w-10 sm:h-10 text-blue-500" />
+                          </div>
+                          <h4 className="text-base sm:text-lg font-semibold text-blue-800 mb-2">No Scheduled Matches</h4>
+                          <p className="text-sm sm:text-base text-blue-700 max-w-md mx-auto px-4">Tournament fixtures and match schedules will be displayed here once they are announced.</p>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </div>

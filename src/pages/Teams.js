@@ -233,40 +233,87 @@ const Teams = () => {
               <div className="mt-8 bg-gradient-to-br from-gray-50 to-slate-100 rounded-xl p-6 shadow-lg border border-gray-200/50">
                 <h4 className="text-xl font-bold text-cricket-navy mb-6 flex items-center">
                   <span className="w-2 h-8 bg-gradient-to-b from-cricket-blue to-cricket-orange rounded-full mr-3"></span>
-                  Team Squad ({selectedTeam.players?.filter(playerId => playerRegistrations.find(p => p.id === playerId)).length || 0} Players)
+                  Team Squad ({(() => {
+                    const squadPlayers = playerRegistrations.filter(p => p.teamId === selectedTeam.id);
+                    const captainInSquad = squadPlayers.some(p => p.fullName === selectedTeam.captain);
+                    const ownerInSquad = squadPlayers.some(p => p.fullName === selectedTeam.owner);
+                    let totalCount = squadPlayers.length;
+                    if (!captainInSquad && selectedTeam.captain) totalCount++;
+                    if (!ownerInSquad && selectedTeam.owner && selectedTeam.owner !== selectedTeam.captain) totalCount++;
+                    return totalCount;
+                  })()} Players)
                 </h4>
-                {selectedTeam.players && selectedTeam.players.filter(playerId => playerRegistrations.find(p => p.id === playerId)).length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                    {selectedTeam.players.filter(playerId => playerRegistrations.find(p => p.id === playerId)).map(playerId => {
-                      const player = playerRegistrations.find(p => p.id === playerId);
-                      return (
-                        <div key={playerId} className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-all border border-gray-100">
+                {(() => {
+                  const squadPlayers = playerRegistrations.filter(p => p.teamId === selectedTeam.id);
+                  const captainInSquad = squadPlayers.some(p => p.fullName === selectedTeam.captain);
+                  const ownerInSquad = squadPlayers.some(p => p.fullName === selectedTeam.owner);
+                  
+                  // Add captain if not in squad
+                  if (!captainInSquad && selectedTeam.captain) {
+                    squadPlayers.unshift({
+                      id: `captain-${selectedTeam.id}`,
+                      fullName: selectedTeam.captain,
+                      position: 'Captain',
+                      email: 'Team Captain',
+                      photoBase64: selectedTeam.captainPhotoURL,
+                      isManagement: true
+                    });
+                  }
+                  
+                  // Add owner if not in squad and different from captain
+                  if (!ownerInSquad && selectedTeam.owner && selectedTeam.owner !== selectedTeam.captain) {
+                    squadPlayers.unshift({
+                      id: `owner-${selectedTeam.id}`,
+                      fullName: selectedTeam.owner,
+                      position: 'Owner',
+                      email: 'Team Owner',
+                      photoBase64: selectedTeam.ownerPhotoURL,
+                      isManagement: true
+                    });
+                  }
+                  
+                  return squadPlayers.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                      {squadPlayers.map(player => (
+                        <div key={player.id} className={`bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-all border ${
+                          player.isManagement ? 'border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50' : 'border-gray-100'
+                        }`}>
                           <div className="flex items-center space-x-3">
                             {player.photoBase64 ? (
-                              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full p-0.5 flex-shrink-0">
+                              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full p-0.5 flex-shrink-0 ${
+                                player.isManagement ? 'bg-gradient-to-br from-yellow-400 to-orange-500' : 'bg-gradient-to-br from-cricket-navy to-cricket-blue'
+                              }`}>
                                 <img src={player.photoBase64} alt={player.fullName} className="w-full h-full object-cover rounded-full" />
                               </div>
                             ) : (
-                              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-cricket-navy to-cricket-blue rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${
+                                player.isManagement ? 'bg-gradient-to-br from-yellow-400 to-orange-500' : 'bg-gradient-to-br from-cricket-navy to-cricket-blue'
+                              }`}>
                                 {getPlayerInitials(player.fullName)}
                               </div>
                             )}
                             <div className="min-w-0 flex-1">
-                              <p className="font-bold text-gray-800 text-sm sm:text-base truncate">{player.fullName}</p>
-                              <p className="text-xs sm:text-sm font-semibold text-cricket-navy">{player.position}</p>
+                              <div className="flex items-center space-x-2">
+                                <p className="font-bold text-gray-800 text-sm sm:text-base truncate">{player.fullName}</p>
+                                {player.position === 'Captain' && <span className="text-yellow-500">👑</span>}
+                                {player.position === 'Owner' && <span className="text-purple-500">💼</span>}
+                              </div>
+                              <p className={`text-xs sm:text-sm font-semibold ${
+                                player.isManagement ? 'text-orange-600' : 'text-cricket-navy'
+                              }`}>{player.position}</p>
                               <p className="text-xs text-gray-500 truncate">{player.email}</p>
                             </div>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <div className="text-6xl mb-4">🏏</div>
-                    <p className="text-gray-500 text-lg">No players assigned to this team yet.</p>
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-6xl mb-4">🏏</div>
+                      <p className="text-gray-500 text-lg">No players assigned to this team yet.</p>
+                    </div>
+                  );
+                })()}
               </div>
               
               <div className="mt-6 sm:mt-8 flex justify-end">
