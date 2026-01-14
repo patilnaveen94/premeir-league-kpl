@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
-import { Trophy, Target, Users, Activity, Calendar, Star, Medal, TrendingUp } from 'lucide-react';
+import { Trophy, Target, Users, Activity, Calendar, Star, Medal, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTournamentData } from '../hooks/useTournamentData';
 import TeamDisplay from '../components/TeamDisplay';
 
@@ -20,12 +20,16 @@ const CombinedStatsPage = () => {
   const [viewMode, setViewMode] = useState('season'); // 'season' or 'career'
   const [playerRegistrations, setPlayerRegistrations] = useState([]);
   const [playerStats, setPlayerStats] = useState([]);
+  const [careerStats, setCareerStats] = useState([]);
   const [directData, setDirectData] = useState({
     matches: [],
     standings: [],
     teams: [],
     loading: true
   });
+  const [battingCollapsed, setBattingCollapsed] = useState(false);
+  const [bowlingCollapsed, setBowlingCollapsed] = useState(false);
+  const [allRoundersCollapsed, setAllRoundersCollapsed] = useState(false);
   
   const { topPerformers, standings: pointsTable, loading } = useTournamentData();
   const currentSeason = new Date().getFullYear().toString();
@@ -34,11 +38,24 @@ const CombinedStatsPage = () => {
     fetchAllData();
   }, []);
 
+  useEffect(() => {
+    // Debug career stats when they change
+    if (careerStats.length > 0) {
+      console.log('Career stats loaded:', careerStats.length, 'players');
+      const bowlers = careerStats.filter(p => (p.totalWickets || 0) > 0);
+      console.log('Bowlers in career stats:', bowlers.length);
+      bowlers.forEach(p => {
+        console.log(`${p.name}: wickets=${p.totalWickets}, ballsBowled=${p.totalBallsBowled}, economy=${p.economy}`);
+      });
+    }
+  }, [careerStats]);
+
   const fetchAllData = async () => {
     try {
-      const [playersSnapshot, statsSnapshot, matchesSnapshot, teamsSnapshot, standingsSnapshot] = await Promise.all([
+      const [playersSnapshot, statsSnapshot, careerSnapshot, matchesSnapshot, teamsSnapshot, standingsSnapshot] = await Promise.all([
         getDocs(collection(db, 'playerRegistrations')),
         getDocs(collection(db, 'playerStats')),
+        getDocs(collection(db, 'careerStats')),
         getDocs(collection(db, 'matches')),
         getDocs(collection(db, 'teams')),
         getDocs(collection(db, 'standings'))
@@ -46,12 +63,14 @@ const CombinedStatsPage = () => {
 
       const playersData = playersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const statsData = statsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const careerData = careerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const matchesData = matchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const teamsData = teamsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const standingsData = standingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
       setPlayerRegistrations(playersData);
       setPlayerStats(statsData);
+      setCareerStats(careerData);
       setDirectData({
         matches: matchesData,
         teams: teamsData,
@@ -349,288 +368,315 @@ const CombinedStatsPage = () => {
 
                 {/* Batsmen Section */}
                 <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
-                  <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-800">
-                    <h2 className="text-xl font-bold text-white flex items-center">
-                      <Trophy className="mr-2" size={24} /> Batsmen
-                    </h2>
+                  <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-800 cursor-pointer" onClick={() => setBattingCollapsed(!battingCollapsed)}>
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl font-bold text-white flex items-center">
+                        <Trophy className="mr-2" size={24} /> Batsmen
+                      </h2>
+                      {battingCollapsed ? <ChevronDown className="text-white" size={24} /> : <ChevronUp className="text-white" size={24} />}
+                    </div>
                   </div>
                   
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matches</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Runs</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SR</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">4s/6s</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">HS</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {playerStats
-                          .filter(p => {
-                            const runs = viewMode === 'season' ? (p.runs || 0) : (p.careerRuns || 0);
-                            return runs > 0; // Show all players with runs
-                          })
-                          .sort((a, b) => {
-                            const runsA = viewMode === 'season' ? (a.runs || 0) : (a.careerRuns || 0);
-                            const runsB = viewMode === 'season' ? (b.runs || 0) : (b.careerRuns || 0);
-                            return runsB - runsA;
-                          })
-                          .slice(0, 5) // Top 5 batsmen
-                          .map((player, index) => {
-                            const isCareer = viewMode === 'career';
-                            const matches = isCareer ? (player.careerMatches || 0) : (player.matches || 0);
-                            const runs = isCareer ? (player.careerRuns || 0) : (player.runs || 0);
-                            const average = isCareer ? (player.careerAverage || (runs > 0 && matches > 0 ? (runs / matches).toFixed(2) : '0.00')) : (player.battingAverage || (runs > 0 && matches > 0 ? (runs / matches).toFixed(2) : '0.00'));
-                            const strikeRate = isCareer ? (player.careerStrikeRate || '0.00') : (player.strikeRate || '0.00');
-                            const fours = isCareer ? (player.careerFours || 0) : (player.fours || 0);
-                            const sixes = isCareer ? (player.careerSixes || 0) : (player.sixes || 0);
-                            const highestScore = isCareer ? (player.careerHighestScore || 0) : (player.highestScore || 0);
-                            
-                            return (
-                              <tr key={player.id} className={`hover:bg-gray-50 ${
-                                index < 3 ? 'bg-gradient-to-r from-yellow-50 to-orange-50' : ''
-                              }`}>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="flex items-center">
-                                    {index < 3 && (
-                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold mr-2 ${
-                                        index === 0 ? 'bg-yellow-500' :
-                                        index === 1 ? 'bg-gray-400' :
-                                        'bg-orange-600'
-                                      }`}>
-                                        {index + 1}
-                                      </div>
-                                    )}
-                                    {index >= 3 && (
-                                      <span className="text-gray-600 font-medium">{index + 1}</span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="font-medium text-gray-900">{player.name || player.playerName}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                                    {player.team || player.teamName}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{matches}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="flex items-center">
-                                    <Target className="w-4 h-4 text-cricket-green mr-1" />
-                                    <span className="font-semibold text-cricket-navy">{runs}</span>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{average}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{strikeRate}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  <span className="text-green-600 font-medium">{fours}</span>
-                                  <span className="text-gray-400 mx-1">/</span>
-                                  <span className="text-blue-600 font-medium">{sixes}</span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">{highestScore}</td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
+                  {!battingCollapsed && (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matches</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Runs</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SR</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">4s/6s</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">HS</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {(viewMode === 'career' ? careerStats : playerStats)
+                            .filter(p => {
+                              const runs = viewMode === 'season' ? (p.runs || 0) : (p.totalRuns || p.careerRuns || 0);
+                              return runs > 0; // Show all players with runs
+                            })
+                            .sort((a, b) => {
+                              const runsA = viewMode === 'season' ? (a.runs || 0) : (a.totalRuns || a.careerRuns || 0);
+                              const runsB = viewMode === 'season' ? (b.runs || 0) : (b.totalRuns || b.careerRuns || 0);
+                              return runsB - runsA;
+                            })
+                            .map((player, index) => {
+                              const isCareer = viewMode === 'career';
+                              const matches = isCareer ? (player.totalMatches || player.careerMatches || 0) : (player.matches || 0);
+                              const runs = isCareer ? (player.totalRuns || player.careerRuns || 0) : (player.runs || 0);
+                              const average = isCareer ? (player.battingAverage || (runs > 0 && matches > 0 ? (runs / matches).toFixed(2) : '0.00')) : (player.battingAverage || (runs > 0 && matches > 0 ? (runs / matches).toFixed(2) : '0.00'));
+                              const strikeRate = isCareer ? (player.strikeRate || '0.00') : (player.strikeRate || '0.00');
+                              const fours = isCareer ? (player.totalFours || player.careerFours || 0) : (player.fours || 0);
+                              const sixes = isCareer ? (player.totalSixes || player.careerSixes || 0) : (player.sixes || 0);
+                              const highestScore = isCareer ? (player.highestScore || player.careerHighestScore || 0) : (player.highestScore || 0);
+                              const playerName = player.name || player.playerName;
+                              const teamName = player.team || player.teamName || 'Unknown';
+                              
+                              return (
+                                <tr key={player.id} className={`hover:bg-gray-50 ${
+                                  index < 3 ? 'bg-gradient-to-r from-yellow-50 to-orange-50' : ''
+                                }`}>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex items-center">
+                                      {index < 3 && (
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold mr-2 ${
+                                          index === 0 ? 'bg-yellow-500' :
+                                          index === 1 ? 'bg-gray-400' :
+                                          'bg-orange-600'
+                                        }`}>
+                                          {index + 1}
+                                        </div>
+                                      )}
+                                      {index >= 3 && (
+                                        <span className="text-gray-600 font-medium">{index + 1}</span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="font-medium text-gray-900">{playerName}</div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                      {teamName}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{matches}</td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex items-center">
+                                      <Target className="w-4 h-4 text-cricket-green mr-1" />
+                                      <span className="font-semibold text-cricket-navy">{runs}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{average}</td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{strikeRate}</td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <span className="text-green-600 font-medium">{fours}</span>
+                                    <span className="text-gray-400 mx-1">/</span>
+                                    <span className="text-blue-600 font-medium">{sixes}</span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">{highestScore}</td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
 
                 {/* Bowlers Section */}
                 <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
-                  <div className="px-6 py-4 bg-gradient-to-r from-red-600 to-red-800">
-                    <h2 className="text-xl font-bold text-white flex items-center">
-                      <Target className="mr-2" size={24} /> Bowlers
-                    </h2>
+                  <div className="px-6 py-4 bg-gradient-to-r from-red-600 to-red-800 cursor-pointer" onClick={() => setBowlingCollapsed(!bowlingCollapsed)}>
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl font-bold text-white flex items-center">
+                        <Target className="mr-2" size={24} /> Bowlers
+                      </h2>
+                      {bowlingCollapsed ? <ChevronDown className="text-white" size={24} /> : <ChevronUp className="text-white" size={24} />}
+                    </div>
                   </div>
                   
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matches</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wickets</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Economy</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Overs</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Best</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {playerStats
-                          .filter(p => {
-                            const wickets = viewMode === 'season' ? (p.wickets || 0) : (p.careerWickets || 0);
-                            return wickets > 0; // Show all players with wickets
-                          })
-                          .sort((a, b) => {
-                            const wicketsA = viewMode === 'season' ? (a.wickets || 0) : (a.careerWickets || 0);
-                            const wicketsB = viewMode === 'season' ? (b.wickets || 0) : (b.careerWickets || 0);
-                            return wicketsB - wicketsA;
-                          })
-                          .slice(0, 5) // Top 5 bowlers
-                          .map((player, index) => {
-                            const isCareer = viewMode === 'career';
-                            const matches = isCareer ? (player.careerMatches || 0) : (player.matches || 0);
-                            const wickets = isCareer ? (player.careerWickets || 0) : (player.wickets || 0);
-                            const economy = isCareer ? (player.careerEconomy || '0.00') : (player.economy || '0.00');
-                            const overs = isCareer ? (player.careerOvers || 0) : (player.overs || 0);
-                            const bestBowling = isCareer ? (player.careerBestBowling || '0/0') : (player.bestBowling || '0/0');
-                            
-                            return (
-                              <tr key={player.id} className={`hover:bg-gray-50 ${
-                                index < 3 ? 'bg-gradient-to-r from-red-50 to-pink-50' : ''
-                              }`}>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="flex items-center">
-                                    {index < 3 && (
-                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold mr-2 ${
-                                        index === 0 ? 'bg-yellow-500' :
-                                        index === 1 ? 'bg-gray-400' :
-                                        'bg-orange-600'
-                                      }`}>
-                                        {index + 1}
-                                      </div>
-                                    )}
-                                    {index >= 3 && (
-                                      <span className="text-gray-600 font-medium">{index + 1}</span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="font-medium text-gray-900">{player.name || player.playerName}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-                                    {player.team || player.teamName}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{matches}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="flex items-center">
-                                    <Target className="w-4 h-4 text-red-600 mr-1" />
-                                    <span className="font-semibold text-red-700">{wickets}</span>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{economy}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{overs}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">{bestBowling}</td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
+                  {!bowlingCollapsed && (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matches</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wickets</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Economy</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Overs</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Best</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {(viewMode === 'career' ? careerStats : playerStats)
+                            .filter(p => {
+                              const wickets = viewMode === 'season' ? (p.wickets || 0) : (p.totalWickets || 0);
+                              console.log(`Filtering bowler: ${p.name}, wickets: ${wickets}, viewMode: ${viewMode}`);
+                              return wickets > 0; // Show players with wickets only
+                            })
+                            .sort((a, b) => {
+                              const economyA = parseFloat(viewMode === 'season' ? (a.economy || 999) : (a.economy || 999));
+                              const economyB = parseFloat(viewMode === 'season' ? (b.economy || 999) : (b.economy || 999));
+                              const wicketsA = viewMode === 'season' ? (a.wickets || 0) : (a.totalWickets || 0);
+                              const wicketsB = viewMode === 'season' ? (b.wickets || 0) : (b.totalWickets || 0);
+                              
+                              // Primary sort: Lower economy is better
+                              if (economyA !== economyB) {
+                                return economyA - economyB;
+                              }
+                              // Secondary sort: More wickets is better
+                              return wicketsB - wicketsA;
+                            })
+                            .map((player, index) => {
+                              const isCareer = viewMode === 'career';
+                              const matches = isCareer ? (player.totalMatches || 0) : (player.matches || 0);
+                              const wickets = isCareer ? (player.totalWickets || 0) : (player.wickets || 0);
+                              const economy = isCareer ? (player.economy || '0.00') : (player.economy || '0.00');
+                              const overs = isCareer ? ((player.totalBallsBowled || 0) / 6).toFixed(1) : (player.overs || 0);
+                              const bestBowling = isCareer ? (player.bestBowling || '0/0') : (player.bestBowling || '0/0');
+                              const playerName = player.name || player.playerName;
+                              const teamName = player.team || player.teamName || 'Unknown';
+                              
+                              return (
+                                <tr key={player.id} className={`hover:bg-gray-50 ${
+                                  index < 3 ? 'bg-gradient-to-r from-red-50 to-pink-50' : ''
+                                }`}>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex items-center">
+                                      {index < 3 && (
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold mr-2 ${
+                                          index === 0 ? 'bg-yellow-500' :
+                                          index === 1 ? 'bg-gray-400' :
+                                          'bg-orange-600'
+                                        }`}>
+                                          {index + 1}
+                                        </div>
+                                      )}
+                                      {index >= 3 && (
+                                        <span className="text-gray-600 font-medium">{index + 1}</span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="font-medium text-gray-900">{playerName}</div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                                      {teamName}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{matches}</td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex items-center">
+                                      <Target className="w-4 h-4 text-red-600 mr-1" />
+                                      <span className="font-semibold text-red-700">{wickets}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{economy}</td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{overs}</td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">{bestBowling}</td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
 
                 {/* All-Rounders Section */}
                 <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                  <div className="px-6 py-4 bg-gradient-to-r from-green-600 to-green-800">
-                    <h2 className="text-xl font-bold text-white flex items-center">
-                      <Star className="mr-2" size={24} /> All-Rounders
-                    </h2>
+                  <div className="px-6 py-4 bg-gradient-to-r from-green-600 to-green-800 cursor-pointer" onClick={() => setAllRoundersCollapsed(!allRoundersCollapsed)}>
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl font-bold text-white flex items-center">
+                        <Star className="mr-2" size={24} /> All-Rounders
+                      </h2>
+                      {allRoundersCollapsed ? <ChevronDown className="text-white" size={24} /> : <ChevronUp className="text-white" size={24} />}
+                    </div>
                   </div>
                   
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matches</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Runs</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wickets</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Economy</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {playerStats
-                          .filter(p => {
-                            const runs = viewMode === 'season' ? (p.runs || 0) : (p.careerRuns || 0);
-                            const wickets = viewMode === 'season' ? (p.wickets || 0) : (p.careerWickets || 0);
-                            return runs > 0 && wickets > 0; // Show all players with both runs and wickets
-                          })
-                          .sort((a, b) => {
-                            const runsA = viewMode === 'season' ? (a.runs || 0) : (a.careerRuns || 0);
-                            const wicketsA = viewMode === 'season' ? (a.wickets || 0) : (a.careerWickets || 0);
-                            const runsB = viewMode === 'season' ? (b.runs || 0) : (b.careerRuns || 0);
-                            const wicketsB = viewMode === 'season' ? (b.wickets || 0) : (b.careerWickets || 0);
-                            return (runsB + wicketsB * 10) - (runsA + wicketsA * 10); // Combined contribution
-                          })
-                          .slice(0, 5) // Top 5 all-rounders
-                          .map((player, index) => {
-                            const isCareer = viewMode === 'career';
-                            const matches = isCareer ? (player.careerMatches || 0) : (player.matches || 0);
-                            const runs = isCareer ? (player.careerRuns || 0) : (player.runs || 0);
-                            const average = isCareer ? (player.careerAverage || (runs > 0 && matches > 0 ? (runs / matches).toFixed(2) : '0.00')) : (player.battingAverage || (runs > 0 && matches > 0 ? (runs / matches).toFixed(2) : '0.00'));
-                            const wickets = isCareer ? (player.careerWickets || 0) : (player.wickets || 0);
-                            const economy = isCareer ? (player.careerEconomy || '0.00') : (player.economy || '0.00');
-                            
-                            return (
-                              <tr key={player.id} className={`hover:bg-gray-50 ${
-                                index < 3 ? 'bg-gradient-to-r from-green-50 to-emerald-50' : ''
-                              }`}>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="flex items-center">
-                                    {index < 3 && (
-                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold mr-2 ${
-                                        index === 0 ? 'bg-yellow-500' :
-                                        index === 1 ? 'bg-gray-400' :
-                                        'bg-orange-600'
-                                      }`}>
-                                        {index + 1}
-                                      </div>
-                                    )}
-                                    {index >= 3 && (
-                                      <span className="text-gray-600 font-medium">{index + 1}</span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="font-medium text-gray-900">{player.name || player.playerName}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                                    {player.team || player.teamName}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{matches}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="flex items-center">
-                                    <Target className="w-4 h-4 text-cricket-green mr-1" />
-                                    <span className="font-semibold text-cricket-navy">{runs}</span>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{average}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="flex items-center">
-                                    <Target className="w-4 h-4 text-red-600 mr-1" />
-                                    <span className="font-semibold text-red-700">{wickets}</span>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{economy}</td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
+                  {!allRoundersCollapsed && (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matches</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Runs</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wickets</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Economy</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {(viewMode === 'career' ? careerStats : playerStats)
+                            .filter(p => {
+                              const runs = viewMode === 'season' ? (p.runs || 0) : (p.totalRuns || 0);
+                              const wickets = viewMode === 'season' ? (p.wickets || 0) : (p.totalWickets || 0);
+                              return runs > 0 && wickets > 0; // Show all players with both runs and wickets
+                            })
+                            .sort((a, b) => {
+                              const runsA = viewMode === 'season' ? (a.runs || 0) : (a.totalRuns || 0);
+                              const wicketsA = viewMode === 'season' ? (a.wickets || 0) : (a.totalWickets || 0);
+                              const runsB = viewMode === 'season' ? (b.runs || 0) : (b.totalRuns || 0);
+                              const wicketsB = viewMode === 'season' ? (b.wickets || 0) : (b.totalWickets || 0);
+                              return (runsB + wicketsB * 10) - (runsA + wicketsA * 10); // Combined contribution
+                            })
+                            .map((player, index) => {
+                              const isCareer = viewMode === 'career';
+                              const matches = isCareer ? (player.totalMatches || 0) : (player.matches || 0);
+                              const runs = isCareer ? (player.totalRuns || 0) : (player.runs || 0);
+                              const average = isCareer ? (player.battingAverage || (runs > 0 && matches > 0 ? (runs / matches).toFixed(2) : '0.00')) : (player.battingAverage || (runs > 0 && matches > 0 ? (runs / matches).toFixed(2) : '0.00'));
+                              const wickets = isCareer ? (player.totalWickets || 0) : (player.wickets || 0);
+                              const economy = isCareer ? (player.economy || '0.00') : (player.economy || '0.00');
+                              const playerName = player.name || player.playerName;
+                              const teamName = player.team || player.teamName || 'Unknown';
+                              
+                              return (
+                                <tr key={player.id} className={`hover:bg-gray-50 ${
+                                  index < 3 ? 'bg-gradient-to-r from-green-50 to-emerald-50' : ''
+                                }`}>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex items-center">
+                                      {index < 3 && (
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold mr-2 ${
+                                          index === 0 ? 'bg-yellow-500' :
+                                          index === 1 ? 'bg-gray-400' :
+                                          'bg-orange-600'
+                                        }`}>
+                                          {index + 1}
+                                        </div>
+                                      )}
+                                      {index >= 3 && (
+                                        <span className="text-gray-600 font-medium">{index + 1}</span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="font-medium text-gray-900">{playerName}</div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                      {teamName}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{matches}</td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex items-center">
+                                      <Target className="w-4 h-4 text-cricket-green mr-1" />
+                                      <span className="font-semibold text-cricket-navy">{runs}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{average}</td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex items-center">
+                                      <Target className="w-4 h-4 text-red-600 mr-1" />
+                                      <span className="font-semibold text-red-700">{wickets}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{economy}</td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                   
-                  {playerStats.filter(p => {
-                    const runs = viewMode === 'season' ? (p.runs || 0) : (p.careerRuns || 0);
-                    const wickets = viewMode === 'season' ? (p.wickets || 0) : (p.careerWickets || 0);
+                  {(viewMode === 'career' ? careerStats : playerStats).filter(p => {
+                    const runs = viewMode === 'season' ? (p.runs || 0) : (p.totalRuns || 0);
+                    const wickets = viewMode === 'season' ? (p.wickets || 0) : (p.totalWickets || 0);
                     return runs > 0 && wickets > 0;
-                  }).length === 0 && (
+                  }).length === 0 && !allRoundersCollapsed && (
                     <div className="text-center py-12">
                       <Star className="mx-auto h-12 w-12 text-gray-400" />
                       <h3 className="mt-2 text-sm font-medium text-gray-900">No all-rounders yet</h3>
@@ -672,7 +718,7 @@ const CombinedStatsPage = () => {
                               <h4 className="font-bold text-gray-900 text-sm sm:text-base lg:text-lg leading-tight mb-1">{player.name || player.playerName}</h4>
                               <p className="text-xs sm:text-sm text-blue-600 font-semibold mb-2">{player.team || player.teamName}</p>
                               <div className="flex flex-wrap items-center gap-1 mt-1">
-                                <span className="text-xs bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 px-2 py-1 rounded-full font-semibold shadow-sm">Avg: {player.battingAverage || '0.00'}</span>
+                                <span className="text-xs bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 px-2 py-1 rounded-full font-semibold shadow-sm">Avg: {player.battingAverage || (player.runs > 0 && player.matches > 0 ? (player.runs / player.matches).toFixed(2) : '0.00')}</span>
                                 <span className="text-xs bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 px-2 py-1 rounded-full font-semibold shadow-sm">M: {player.matches || 0}</span>
                                 <span className="text-xs bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 px-2 py-1 rounded-full font-semibold shadow-sm">HS: {player.highestScore || 0}</span>
                                 <span className="text-xs bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 px-2 py-1 rounded-full font-semibold shadow-sm">SR: {player.strikeRate || 0}</span>
@@ -706,9 +752,33 @@ const CombinedStatsPage = () => {
                     </h3>
                     <span className="bg-red-200 text-red-800 px-3 py-1 rounded-full text-sm font-medium">Leading Wicket Takers</span>
                   </div>
-                  {playerStats.filter(p => p.wickets > 0).sort((a, b) => b.wickets - a.wickets).slice(0, 6).length > 0 ? (
+                  {playerStats.filter(p => p.wickets > 0).sort((a, b) => {
+                    const economyA = parseFloat(a.economy || 999);
+                    const economyB = parseFloat(b.economy || 999);
+                    const wicketsA = a.wickets || 0;
+                    const wicketsB = b.wickets || 0;
+                    
+                    // Primary sort: Lower economy is better
+                    if (economyA !== economyB) {
+                      return economyA - economyB;
+                    }
+                    // Secondary sort: More wickets is better
+                    return wicketsB - wicketsA;
+                  }).slice(0, 6).length > 0 ? (
                     <div className="grid grid-cols-1 gap-3 sm:gap-4">
-                      {playerStats.filter(p => p.wickets > 0).sort((a, b) => b.wickets - a.wickets).slice(0, 6).map((player, index) => {
+                      {playerStats.filter(p => p.wickets > 0).sort((a, b) => {
+                        const economyA = parseFloat(a.economy || 999);
+                        const economyB = parseFloat(b.economy || 999);
+                        const wicketsA = a.wickets || 0;
+                        const wicketsB = b.wickets || 0;
+                        
+                        // Primary sort: Lower economy is better
+                        if (economyA !== economyB) {
+                          return economyA - economyB;
+                        }
+                        // Secondary sort: More wickets is better
+                        return wicketsB - wicketsA;
+                      }).slice(0, 6).map((player, index) => {
                         const playerPhoto = getPlayerPhoto(player.name || player.playerName);
                         return (
                           <div key={player.id} className="bg-white rounded-2xl p-4 flex items-center space-x-4 shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-red-100 hover:border-red-300 transform hover:-translate-y-1">

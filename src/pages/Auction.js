@@ -34,13 +34,25 @@ const Auction = () => {
     try {
       console.log('🔄 Fetching auction data...');
       
-      // Fetch data without season service
-      const [allPlayersSnapshot, teamsSnapshot, statsSnapshot, careerStatsData] = await Promise.all([
+      // Fetch data including careerStats collection
+      const [allPlayersSnapshot, teamsSnapshot, statsSnapshot, careerStatsSnapshot] = await Promise.all([
         getDocs(collection(db, 'playerRegistrations')),
         getDocs(collection(db, 'teams')),
         getDocs(collection(db, 'playerStats')),
-        careerStatsService.calculateCareerStats()
+        getDocs(collection(db, 'careerStats'))
       ]);
+      
+      // Process career stats from careerStats collection
+      const careerStatsFromDB = {};
+      careerStatsSnapshot.docs.forEach(doc => {
+        const stats = doc.data();
+        if (stats.name) {
+          careerStatsFromDB[stats.name] = stats;
+        }
+      });
+      
+      console.log('📊 Career stats from DB:', Object.keys(careerStatsFromDB).length, 'players');
+      console.log('📊 Sample career stats:', Object.values(careerStatsFromDB).slice(0, 3));
       
       setCurrentSeason('Current Season');
 
@@ -59,17 +71,17 @@ const Auction = () => {
         const data = doc.data();
         const normalizedName = normalizePlayerName(data.fullName);
         
-        // Try to get career stats by name first, then by linked stats name, then by phone
-        let playerCareerStats = careerStatsData[normalizedName] || careerStatsData[data.fullName] || {};
+        // Try to get career stats from careerStats collection
+        let playerCareerStats = careerStatsFromDB[normalizedName] || careerStatsFromDB[data.fullName] || {};
         
         // If no stats found by name but has linked stats, try linked name
         if (!playerCareerStats.totalMatches && data.linkedStatsName) {
-          playerCareerStats = careerStatsData[data.linkedStatsName] || {};
+          playerCareerStats = careerStatsFromDB[data.linkedStatsName] || {};
         }
         
-        // If still no stats and has phone, try to find stats by phone in statsData
+        // If still no stats and has phone, try to find stats by phone
         if (!playerCareerStats.totalMatches && data.phone) {
-          const phoneStats = Object.values(careerStatsData).find(stats => stats.phone === data.phone);
+          const phoneStats = Object.values(careerStatsFromDB).find(stats => stats.phone === data.phone);
           if (phoneStats) {
             playerCareerStats = phoneStats;
           }
@@ -108,7 +120,7 @@ const Auction = () => {
       setPlayers(currentSeasonPlayers);
       setTeams(teamsData);
       setPlayerStats(statsData);
-      setCareerStats(careerStatsData);
+      setCareerStats(careerStatsFromDB);
       
     } catch (error) {
       console.error('❌ Error fetching auction data:', error);
@@ -406,7 +418,7 @@ const Auction = () => {
                   {(player.careerMatches > 0) && (
                     <div className="mt-3 p-2 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-indigo-600 font-semibold">Career SR: {player.careerStrikeRate}</span>
+                        <span className="text-indigo-600 font-semibold">Career SR: {player.careerStrikeRate || '0.00'}</span>
                         {player.careerBestBowling !== '0/0' && (
                           <span className="text-purple-600 font-semibold">Best: {player.careerBestBowling}</span>
                         )}

@@ -6,6 +6,7 @@ import { useAdmin } from '../context/AdminContext';
 import { db } from '../firebase/firebase';
 import AdminLogin from '../components/AdminLogin';
 import dataSync from '../services/dataSync';
+import seasonService from '../services/seasonService';
 import EnhancedLiveScoring from '../components/EnhancedLiveScoring';
 import LiveScoreboard from '../components/LiveScoreboard';
 import ComprehensiveScoring from '../components/ComprehensiveScoring';
@@ -15,6 +16,7 @@ import dataRefreshManager from '../utils/dataRefresh';
 import DataConsistencyChecker from '../components/DataConsistencyChecker';
 // Season utilities removed
 import dataResetService from '../services/dataResetService';
+import seasonClearingService from '../services/seasonClearingService';
 import '../styles/admin-mobile.css';
 
 
@@ -45,7 +47,7 @@ const AdminPanel = () => {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [editPlayerData, setEditPlayerData] = useState({});
-  const [newTeam, setNewTeam] = useState({ name: '', city: '', owner: '', captain: '', founded: '', stadium: '' });
+  const [newTeam, setNewTeam] = useState({ name: '', city: '', owner: '', captain: '', founded: '', stadium: '', ownerMobile: '', captainMobile: '' });
   const [newMatch, setNewMatch] = useState({ team1: '', team2: '', date: '', venue: 'Nutan Vidyalaya Khajjidoni', overs: '8', time: '', matchType: 'knockout', team1Score: '', team2Score: '', status: 'upcoming' });
   const [teamLogo, setTeamLogo] = useState(null);
   const [captainPhoto, setCaptainPhoto] = useState(null);
@@ -97,6 +99,15 @@ const AdminPanel = () => {
   const [showJsonImport, setShowJsonImport] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
   const [importLoading, setImportLoading] = useState(false);
+  const [savingScorecardLoading, setSavingScorecardLoading] = useState(false);
+  const [clearingSeasonLoading, setClearingSeasonLoading] = useState(false);
+  const [lastBackupCollection, setLastBackupCollection] = useState(null);
+  const [addingTeamLoading, setAddingTeamLoading] = useState(false);
+  const [editingTeamLoading, setEditingTeamLoading] = useState(false);
+  const [deletingTeamLoading, setDeletingTeamLoading] = useState(false);
+  const [addingMatchLoading, setAddingMatchLoading] = useState(false);
+  const [deletingMatchLoading, setDeletingMatchLoading] = useState(false);
+  const [processingActionLoading, setProcessingActionLoading] = useState(false);
 
   const [fixingDuplicates, setFixingDuplicates] = useState(false);
   const [resettingData, setResettingData] = useState(false);
@@ -159,9 +170,41 @@ const AdminPanel = () => {
       }
     };
 
+    // Get team data for captain and owner info
+    const team1Data = teams.find(t => t.name === match.team1);
+    const team2Data = teams.find(t => t.name === match.team2);
+
+    // Create extended player lists including captain and owner
+    const getExtendedPlayerList = (teamPlayers, teamData) => {
+      const extendedList = [...(teamPlayers || [])];
+      
+      // Add captain if not already in team
+      if (teamData?.captain && !teamPlayers?.some(p => p.name === teamData.captain)) {
+        extendedList.push({
+          id: `captain-${teamData.id}`,
+          name: teamData.captain,
+          position: 'Captain'
+        });
+      }
+      
+      // Add owner if not already in team and different from captain
+      if (teamData?.owner && teamData.owner !== teamData.captain && !teamPlayers?.some(p => p.name === teamData.owner)) {
+        extendedList.push({
+          id: `owner-${teamData.id}`,
+          name: teamData.owner,
+          position: 'Owner'
+        });
+      }
+      
+      return extendedList;
+    };
+
+    const team1ExtendedPlayers = getExtendedPlayerList(match.team1Players, team1Data);
+    const team2ExtendedPlayers = getExtendedPlayerList(match.team2Players, team2Data);
+
     // Initialize batting stats
-    match.team1Players?.forEach(player => {
-      const battingStats = match.battingStats?.[match.team1]?.find(p => p.playerId === player.id);
+    team1ExtendedPlayers.forEach(player => {
+      const battingStats = match.battingStats?.[match.team1]?.find(p => p.playerId === player.id || p.name === player.name);
       data.team1.batting[player.id] = {
         runs: battingStats?.runs ?? 0,
         balls: battingStats?.balls ?? 0,
@@ -174,8 +217,8 @@ const AdminPanel = () => {
       };
     });
 
-    match.team2Players?.forEach(player => {
-      const battingStats = match.battingStats?.[match.team2]?.find(p => p.playerId === player.id);
+    team2ExtendedPlayers.forEach(player => {
+      const battingStats = match.battingStats?.[match.team2]?.find(p => p.playerId === player.id || p.name === player.name);
       data.team2.batting[player.id] = {
         runs: battingStats?.runs ?? 0,
         balls: battingStats?.balls ?? 0,
@@ -189,8 +232,8 @@ const AdminPanel = () => {
     });
 
     // Initialize bowling stats
-    match.team1Players?.forEach(player => {
-      const bowlingStats = match.bowlingStats?.[match.team1]?.find(p => p.playerId === player.id);
+    team1ExtendedPlayers.forEach(player => {
+      const bowlingStats = match.bowlingStats?.[match.team1]?.find(p => p.playerId === player.id || p.name === player.name);
       data.team1.bowling[player.id] = {
         overs: bowlingStats?.overs ?? 0,
         maidens: bowlingStats?.maidens ?? 0,
@@ -200,8 +243,8 @@ const AdminPanel = () => {
       };
     });
 
-    match.team2Players?.forEach(player => {
-      const bowlingStats = match.bowlingStats?.[match.team2]?.find(p => p.playerId === player.id);
+    team2ExtendedPlayers.forEach(player => {
+      const bowlingStats = match.bowlingStats?.[match.team2]?.find(p => p.playerId === player.id || p.name === player.name);
       data.team2.bowling[player.id] = {
         overs: bowlingStats?.overs ?? 0,
         maidens: bowlingStats?.maidens ?? 0,
@@ -210,6 +253,10 @@ const AdminPanel = () => {
         economy: bowlingStats?.economy ?? 0
       };
     });
+
+    // Store extended player lists for use in scorecard
+    data.team1ExtendedPlayers = team1ExtendedPlayers;
+    data.team2ExtendedPlayers = team2ExtendedPlayers;
 
     setScorecardData(data);
   };
@@ -846,6 +893,7 @@ const AdminPanel = () => {
 
   const handleAddTeam = async (e) => {
     e.preventDefault();
+    setAddingTeamLoading(true);
     setUploading(true);
     setError('');
     
@@ -892,11 +940,13 @@ const AdminPanel = () => {
       setError(`Error adding team: ${error.message}`);
     } finally {
       setUploading(false);
+      setAddingTeamLoading(false);
     }
   };
 
   const handleEditTeam = async (e) => {
     e.preventDefault();
+    setEditingTeamLoading(true);
     setUploading(true);
     setError('');
     
@@ -927,6 +977,7 @@ const AdminPanel = () => {
       setError(`Error updating team: ${error.message}`);
     } finally {
       setUploading(false);
+      setEditingTeamLoading(false);
     }
   };
 
@@ -1117,7 +1168,7 @@ const AdminPanel = () => {
   };
 
   const resetTeamForm = () => {
-    setNewTeam({ name: '', city: '', owner: '', captain: '', founded: '', stadium: '' });
+    setNewTeam({ name: '', city: '', owner: '', captain: '', founded: '', stadium: '', ownerMobile: '', captainMobile: '' });
     setTeamLogo(null);
     setCaptainPhoto(null);
     setOwnerPhoto(null);
@@ -1137,7 +1188,9 @@ const AdminPanel = () => {
       owner: team.owner,
       captain: team.captain,
       founded: team.founded,
-      stadium: team.stadium
+      stadium: team.stadium,
+      ownerMobile: team.ownerMobile || '',
+      captainMobile: team.captainMobile || ''
     });
     setShowEditTeam(true);
     // Scroll to top when edit form opens
@@ -1980,10 +2033,26 @@ const AdminPanel = () => {
                         required
                       />
                       <input
+                        type="tel"
+                        placeholder="Owner Mobile"
+                        value={newTeam.ownerMobile || ''}
+                        onChange={(e) => setNewTeam({...newTeam, ownerMobile: e.target.value})}
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-cricket-green focus:border-cricket-green"
+                        required
+                      />
+                      <input
                         type="text"
                         placeholder="Captain"
                         value={newTeam.captain}
                         onChange={(e) => setNewTeam({...newTeam, captain: e.target.value})}
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-cricket-green focus:border-cricket-green"
+                        required
+                      />
+                      <input
+                        type="tel"
+                        placeholder="Captain Mobile"
+                        value={newTeam.captainMobile || ''}
+                        onChange={(e) => setNewTeam({...newTeam, captainMobile: e.target.value})}
                         className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-cricket-green focus:border-cricket-green"
                         required
                       />
@@ -2045,8 +2114,11 @@ const AdminPanel = () => {
                       </div>
                       
                       <div className="sm:col-span-2 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                        <button type="submit" disabled={uploading} className="btn-primary disabled:opacity-50">
-                          {uploading ? 'Adding Team...' : 'Add Team'}
+                        <button type="submit" disabled={addingTeamLoading} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
+                          {addingTeamLoading && (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          )}
+                          <span>{addingTeamLoading ? 'Adding Team...' : 'Add Team'}</span>
                         </button>
                         <button type="button" onClick={resetTeamForm} className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
                       </div>
@@ -2084,10 +2156,26 @@ const AdminPanel = () => {
                         required
                       />
                       <input
+                        type="tel"
+                        placeholder="Owner Mobile"
+                        value={newTeam.ownerMobile || ''}
+                        onChange={(e) => setNewTeam({...newTeam, ownerMobile: e.target.value})}
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-cricket-green focus:border-cricket-green"
+                        required
+                      />
+                      <input
                         type="text"
                         placeholder="Captain"
                         value={newTeam.captain}
                         onChange={(e) => setNewTeam({...newTeam, captain: e.target.value})}
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-cricket-green focus:border-cricket-green"
+                        required
+                      />
+                      <input
+                        type="tel"
+                        placeholder="Captain Mobile"
+                        value={newTeam.captainMobile || ''}
+                        onChange={(e) => setNewTeam({...newTeam, captainMobile: e.target.value})}
                         className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-cricket-green focus:border-cricket-green"
                         required
                       />
@@ -2150,8 +2238,11 @@ const AdminPanel = () => {
                       </div>
                       
                       <div className="md:col-span-2 flex space-x-2">
-                        <button type="submit" disabled={uploading} className="btn-primary disabled:opacity-50">
-                          {uploading ? 'Updating Team...' : 'Update Team'}
+                        <button type="submit" disabled={editingTeamLoading} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
+                          {editingTeamLoading && (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          )}
+                          <span>{editingTeamLoading ? 'Updating Team...' : 'Update Team'}</span>
                         </button>
                         <button type="button" onClick={resetTeamForm} className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
                       </div>
@@ -2173,7 +2264,21 @@ const AdminPanel = () => {
                         <p><span className="font-medium">Captain:</span> {team.captain}</p>
                         <p><span className="font-medium">Stadium:</span> {team.stadium}</p>
                         <p><span className="font-medium">Founded:</span> {team.founded}</p>
-                        <p><span className="font-medium">Players:</span> {team.players?.filter(playerId => playerRegistrations.find(p => p.id === playerId)).length || 0}</p>
+                        <p><span className="font-medium">Players:</span> {(() => {
+                          const squadPlayers = team.players?.filter(playerId => playerRegistrations.find(p => p.id === playerId)) || [];
+                          const captainInSquad = squadPlayers.some(playerId => {
+                            const player = playerRegistrations.find(p => p.id === playerId);
+                            return player?.fullName === team.captain;
+                          });
+                          const ownerInSquad = squadPlayers.some(playerId => {
+                            const player = playerRegistrations.find(p => p.id === playerId);
+                            return player?.fullName === team.owner;
+                          });
+                          let totalCount = squadPlayers.length;
+                          if (!captainInSquad && team.captain) totalCount++;
+                          if (!ownerInSquad && team.owner && team.owner !== team.captain) totalCount++;
+                          return totalCount;
+                        })()}</p>
                         {team.createdBy && (
                           <p className="text-xs text-gray-500 mt-1"><span className="font-medium">Created by:</span> {team.createdBy}</p>
                         )}
@@ -2384,34 +2489,109 @@ const AdminPanel = () => {
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Current Team Players */}
                         <div>
-                          <h4 className="font-medium mb-3">Current Team Players ({selectedTeam.players?.filter(playerId => playerRegistrations.find(p => p.id === playerId)).length || 0})</h4>
+                          <h4 className="font-medium mb-3">Current Team Players ({(() => {
+                            const squadPlayers = selectedTeam.players?.filter(playerId => playerRegistrations.find(p => p.id === playerId)) || [];
+                            const captainInSquad = squadPlayers.some(playerId => {
+                              const player = playerRegistrations.find(p => p.id === playerId);
+                              return player?.fullName === selectedTeam.captain;
+                            });
+                            const ownerInSquad = squadPlayers.some(playerId => {
+                              const player = playerRegistrations.find(p => p.id === playerId);
+                              return player?.fullName === selectedTeam.owner;
+                            });
+                            let totalCount = squadPlayers.length;
+                            if (!captainInSquad && selectedTeam.captain) totalCount++;
+                            if (!ownerInSquad && selectedTeam.owner && selectedTeam.owner !== selectedTeam.captain) totalCount++;
+                            return totalCount;
+                          })()})</h4>
                           <div className="space-y-2 max-h-64 overflow-y-auto">
-                            {selectedTeam.players && selectedTeam.players.filter(playerId => playerRegistrations.find(p => p.id === playerId)).length > 0 ? (
-                              selectedTeam.players.filter(playerId => playerRegistrations.find(p => p.id === playerId)).map(playerId => {
+                            {(() => {
+                              const squadPlayers = selectedTeam.players?.filter(playerId => playerRegistrations.find(p => p.id === playerId)) || [];
+                              const captainInSquad = squadPlayers.some(playerId => {
                                 const player = playerRegistrations.find(p => p.id === playerId);
-                                return (
-                                  <div key={playerId} className="flex items-center justify-between p-2 bg-green-50 rounded">
+                                return player?.fullName === selectedTeam.captain;
+                              });
+                              const ownerInSquad = squadPlayers.some(playerId => {
+                                const player = playerRegistrations.find(p => p.id === playerId);
+                                return player?.fullName === selectedTeam.owner;
+                              });
+                              
+                              const allPlayers = [];
+                              
+                              // Add captain if not in squad
+                              if (!captainInSquad && selectedTeam.captain) {
+                                allPlayers.push({
+                                  id: `captain-${selectedTeam.id}`,
+                                  fullName: selectedTeam.captain,
+                                  position: 'Captain',
+                                  email: selectedTeam.captainMobile || 'Team Captain',
+                                  photoBase64: selectedTeam.captainPhotoURL,
+                                  isManagement: true
+                                });
+                              }
+                              
+                              // Add owner if not in squad and different from captain
+                              if (!ownerInSquad && selectedTeam.owner && selectedTeam.owner !== selectedTeam.captain) {
+                                allPlayers.push({
+                                  id: `owner-${selectedTeam.id}`,
+                                  fullName: selectedTeam.owner,
+                                  position: 'Owner',
+                                  email: selectedTeam.ownerMobile || 'Team Owner',
+                                  photoBase64: selectedTeam.ownerPhotoURL,
+                                  isManagement: true
+                                });
+                              }
+                              
+                              // Add regular squad players
+                              squadPlayers.forEach(playerId => {
+                                const player = playerRegistrations.find(p => p.id === playerId);
+                                if (player) {
+                                  allPlayers.push({
+                                    ...player,
+                                    isManagement: false
+                                  });
+                                }
+                              });
+                              
+                              return allPlayers.length > 0 ? (
+                                allPlayers.map(player => (
+                                  <div key={player.id} className={`flex items-center justify-between p-2 rounded ${
+                                    player.isManagement ? 'bg-yellow-50 border border-yellow-200' : 'bg-green-50'
+                                  }`}>
                                     <div className="flex items-center space-x-3">
-                                      {player.photoBase64 && (
+                                      {player.photoBase64 ? (
                                         <img src={player.photoBase64} alt={player.fullName} className="w-8 h-8 object-cover rounded-full" />
+                                      ) : (
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs ${
+                                          player.isManagement ? 'bg-gradient-to-br from-yellow-400 to-orange-500' : 'bg-gradient-to-br from-cricket-navy to-cricket-blue'
+                                        }`}>
+                                          {player.fullName?.split(' ').map(n => n[0]).join('').toUpperCase() || '??'}
+                                        </div>
                                       )}
                                       <div>
-                                        <p className="font-medium text-sm">{player.fullName}</p>
+                                        <p className={`font-medium text-sm ${
+                                          player.isManagement ? 'text-yellow-800' : 'text-gray-900'
+                                        }`}>{player.fullName}</p>
                                         <p className="text-xs text-gray-600">{player.position}</p>
+                                        {player.email && player.email !== 'Team Captain' && player.email !== 'Team Owner' && (
+                                          <p className="text-xs text-gray-500">{player.email}</p>
+                                        )}
                                       </div>
                                     </div>
-                                    <button
-                                      onClick={() => handleRemovePlayerFromTeam(selectedTeam.id, playerId)}
-                                      className="text-red-600 hover:text-red-800 text-xs"
-                                    >
-                                      Remove
-                                    </button>
+                                    {!player.isManagement && (
+                                      <button
+                                        onClick={() => handleRemovePlayerFromTeam(selectedTeam.id, player.id)}
+                                        className="text-red-600 hover:text-red-800 text-xs"
+                                      >
+                                        Remove
+                                      </button>
+                                    )}
                                   </div>
-                                );
-                              })
-                            ) : (
-                              <p className="text-gray-500 text-sm">No players in this team</p>
-                            )}
+                                ))
+                              ) : (
+                                <p className="text-gray-500 text-sm">No players in this team</p>
+                              );
+                            })()}
                           </div>
                         </div>
                         
@@ -2608,7 +2788,7 @@ const AdminPanel = () => {
                     <div className="bg-gray-50 rounded-lg p-4">
                       <h4 className="font-semibold mb-3">{scoreEntryMatch.team1} Batting</h4>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {scoreEntryMatch.team1Players?.map(player => (
+                        {(scorecardData.team1ExtendedPlayers || scoreEntryMatch.team1Players || []).map(player => (
                           <div key={player.id} className="bg-white rounded p-2">
                             <div className="text-sm font-medium mb-1">{player.name}</div>
                             <div className="grid grid-cols-4 gap-1">
@@ -2650,7 +2830,7 @@ const AdminPanel = () => {
                     <div className="bg-gray-50 rounded-lg p-4">
                       <h4 className="font-semibold mb-3">{scoreEntryMatch.team2} Batting</h4>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {scoreEntryMatch.team2Players?.map(player => (
+                        {(scorecardData.team2ExtendedPlayers || scoreEntryMatch.team2Players || []).map(player => (
                           <div key={player.id} className="bg-white rounded p-2">
                             <div className="text-sm font-medium mb-1">{player.name}</div>
                             <div className="grid grid-cols-4 gap-1">
@@ -3489,33 +3669,66 @@ const AdminPanel = () => {
                   <div className="flex space-x-2">
                     <button
                       onClick={async () => {
-                        if (window.confirm('⚠️ RESET SEASON DATA?\n\nThis will:\n• Clear all matches and results\n• Reset team player assignments\n• Reset current season stats to 0\n• Clear standings and points table\n\nBUT PRESERVE:\n• Player career statistics\n• Team information\n• Player registrations\n\nThis action cannot be undone. Continue?')) {
-                          setResettingData(true);
+                        if (window.confirm('⚠️ CLEAR SEASON DATA\n\nThis will permanently delete:\n• All matches and results\n• All player statistics\n• Points table\n• Teams\n• Player registrations (approved list)\n\n✅ Career statistics will be preserved\n📦 A backup will be created\n\nProceed with clearing season data?')) {
+                          setClearingSeasonLoading(true);
                           try {
-                            const result = await dataResetService.resetTournamentData();
-                            
+                            const result = await seasonService.clearSeasonData();
                             if (result.success) {
-                              alert(`✅ Season reset completed!\n\n${result.message}\n\nDetails:\n• Collections reset: ${result.details.collectionsReset.join(', ')}\n• Documents deleted: ${result.details.documentsDeleted}\n• Teams reset: ${result.details.teamsReset}\n• Players reset: ${result.details.playersReset}\n• Stats reset: ${result.details.statsReset}`);
+                              setLastBackupCollection(result.backupCollection);
+                              alert(`✅ Season cleared successfully!\n\n📊 Cleared:\n• ${result.clearedMatches} matches\n• ${result.clearedStats} player stats\n• ${result.clearedTeams} teams\n• ${result.clearedPlayerRegistrations} player registrations\n\n💾 ${result.preservedCareerStats} career stats preserved\n📦 Backup: ${result.backupCollection}`);
+                              await fetchMatches();
                               window.location.reload();
                             } else {
-                              throw new Error(result.error);
+                              alert('❌ Error clearing season: ' + result.error);
                             }
                           } catch (error) {
-                            console.error('❌ Error resetting season:', error);
-                            alert('❌ Error resetting season: ' + error.message);
+                            console.error('Error clearing season:', error);
+                            alert('❌ Error clearing season: ' + error.message);
                           } finally {
-                            setResettingData(false);
+                            setClearingSeasonLoading(false);
                           }
                         }
                       }}
-                      disabled={resettingData}
-                      className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
+                      disabled={clearingSeasonLoading}
+                      className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
                     >
-                      {resettingData && (
+                      {clearingSeasonLoading && (
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       )}
-                      <span>{resettingData ? 'Resetting Season...' : 'Reset Season Data'}</span>
+                      <span>{clearingSeasonLoading ? 'Clearing Season...' : 'Clear Season Data'}</span>
                     </button>
+                    {lastBackupCollection && (
+                      <button
+                        onClick={async () => {
+                          if (window.confirm(`⚠️ RESTORE SEASON DATA?\n\nThis will restore data from backup:\n${lastBackupCollection}\n\nThis will overwrite any current data. Continue?`)) {
+                            setClearingSeasonLoading(true);
+                            try {
+                              const result = await seasonService.restoreSeasonData(lastBackupCollection);
+                              if (result.success) {
+                                alert(`✅ Season data restored successfully!\n\n📊 Restored:\n• ${result.restoredMatches} matches\n• ${result.restoredStats} player stats\n• ${result.restoredTeams} teams\n• ${result.restoredPlayerRegistrations} player registrations`);
+                                setLastBackupCollection(null);
+                                await fetchMatches();
+                                window.location.reload();
+                              } else {
+                                alert('❌ Error restoring season: ' + result.error);
+                              }
+                            } catch (error) {
+                              console.error('Error restoring season:', error);
+                              alert('❌ Error restoring season: ' + error.message);
+                            } finally {
+                              setClearingSeasonLoading(false);
+                            }
+                          }
+                        }}
+                        disabled={clearingSeasonLoading}
+                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
+                      >
+                        {clearingSeasonLoading && (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        )}
+                        <span>{clearingSeasonLoading ? 'Restoring...' : 'Restore Last Backup'}</span>
+                      </button>
+                    )}
                     <button
                       onClick={async () => {
                         if (!window.confirm('⚠️ Fix duplicate stats with season tracking?\n\nThis will:\n• Clear all existing player statistics\n• Recalculate stats from matches (avoiding duplicates)\n• Track both career and current season stats\n• Fix match count and runs total issues\n• Show detailed processing log\n\nThis action cannot be undone. Continue?')) {
@@ -3558,16 +3771,6 @@ const AdminPanel = () => {
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       )}
                       <span>{fixingDuplicates ? 'Fixing Duplicates...' : 'Fix Duplicate Stats'}</span>
-                    </button>
-                    <button
-                      onClick={async () => {
-                        const debugService = await import('../services/debugMatchScores');
-                        const result = await debugService.default.checkMatchScores();
-                        alert(`Tournament Totals:\n\nFrom Team Scores: ${result.tournamentTotalFromTeamScores}\nFrom Player Stats: ${result.tournamentTotalFromPlayerStats}\nDifference: ${result.difference}\n\nCheck console for detailed breakdown.`);
-                      }}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2"
-                    >
-                      <span>Debug Match Scores</span>
                     </button>
                     <button
                       onClick={() => setShowAddMatch(true)}
@@ -3613,6 +3816,7 @@ const AdminPanel = () => {
                       }
                       
                       try {
+                        setAddingMatchLoading(true);
                         
                         const team1Players = team1Data?.players?.map(playerId => {
                           const player = playerRegistrations.find(p => p.id === playerId);
@@ -3624,6 +3828,26 @@ const AdminPanel = () => {
                           } : null;
                         }).filter(Boolean) || [];
                         
+                        // Add captain if not already in team
+                        if (team1Data?.captain && !team1Players.some(p => p.name === team1Data.captain)) {
+                          team1Players.push({
+                            id: `captain-${team1Data.id}`,
+                            name: team1Data.captain,
+                            position: 'Captain',
+                            bowlingQuota: 0
+                          });
+                        }
+                        
+                        // Add owner if not already in team and different from captain
+                        if (team1Data?.owner && team1Data.owner !== team1Data.captain && !team1Players.some(p => p.name === team1Data.owner)) {
+                          team1Players.push({
+                            id: `owner-${team1Data.id}`,
+                            name: team1Data.owner,
+                            position: 'Owner',
+                            bowlingQuota: 0
+                          });
+                        }
+                        
                         const team2Players = team2Data?.players?.map(playerId => {
                           const player = playerRegistrations.find(p => p.id === playerId);
                           return player ? {
@@ -3633,6 +3857,26 @@ const AdminPanel = () => {
                             bowlingQuota: player.position === 'Bowler' || player.position === 'All-rounder' ? 4 : 0
                           } : null;
                         }).filter(Boolean) || [];
+                        
+                        // Add captain if not already in team
+                        if (team2Data?.captain && !team2Players.some(p => p.name === team2Data.captain)) {
+                          team2Players.push({
+                            id: `captain-${team2Data.id}`,
+                            name: team2Data.captain,
+                            position: 'Captain',
+                            bowlingQuota: 0
+                          });
+                        }
+                        
+                        // Add owner if not already in team and different from captain
+                        if (team2Data?.owner && team2Data.owner !== team2Data.captain && !team2Players.some(p => p.name === team2Data.owner)) {
+                          team2Players.push({
+                            id: `owner-${team2Data.id}`,
+                            name: team2Data.owner,
+                            position: 'Owner',
+                            bowlingQuota: 0
+                          });
+                        }
                         
                         await addDoc(collection(db, 'matches'), {
                           ...newMatch,
@@ -3657,6 +3901,8 @@ const AdminPanel = () => {
                       } catch (error) {
                         console.error('Error scheduling match:', error);
                         alert('Error scheduling match. Please try again.');
+                      } finally {
+                        setAddingMatchLoading(false);
                       }
                     }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <select
@@ -3737,8 +3983,13 @@ const AdminPanel = () => {
                         </div>
                       </div>
                       <div className="md:col-span-2 flex space-x-2">
-                        <button type="submit" className="btn-primary">Schedule Match</button>
-                        <button type="button" onClick={() => setShowAddMatch(false)} className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+                        <button type="submit" disabled={addingMatchLoading} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
+                          {addingMatchLoading && (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          )}
+                          <span>{addingMatchLoading ? 'Scheduling Match...' : 'Schedule Match'}</span>
+                        </button>
+                        <button type="button" onClick={() => setShowAddMatch(false)} disabled={addingMatchLoading} className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Cancel</button>
                       </div>
                     </form>
                   </div>
@@ -3843,7 +4094,72 @@ const AdminPanel = () => {
                           <button
                             onClick={() => {
                               setScoreEntryMatch(match);
-                              initializeScorecardData(match);
+                              // Enhanced initialization with captain and owner
+                              const team1Data = teams.find(t => t.name === match.team1);
+                              const team2Data = teams.find(t => t.name === match.team2);
+                              
+                              const data = {
+                                team1: {
+                                  totalRuns: match.team1Score?.runs || 0,
+                                  wickets: match.team1Score?.wickets || 0,
+                                  overs: match.team1Score?.oversDisplay || '0.0',
+                                  extras: match.team1Extras || 0,
+                                  batting: {},
+                                  bowling: {}
+                                },
+                                team2: {
+                                  totalRuns: match.team2Score?.runs || 0,
+                                  wickets: match.team2Score?.wickets || 0,
+                                  overs: match.team2Score?.oversDisplay || '0.0',
+                                  extras: match.team2Extras || 0,
+                                  batting: {},
+                                  bowling: {}
+                                }
+                              };
+                              
+                              // Create extended player lists
+                              const team1Extended = [...(match.team1Players || [])];
+                              const team2Extended = [...(match.team2Players || [])];
+                              
+                              // Add captain and owner to team1 if not already present
+                              if (team1Data?.captain && !team1Extended.some(p => p.name === team1Data.captain)) {
+                                team1Extended.push({ id: `captain-${team1Data.id}`, name: team1Data.captain, position: 'Captain' });
+                              }
+                              if (team1Data?.owner && team1Data.owner !== team1Data.captain && !team1Extended.some(p => p.name === team1Data.owner)) {
+                                team1Extended.push({ id: `owner-${team1Data.id}`, name: team1Data.owner, position: 'Owner' });
+                              }
+                              
+                              // Add captain and owner to team2 if not already present
+                              if (team2Data?.captain && !team2Extended.some(p => p.name === team2Data.captain)) {
+                                team2Extended.push({ id: `captain-${team2Data.id}`, name: team2Data.captain, position: 'Captain' });
+                              }
+                              if (team2Data?.owner && team2Data.owner !== team2Data.captain && !team2Extended.some(p => p.name === team2Data.owner)) {
+                                team2Extended.push({ id: `owner-${team2Data.id}`, name: team2Data.owner, position: 'Owner' });
+                              }
+                              
+                              // Initialize batting and bowling for all players
+                              team1Extended.forEach(player => {
+                                data.team1.batting[player.id] = { runs: 0, balls: 0, fours: 0, sixes: 0, dismissalType: '', bowlerName: '', fielderName: '', fielder2Name: '' };
+                                data.team1.bowling[player.id] = { overs: 0, maidens: 0, runs: 0, wickets: 0, economy: 0 };
+                              });
+                              
+                              team2Extended.forEach(player => {
+                                data.team2.batting[player.id] = { runs: 0, balls: 0, fours: 0, sixes: 0, dismissalType: '', bowlerName: '', fielderName: '', fielder2Name: '' };
+                                data.team2.bowling[player.id] = { overs: 0, maidens: 0, runs: 0, wickets: 0, economy: 0 };
+                              });
+                              
+                              // Store extended lists
+                              data.team1ExtendedPlayers = team1Extended;
+                              data.team2ExtendedPlayers = team2Extended;
+                              
+                              console.log('Scorecard initialized with:', {
+                                team1Extended: team1Extended.map(p => p.name),
+                                team2Extended: team2Extended.map(p => p.name),
+                                team1Data: team1Data?.name,
+                                team2Data: team2Data?.name
+                              });
+                              
+                              setScorecardData(data);
                               setShowScoreEntry(true);
                             }}
                             className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-md text-sm font-medium flex items-center justify-center space-x-2"
@@ -3866,6 +4182,7 @@ const AdminPanel = () => {
                           <button
                             onClick={async () => {
                               if (window.confirm(`Force reprocess match stats for ${match.team1} vs ${match.team2}? This will update all player statistics from this match.`)) {
+                                setProcessingActionLoading(true);
                                 try {
                                   console.log('🔄 Force reprocessing match:', match.id);
                                   
@@ -3885,18 +4202,26 @@ const AdminPanel = () => {
                                 } catch (error) {
                                   console.error('❌ Error reprocessing match:', error);
                                   alert('❌ Error reprocessing match: ' + error.message);
+                                } finally {
+                                  setProcessingActionLoading(false);
                                 }
                               }
                             }}
-                            className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-md text-sm font-medium flex items-center justify-center space-x-2"
+                            disabled={processingActionLoading}
+                            className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-md text-sm font-medium flex items-center justify-center space-x-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
                           >
-                            <Activity size={16} />
-                            <span>Reprocess</span>
+                            {processingActionLoading ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            ) : (
+                              <Activity size={16} />
+                            )}
+                            <span>{processingActionLoading ? 'Processing...' : 'Reprocess'}</span>
                           </button>
                           
                           <button
                             onClick={async () => {
                               if (window.confirm('Delete this match? This will also delete all related statistics and update points table.')) {
+                                setDeletingMatchLoading(true);
                                 try {
                                   console.log('🗑️ Deleting match and related data:', match.id);
                                   
@@ -3915,13 +4240,20 @@ const AdminPanel = () => {
                                 } catch (error) {
                                   console.error('❌ Error deleting match:', error);
                                   alert('Error deleting match: ' + error.message);
+                                } finally {
+                                  setDeletingMatchLoading(false);
                                 }
                               }
                             }}
-                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-md text-sm font-medium flex items-center justify-center space-x-2"
+                            disabled={deletingMatchLoading}
+                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-md text-sm font-medium flex items-center justify-center space-x-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
                           >
-                            <Trash2 size={16} />
-                            <span>Delete</span>
+                            {deletingMatchLoading ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            ) : (
+                              <Trash2 size={16} />
+                            )}
+                            <span>{deletingMatchLoading ? 'Deleting...' : 'Delete'}</span>
                           </button>
                         </div>
                       </div>
@@ -5089,6 +5421,7 @@ const AdminPanel = () => {
                 </button>
                 <button 
                   onClick={async () => {
+                    setSavingScorecardLoading(true);
                     try {
                       console.log('=== SCORECARD SAVE DEBUG ===');
                       console.log('Raw scorecard data:', JSON.stringify(scorecardData, null, 2));
@@ -5263,11 +5596,17 @@ const AdminPanel = () => {
                         stack: error.stack
                       });
                       alert('❌ Error saving scorecard: ' + error.message + '\n\nCheck browser console for detailed error information.');
+                    } finally {
+                      setSavingScorecardLoading(false);
                     }
                   }}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  disabled={savingScorecardLoading}
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2"
                 >
-                  Save Complete Scorecard
+                  {savingScorecardLoading && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  )}
+                  <span>{savingScorecardLoading ? 'Saving Scorecard...' : 'Save Complete Scorecard'}</span>
                 </button>
               </div>
             </div>

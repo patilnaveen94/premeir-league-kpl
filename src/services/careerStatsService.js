@@ -9,8 +9,21 @@ class CareerStatsService {
       console.log('🔄 Calculating career stats across all seasons...');
       
       // Fetch all player stats from all seasons
-      const statsSnapshot = await getDocs(collection(db, 'playerStats'));
+      const [statsSnapshot, playersSnapshot] = await Promise.all([
+        getDocs(collection(db, 'playerStats')),
+        getDocs(collection(db, 'playerRegistrations'))
+      ]);
+      
       const allStats = statsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const allPlayers = playersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Create phone to player mapping
+      const phoneToPlayer = {};
+      allPlayers.forEach(player => {
+        if (player.phone) {
+          phoneToPlayer[player.phone] = player;
+        }
+      });
       
       // Group stats by player name and aggregate
       const careerStats = {};
@@ -24,8 +37,14 @@ class CareerStatsService {
         if (!playerName) return;
         
         if (!careerStats[playerName]) {
+          // Try to find phone number from player registration
+          const playerReg = allPlayers.find(p => 
+            normalizePlayerName(p.fullName) === playerName || p.fullName === originalName
+          );
+          
           careerStats[playerName] = {
             name: playerName,
+            phone: playerReg?.phone || null,
             totalMatches: 0,
             totalRuns: 0,
             totalWickets: 0,
@@ -45,7 +64,7 @@ class CareerStatsService {
         career.totalMatches += stat.matches || 0;
         career.totalRuns += stat.runs || 0;
         career.totalWickets += stat.wickets || 0;
-        career.totalBallsFaced += stat.ballsFaced || 0;
+        career.totalBallsFaced += stat.balls || stat.ballsFaced || 0;
         career.totalBallsBowled += stat.ballsBowled || stat.oversBowled * 6 || 0;
         career.totalRunsConceded += stat.runsConceded || stat.runsGiven || 0;
         

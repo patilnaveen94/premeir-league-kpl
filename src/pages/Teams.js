@@ -193,6 +193,9 @@ const Teams = () => {
                         <div className="min-w-0 flex-1">
                           <p className="font-bold text-orange-800 text-sm">👑 CAPTAIN</p>
                           <p className="text-lg font-semibold text-gray-800 truncate">{selectedTeam.captain}</p>
+                          {selectedTeam.captainMobile && (
+                            <p className="text-sm text-gray-600">📱 {selectedTeam.captainMobile}</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -208,6 +211,9 @@ const Teams = () => {
                         <div className="min-w-0 flex-1">
                           <p className="font-bold text-purple-800 text-sm">💼 OWNER</p>
                           <p className="text-lg font-semibold text-gray-800 truncate">{selectedTeam.owner}</p>
+                          {selectedTeam.ownerMobile && (
+                            <p className="text-sm text-gray-600">📱 {selectedTeam.ownerMobile}</p>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -250,7 +250,16 @@ class StatsService {
           .slice(0, 10),
         bestBowlers: allStats
           .filter(player => player.overs >= 5)
-          .sort((a, b) => parseFloat(a.economy) - parseFloat(b.economy))
+          .sort((a, b) => {
+            const economyA = parseFloat(a.economy) || 999;
+            const economyB = parseFloat(b.economy) || 999;
+            // Lower economy is better, so sort ascending
+            if (economyA !== economyB) {
+              return economyA - economyB;
+            }
+            // If economy is same, sort by wickets (descending)
+            return (b.wickets || 0) - (a.wickets || 0);
+          })
           .slice(0, 10)
       };
     } catch (error) {
