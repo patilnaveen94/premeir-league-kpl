@@ -502,17 +502,18 @@ const CombinedStatsPage = () => {
                               return wickets > 0; // Show players with wickets only
                             })
                             .sort((a, b) => {
-                              const economyA = parseFloat(viewMode === 'season' ? (a.economy || 999) : (a.economy || 999));
-                              const economyB = parseFloat(viewMode === 'season' ? (b.economy || 999) : (b.economy || 999));
                               const wicketsA = viewMode === 'season' ? (a.wickets || 0) : (a.totalWickets || 0);
                               const wicketsB = viewMode === 'season' ? (b.wickets || 0) : (b.totalWickets || 0);
                               
-                              // Primary sort: Lower economy is better
-                              if (economyA !== economyB) {
-                                return economyA - economyB;
+                              // Primary sort: More wickets is better (descending)
+                              if (wicketsA !== wicketsB) {
+                                return wicketsB - wicketsA;
                               }
-                              // Secondary sort: More wickets is better
-                              return wicketsB - wicketsA;
+                              
+                              // Secondary sort: If wickets are same, lower economy is better (ascending)
+                              const economyA = parseFloat(viewMode === 'season' ? (a.economy || 999) : (a.economy || 999));
+                              const economyB = parseFloat(viewMode === 'season' ? (b.economy || 999) : (b.economy || 999));
+                              return economyA - economyB;
                             })
                             .map((player, index) => {
                               const isCareer = viewMode === 'career';

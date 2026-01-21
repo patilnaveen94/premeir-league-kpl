@@ -36,12 +36,17 @@ class StatsService {
       
       console.log(`📊 Processing stats for match: ${team1} vs ${team2} (${matchId})`);
       
+      // Track all players who participated in this match
+      const playersInMatch = new Set();
+      
       // Update batting stats
       if (battingStats) {
         for (const team of [team1, team2]) {
           const teamBatting = battingStats[team] || [];
           console.log(`🏏 Processing ${teamBatting.length} batting records for ${team}`);
           for (const player of teamBatting) {
+            const playerId = player.playerId || player.name.replace(/\s+/g, '_').toLowerCase();
+            playersInMatch.add(playerId);
             await this.updatePlayerBattingStats(player, team, matchId);
           }
         }
@@ -53,7 +58,10 @@ class StatsService {
           const teamBowling = bowlingStats[team] || [];
           console.log(`🎳 Processing ${teamBowling.length} bowling records for ${team}`);
           for (const player of teamBowling) {
-            await this.updatePlayerBowlingStats(player, team, matchId);
+            const playerId = player.playerId || player.name.replace(/\s+/g, '_').toLowerCase();
+            const alreadyProcessed = playersInMatch.has(playerId);
+            playersInMatch.add(playerId);
+            await this.updatePlayerBowlingStats(player, team, matchId, alreadyProcessed);
           }
         }
       }
@@ -144,7 +152,7 @@ class StatsService {
     }
   }
 
-  async updatePlayerBowlingStats(playerData, team, matchId) {
+  async updatePlayerBowlingStats(playerData, team, matchId, alreadyProcessedForMatch = false) {
     const { playerId, name, overs, runs, wickets } = playerData;
     
     // Use name as ID if playerId is not available
@@ -178,18 +186,21 @@ class StatsService {
       const newRuns = parseInt(runs) || 0;
       const newWickets = parseInt(wickets) || 0;
 
-      if (newOvers > 0) {
+      // Update bowling stats if player has bowled overs OR taken wickets
+      if (newOvers > 0 || newWickets > 0) {
         const updatedStats = {
           ...currentStats,
           name, // Ensure name is always updated
           team, // Ensure team is always updated
+          // Only increment matches if this player wasn't already processed for this match
+          matches: alreadyProcessedForMatch ? currentStats.matches : (currentStats.matches || 0) + 1,
           wickets: (currentStats.wickets || 0) + newWickets,
           bowlingRuns: (currentStats.bowlingRuns || 0) + newRuns,
           overs: (currentStats.overs || 0) + newOvers
         };
 
-        // Calculate economy
-        updatedStats.economy = updatedStats.overs > 0 ? (updatedStats.bowlingRuns / updatedStats.overs).toFixed(2) : 0;
+        // Calculate economy (only if overs > 0)
+        updatedStats.economy = updatedStats.overs > 0 ? (updatedStats.bowlingRuns / updatedStats.overs).toFixed(2) : '0.00';
 
         // Update best bowling figures
         const currentBest = currentStats.bestBowling.split('/');
@@ -200,7 +211,10 @@ class StatsService {
           updatedStats.bestBowling = `${newWickets}/${newRuns}`;
         }
 
+        console.log(`🎳 Updating bowling stats for ${name}: wickets=${newWickets}, overs=${newOvers}, runs=${newRuns}, matches=${updatedStats.matches}, alreadyProcessed=${alreadyProcessedForMatch}`);
         await setDoc(statsRef, updatedStats, { merge: true });
+      } else {
+        console.log(`⏭️ Skipping bowling stats for ${name}: no overs bowled and no wickets taken`);
       }
     } catch (error) {
       console.error('Error updating bowling stats:', error);
@@ -251,14 +265,18 @@ class StatsService {
         bestBowlers: allStats
           .filter(player => player.overs >= 5)
           .sort((a, b) => {
+            const wicketsA = a.wickets || 0;
+            const wicketsB = b.wickets || 0;
+            
+            // Primary sort: More wickets is better (descending)
+            if (wicketsA !== wicketsB) {
+              return wicketsB - wicketsA;
+            }
+            
+            // Secondary sort: If wickets are same, lower economy is better (ascending)
             const economyA = parseFloat(a.economy) || 999;
             const economyB = parseFloat(b.economy) || 999;
-            // Lower economy is better, so sort ascending
-            if (economyA !== economyB) {
-              return economyA - economyB;
-            }
-            // If economy is same, sort by wickets (descending)
-            return (b.wickets || 0) - (a.wickets || 0);
+            return economyA - economyB;
           })
           .slice(0, 10)
       };

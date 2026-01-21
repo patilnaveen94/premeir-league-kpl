@@ -68,12 +68,12 @@ class CorrectStatsService {
           }
         }
         
-        // Process bowling stats - only for players not already processed
+        // Process bowling stats - for all players with bowling data
         if (match.bowlingStats) {
           for (const [teamName, teamBowling] of Object.entries(match.bowlingStats)) {
             if (Array.isArray(teamBowling)) {
               for (const player of teamBowling) {
-                if (!player.playerId || processedPlayers.has(player.playerId)) continue;
+                if (!player.playerId || player.playerId === 'extras') continue;
                 
                 if (!playerStats[player.playerId]) {
                   playerStats[player.playerId] = {
@@ -98,10 +98,14 @@ class CorrectStatsService {
                 stats.wickets += parseInt(player.wickets) || 0;
                 stats.bowlingRuns += parseInt(player.runs) || 0;
                 stats.overs += parseFloat(player.overs) || 0;
-                stats.matches += 1;
                 
-                processedPlayers.add(player.playerId);
-                console.log(`  🎳 ${player.name}: ${player.wickets} wickets`);
+                // Only increment matches if this player wasn't already processed in this match
+                if (!processedPlayers.has(player.playerId)) {
+                  stats.matches += 1;
+                  processedPlayers.add(player.playerId);
+                }
+                
+                console.log(`  🎳 ${player.name}: ${player.wickets} wickets, ${player.overs} overs`);
               }
             }
           }
