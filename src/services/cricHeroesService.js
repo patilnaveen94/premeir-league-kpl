@@ -134,7 +134,7 @@ class CricHeroesService {
 
   async getTournamentInfo() {
     return {
-      name: 'Khajjidoni Premier League 2025',
+      name: 'Khajjidoni Premier League 2026',
       totalTeams: 8,
       totalMatches: 28,
       format: 'T20'

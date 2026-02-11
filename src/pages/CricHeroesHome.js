@@ -85,7 +85,7 @@ const CricHeroesHome = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-cricket-navy mb-4">
-            Khajjidoni Premier League 2025
+            Khajjidoni Premier League 2026
           </h1>
           <p className="text-xl text-gray-600">Tournament Dashboard</p>
         </div>

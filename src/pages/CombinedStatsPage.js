@@ -116,7 +116,7 @@ const CombinedStatsPage = () => {
         {/* Header */}
         <div className="bg-gradient-to-r from-cricket-navy to-cricket-orange rounded-xl p-6 mb-8 text-white">
           <div className="text-center">
-            <h1 className="text-3xl font-bold">Khajjidoni Premier League 2025</h1>
+            <h1 className="text-3xl font-bold">Khajjidoni Premier League 2026</h1>
             <p className="text-white/90 mt-2">Complete Tournament Statistics</p>
           </div>
         </div>

@@ -517,7 +517,7 @@ const Home = () => {
       <section className="py-12 sm:py-16 bg-white">
         <div className="responsive-container">
           <div className="text-center mobile-margin animate-fade-in-up">
-            <h2 className="responsive-subheading font-bold text-gray-900 mb-3 sm:mb-4">Tournament 2025</h2>
+            <h2 className="responsive-subheading font-bold text-gray-900 mb-3 sm:mb-4">Tournament 2026</h2>
             <p className="responsive-text text-gray-600 max-w-3xl mx-auto">
               Current Season Highlights - Experience the thrill of cricket at its finest. 7 teams, unlimited passion, one champion.
             </p>
