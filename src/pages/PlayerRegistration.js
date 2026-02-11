@@ -27,7 +27,7 @@ const PlayerRegistration = () => {
   const [formFields, setFormFields] = useState([]);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [paymentConfig] = useState({
-    fee: 100,
+    fee: 50,
     upiId: '7829399506@ybl' // Replace with actual UPI ID
   });
 
@@ -150,6 +150,13 @@ const PlayerRegistration = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     try {
+      // Validate photo is uploaded
+      if (!photo) {
+        setError('Player photo is required. Please upload your photo.');
+        setLoading(false);
+        return;
+      }
+
       // Check for duplicate phone number
       const isDuplicate = await checkDuplicatePhone(formData.phone);
       if (isDuplicate) {
@@ -259,6 +266,24 @@ const PlayerRegistration = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Dynamic Form Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Static Photo Field - Always Required */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Player Photo *
+                </label>
+                <input
+                  type="file"
+                  name="photo"
+                  required
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-cricket-green focus:border-cricket-green"
+                />
+                {photo && (
+                  <p className="text-sm text-green-600 mt-1">Photo selected: {photo.name}</p>
+                )}
+              </div>
+              
               {formFields.map((field) => {
                 const getIcon = (type) => {
                   switch (type) {

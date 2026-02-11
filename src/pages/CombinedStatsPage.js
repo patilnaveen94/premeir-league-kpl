@@ -384,7 +384,6 @@ const CombinedStatsPage = () => {
                           <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matches</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Runs</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg</th>
@@ -439,11 +438,6 @@ const CombinedStatsPage = () => {
                                   <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="font-medium text-gray-900">{playerName}</div>
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                                      {teamName}
-                                    </span>
-                                  </td>
                                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{matches}</td>
                                   <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="flex items-center">
@@ -486,7 +480,6 @@ const CombinedStatsPage = () => {
                           <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matches</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wickets</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Economy</th>
@@ -548,11 +541,6 @@ const CombinedStatsPage = () => {
                                   <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="font-medium text-gray-900">{playerName}</div>
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-                                      {teamName}
-                                    </span>
-                                  </td>
                                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{matches}</td>
                                   <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="flex items-center">
@@ -590,7 +578,6 @@ const CombinedStatsPage = () => {
                           <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matches</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Runs</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg</th>
@@ -644,11 +631,6 @@ const CombinedStatsPage = () => {
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="font-medium text-gray-900">{playerName}</div>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                                      {teamName}
-                                    </span>
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{matches}</td>
                                   <td className="px-6 py-4 whitespace-nowrap">

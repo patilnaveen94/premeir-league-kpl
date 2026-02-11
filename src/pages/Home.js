@@ -15,11 +15,13 @@ const Home = () => {
   const [recentMatches, setRecentMatches] = useState([]);
   const [carouselImages, setCarouselImages] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [timelineSlide, setTimelineSlide] = useState(0);
   const [teams, setTeams] = useState([]);
   const [totalMatches, setTotalMatches] = useState(0);
   const [sponsors, setSponsors] = useState([]);
+  const [prizeSponsors, setPrizeSponsors] = useState([]);
   const [playerRegistrations, setPlayerRegistrations] = useState([]);
-  const [showRegistrationSection, setShowRegistrationSection] = useState(true);
+  const [showRegistrationSection, setShowRegistrationSection] = useState(false);
   const [tournamentStats, setTournamentStats] = useState(null);
   
   // Use centralized tournament data hook for consistent data
@@ -108,13 +110,14 @@ const Home = () => {
   const fetchHomeData = async () => {
     try {
       // Fetch basic data that doesn't need sync
-      const [carouselSnapshot, teamsSnapshot, allMatchesSnapshot, sponsorsSnapshot, playersSnapshot, settingsSnapshot] = await Promise.all([
+      const [carouselSnapshot, teamsSnapshot, allMatchesSnapshot, sponsorsSnapshot, playersSnapshot, settingsSnapshot, prizeSponsorsSnapshot] = await Promise.all([
         getDocs(collection(db, 'carouselImages')),
         getDocs(collection(db, 'teams')),
         getDocs(collection(db, 'matches')),
         getDocs(collection(db, 'sponsors')),
         getDocs(collection(db, 'playerRegistrations')),
-        getDocs(collection(db, 'settings'))
+        getDocs(collection(db, 'settings')),
+        getDocs(collection(db, 'prizeSponsors2026'))
       ]);
       
       const playersData = playersSnapshot.docs.map(doc => ({
@@ -131,6 +134,7 @@ const Home = () => {
       const teamsData = teamsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const allMatchesData = allMatchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const sponsorsData = sponsorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const prizeSponsorsData = prizeSponsorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
       // Filter matches manually and sort by date
       const sortedMatches = allMatchesData.sort((a, b) => {
@@ -147,6 +151,7 @@ const Home = () => {
       setTeams(teamsData);
       setTotalMatches(allMatchesData.length);
       setSponsors(sponsorsData);
+      setPrizeSponsors(prizeSponsorsData);
       setPlayerRegistrations(playersData);
 
       const sortedCarousel = carouselData.sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -264,28 +269,249 @@ const Home = () => {
         {/* Overlay Content */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center text-white responsive-container">
-            <h1 className="responsive-heading font-bold mobile-margin drop-shadow-lg animate-fade-in-up">
+            {/* Season 2 Badge */}
+            <div className="relative mb-6">
+              <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white px-6 py-3 rounded-full text-lg font-bold inline-flex items-center space-x-2 shadow-2xl animate-bounce">
+                <span className="text-2xl">🏆</span>
+                <span>SEASON 2 STARTING SOON</span>
+                <span className="text-2xl">🏆</span>
+              </div>
+              <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full blur opacity-30 animate-pulse"></div>
+            </div>
+            
+            <h1 className="responsive-heading font-bold mobile-margin drop-shadow-2xl animate-fade-in-up bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
               Khajjidoni Premier League
             </h1>
-            <p className="responsive-text mb-6 sm:mb-8 text-gray-200 max-w-3xl mx-auto animate-fade-in-up animation-delay-200">
-              The Ultimate Cricket Experience
+            <p className="text-2xl mb-8 text-gray-100 max-w-3xl mx-auto animate-fade-in-up animation-delay-200 font-medium">
+              Season 2 - The Ultimate Cricket Experience Returns
             </p>
-            <div className="responsive-flex justify-center max-w-md mx-auto animate-fade-in-up animation-delay-300">
-              <Link to="/teams" className="mobile-button bg-blue-600 text-white hover:bg-blue-700 shadow-lg mobile-hover w-full sm:w-auto text-center btn-animate">
-                Explore Teams
+            
+            {/* Enhanced Season 2 Timeline */}
+            <div className="bg-gradient-to-br from-black/40 via-gray-900/40 to-black/40 backdrop-blur-lg rounded-3xl p-4 sm:p-8 mb-8 max-w-5xl mx-auto animate-fade-in-up animation-delay-300 border border-white/20 shadow-2xl">
+              <div className="flex items-center justify-center mb-4 sm:mb-6">
+                <div className="h-px bg-gradient-to-r from-transparent via-yellow-400 to-transparent flex-1"></div>
+                <h3 className="text-lg sm:text-2xl font-bold mx-4 sm:mx-6 text-yellow-400 flex items-center">
+                  <Calendar className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
+                  <span className="hidden sm:inline">Season 2 Timeline 2026</span>
+                  <span className="sm:hidden">Season 2 - 2026</span>
+                </h3>
+                <div className="h-px bg-gradient-to-r from-transparent via-yellow-400 to-transparent flex-1"></div>
+              </div>
+              
+              {/* Desktop Grid */}
+              <div className="hidden sm:grid sm:grid-cols-3 sm:gap-6">
+                <div className="group relative">
+                  <div className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 rounded-2xl p-6 border border-green-400/30 hover:border-green-400/60 transition-all duration-300 hover:scale-105 hover:shadow-xl">
+                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm animate-pulse">
+                      1
+                    </div>
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                        <Users className="w-8 h-8 text-white" />
+                      </div>
+                      <div className="text-green-400 font-bold text-lg mb-2">Registration</div>
+                      <div className="text-white text-xl font-bold mb-1">March 1-31</div>
+                      <div className="text-green-300 text-sm">Players & Teams</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="group relative">
+                  <div className="bg-gradient-to-br from-blue-500/20 to-indigo-600/20 rounded-2xl p-6 border border-blue-400/30 hover:border-blue-400/60 transition-all duration-300 hover:scale-105 hover:shadow-xl">
+                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm animate-pulse">
+                      2
+                    </div>
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                        <Target className="w-8 h-8 text-white" />
+                      </div>
+                      <div className="text-blue-400 font-bold text-lg mb-2">Player Auction</div>
+                      <div className="text-white text-xl font-bold mb-1">April 1st Week</div>
+                      <div className="text-blue-300 text-sm">Team Building</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="group relative">
+                  <div className="bg-gradient-to-br from-red-500/20 to-orange-600/20 rounded-2xl p-6 border border-red-400/30 hover:border-red-400/60 transition-all duration-300 hover:scale-105 hover:shadow-xl">
+                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-sm animate-pulse">
+                      3
+                    </div>
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                        <Trophy className="w-8 h-8 text-white" />
+                      </div>
+                      <div className="text-red-400 font-bold text-lg mb-2">Matches Begin</div>
+                      <div className="text-white text-xl font-bold mb-1">May 1st</div>
+                      <div className="text-red-300 text-sm">Tournament Start</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Mobile Carousel */}
+              <div className="sm:hidden relative">
+                <div className="overflow-hidden">
+                  <div className="flex transition-transform duration-300 ease-in-out" style={{ transform: `translateX(-${timelineSlide * 100}%)` }}>
+                    {/* Card 1 - Registration */}
+                    <div className="w-full flex-shrink-0 px-2">
+                      <div className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 rounded-2xl p-6 border border-green-400/30">
+                        <div className="absolute top-2 right-4 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-xs animate-pulse">
+                          1
+                        </div>
+                        <div className="text-center">
+                          <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <Users className="w-8 h-8 text-white" />
+                          </div>
+                          <div className="text-green-400 font-bold text-xl mb-2">Registration Phase</div>
+                          <div className="text-white text-2xl font-bold mb-2">March 1-31</div>
+                          <div className="text-green-300 text-sm">Players & Teams Registration</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Card 2 - Auction */}
+                    <div className="w-full flex-shrink-0 px-2">
+                      <div className="bg-gradient-to-br from-blue-500/20 to-indigo-600/20 rounded-2xl p-6 border border-blue-400/30">
+                        <div className="absolute top-2 right-4 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xs animate-pulse">
+                          2
+                        </div>
+                        <div className="text-center">
+                          <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <Target className="w-8 h-8 text-white" />
+                          </div>
+                          <div className="text-blue-400 font-bold text-xl mb-2">Player Auction</div>
+                          <div className="text-white text-2xl font-bold mb-2">April 1st Week</div>
+                          <div className="text-blue-300 text-sm">Team Building & Strategy</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Card 3 - Matches */}
+                    <div className="w-full flex-shrink-0 px-2">
+                      <div className="bg-gradient-to-br from-red-500/20 to-orange-600/20 rounded-2xl p-6 border border-red-400/30">
+                        <div className="absolute top-2 right-4 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-xs animate-pulse">
+                          3
+                        </div>
+                        <div className="text-center">
+                          <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <Trophy className="w-8 h-8 text-white" />
+                          </div>
+                          <div className="text-red-400 font-bold text-xl mb-2">Matches Begin</div>
+                          <div className="text-white text-2xl font-bold mb-2">May 1st</div>
+                          <div className="text-red-300 text-sm">Tournament Kicks Off</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Mobile Navigation Arrows */}
+                <button
+                  onClick={() => setTimelineSlide(timelineSlide > 0 ? timelineSlide - 1 : 2)}
+                  className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setTimelineSlide(timelineSlide < 2 ? timelineSlide + 1 : 0)}
+                  className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+                
+                {/* Mobile Dots Indicator */}
+                <div className="flex justify-center mt-4 space-x-2">
+                  {[0, 1, 2].map((index) => (
+                    <button
+                      key={index}
+                      onClick={() => setTimelineSlide(index)}
+                      className={`w-2 h-2 rounded-full transition-colors ${
+                        index === timelineSlide ? 'bg-yellow-400' : 'bg-white/50'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+              
+              {/* Progress Bar */}
+              <div className="mt-6 sm:mt-8">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs sm:text-sm text-gray-300">Registration Opens Soon</span>
+                  <span className="text-xs sm:text-sm text-gray-300">Tournament Begins</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div className="bg-gradient-to-r from-green-400 via-blue-400 to-red-400 h-2 rounded-full w-1/4 animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Enhanced CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-2xl mx-auto animate-fade-in-up animation-delay-400">
+              <Link to="/teams" className="group relative bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <span className="relative flex items-center justify-center">
+                  <Users className="w-5 h-5 mr-2" />
+                  Explore Teams
+                </span>
               </Link>
+              
               {showRegistrationSection && (
-                <Link to="/player-registration" className="mobile-button bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-600 hover:to-orange-600 shadow-lg mobile-hover w-full sm:w-auto text-center btn-animate">
-                  Register Now
+                <Link to="/player-registration" className="group relative bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-orange-500/25 transition-all duration-300 transform hover:scale-105 overflow-hidden animate-pulse">
+                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <span className="relative flex items-center justify-center">
+                    <Trophy className="w-5 h-5 mr-2" />
+                    Register for Season 2
+                  </span>
                 </Link>
               )}
-              <Link to="/stats" className="mobile-button bg-white text-cricket-navy hover:bg-gray-100 shadow-lg mobile-hover w-full sm:w-auto text-center btn-animate">
-                View Stats
+              
+              <Link to="/stats" className="group relative bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-2xl font-bold text-lg border-2 border-white/30 hover:border-white/60 hover:bg-white/20 transition-all duration-300 transform hover:scale-105">
+                <span className="flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 mr-2" />
+                  View Stats
+                </span>
               </Link>
             </div>
           </div>
         </div>
       </section>
+
+      {/* Player Registration Section - Moved to Top */}
+      {showRegistrationSection && (
+        <section className="py-12 sm:py-16 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 relative overflow-hidden">
+          <div className="absolute inset-0 bg-black/20"></div>
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mb-6 shadow-lg animate-bounce">
+                <Users className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight">
+                Join Season 2 <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">Now!</span>
+              </h2>
+              <p className="text-xl text-white/80 max-w-2xl mx-auto leading-relaxed">
+                Registration Open - Khajjidoni Premier League 2026
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl p-8 text-center shadow-2xl">
+              <div className="max-w-3xl mx-auto">
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Registration Fee: ₹50 Only</h3>
+                <p className="text-gray-800 mb-6">Secure your spot in the most exciting cricket tournament of 2026</p>
+                
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Link 
+                    to="/player-registration" 
+                    className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 animate-pulse"
+                  >
+                    Register Now - ₹50
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Tournament Info Section */}
       <section className="py-12 sm:py-16 bg-white">
@@ -854,125 +1080,6 @@ const Home = () => {
 
 
 
-
-      {/* Player Registration Section */}
-      {showRegistrationSection && (
-        <section className="py-16 sm:py-20 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 relative overflow-hidden">
-          <div className="absolute inset-0 bg-black/20"></div>
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mb-6 shadow-lg">
-                <Users className="w-8 h-8 text-white" />
-              </div>
-              <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight">
-                Join the <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">League</span>
-              </h2>
-              <p className="text-xl text-white/80 max-w-2xl mx-auto leading-relaxed">
-                Be part of Khajjidoni Premier League 2025 - Where cricket dreams come alive
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-              {/* Tournament Info Card */}
-              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
-                <h3 className="text-2xl font-bold text-white mb-6">Tournament Highlights</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-blue-500 rounded-lg flex items-center justify-center">
-                      <Trophy className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-white">₹50,000 Prize Pool</h4>
-                      <p className="text-white/70 text-sm">Winner takes ₹25,000</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-pink-500 rounded-lg flex items-center justify-center">
-                      <Calendar className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-white">March 2025</h4>
-                      <p className="text-white/70 text-sm">15-day tournament</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-orange-400 to-red-500 rounded-lg flex items-center justify-center">
-                      <MapPin className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-white">Nutan Vidyalaya Khajjidoni</h4>
-                      <p className="text-white/70 text-sm">Professional cricket ground</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Registration Benefits */}
-              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
-                <h3 className="text-2xl font-bold text-white mb-6">Why Join Us?</h3>
-                <div className="space-y-4">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mt-0.5">
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-white">Professional Experience</h4>
-                      <p className="text-white/70 text-sm">Play with experienced cricketers</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mt-0.5">
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-white">Live Statistics</h4>
-                      <p className="text-white/70 text-sm">Real-time scoring and player stats</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mt-0.5">
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-white">Team Selection</h4>
-                      <p className="text-white/70 text-sm">Fair team allocation process</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Registration Fee & CTA */}
-            <div className="bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl p-8 text-center">
-              <div className="max-w-3xl mx-auto">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Registration Fee: ₹100 Only</h3>
-                <p className="text-gray-800 mb-6">Secure your spot in the most exciting cricket tournament of 2025</p>
-                
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Link 
-                    to="/player-registration" 
-                    className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
-                  >
-                    Register Now - ₹100
-                  </Link>
-                  <Link 
-                    to="/teams" 
-                    className="bg-white/20 hover:bg-white/30 text-gray-900 px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 border-2 border-gray-900/20"
-                  >
-                    View Teams
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
 
     </div>
   );
