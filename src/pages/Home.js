@@ -202,276 +202,131 @@ const Home = () => {
   ];
 
   return (
-    <div className="min-h-screen">
-      {/* Hero Carousel Section */}
-      <section className="relative h-64 sm:h-80 md:h-96 lg:h-[500px] overflow-hidden animate-fade-in">
-        {carouselImages.length > 0 ? (
-          <>
-            <div className="relative h-full">
-              {carouselImages.map((image, index) => (
-                <div
-                  key={image.id}
-                  className={`absolute inset-0 transition-opacity duration-1000 ${
-                    index === currentSlide ? 'opacity-100' : 'opacity-0'
-                  }`}
-                >
-                  <img
-                    src={image.url}
-                    alt={image.title || 'Cricket League'}
-                    className="w-full h-full object-cover"
-                    loading={index === 0 ? 'eager' : 'lazy'}
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-                </div>
-              ))}
-            </div>
-            
-            {/* Navigation Arrows - Hidden on mobile */}
-            {carouselImages.length > 1 && (
-              <>
-                <button
-                  onClick={prevSlide}
-                  className="hidden sm:block absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30 active:bg-white/40 text-white p-2 rounded-full transition-colors touch-btn"
-                  aria-label="Previous image"
-                >
-                  <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-                </button>
-                <button
-                  onClick={nextSlide}
-                  className="hidden sm:block absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30 active:bg-white/40 text-white p-2 rounded-full transition-colors touch-btn"
-                  aria-label="Next image"
-                >
-                  <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
-                </button>
-              </>
-            )}
-            
-            {/* Dots Indicator */}
-            {carouselImages.length > 1 && (
-              <div className="absolute bottom-3 sm:bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                {carouselImages.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentSlide(index)}
-                    className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-colors touch-btn ${
-                      index === currentSlide ? 'bg-white' : 'bg-white/50'
-                    }`}
-                    aria-label={`Go to slide ${index + 1}`}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="gradient-bg h-full"></div>
-        )}
-        
-        {/* Overlay Content */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center text-white responsive-container">
-            {/* Season 2 Badge */}
-            <div className="relative mb-6">
-              <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white px-6 py-3 rounded-full text-lg font-bold inline-flex items-center space-x-2 shadow-2xl animate-bounce">
-                <span className="text-2xl">🏆</span>
-                <span>SEASON 2 STARTING SOON</span>
-                <span className="text-2xl">🏆</span>
-              </div>
-              <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full blur opacity-30 animate-pulse"></div>
-            </div>
-            
-            <h1 className="responsive-heading font-bold mobile-margin drop-shadow-2xl animate-fade-in-up bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
-              Khajjidoni Premier League
-            </h1>
-            <p className="text-2xl mb-8 text-gray-100 max-w-3xl mx-auto animate-fade-in-up animation-delay-200 font-medium">
-              Season 2 - The Ultimate Cricket Experience Returns
-            </p>
-            
-            {/* Enhanced Season 2 Timeline */}
-            <div className="bg-gradient-to-br from-black/40 via-gray-900/40 to-black/40 backdrop-blur-lg rounded-3xl p-4 sm:p-8 mb-8 max-w-5xl mx-auto animate-fade-in-up animation-delay-300 border border-white/20 shadow-2xl">
-              <div className="flex items-center justify-center mb-4 sm:mb-6">
-                <div className="h-px bg-gradient-to-r from-transparent via-yellow-400 to-transparent flex-1"></div>
-                <h3 className="text-lg sm:text-2xl font-bold mx-4 sm:mx-6 text-yellow-400 flex items-center">
-                  <Calendar className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
-                  <span className="hidden sm:inline">Season 2 Timeline 2026</span>
-                  <span className="sm:hidden">Season 2 - 2026</span>
-                </h3>
-                <div className="h-px bg-gradient-to-r from-transparent via-yellow-400 to-transparent flex-1"></div>
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-50">
+      {/* Modern Header Section - Compact & Impactful */}
+      <section className="relative py-8 sm:py-12 md:py-16 bg-gradient-to-r from-gray-900 via-purple-900 to-gray-900 overflow-hidden">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
+        </div>
+
+        {/* Sponsor Badge - Top */}
+        <div className="relative mb-4 flex justify-center">
+          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-700 px-4 py-2 rounded-full border-2 border-yellow-400 shadow-lg">
+            <span className="text-xl">🌾</span>
+            <span className="text-white font-bold text-sm">Season 2 Powered by John Deere</span>
+            <span className="text-xl">🌾</span>
+          </div>
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            {/* Left Content */}
+            <div className="text-white">
+              <div className="inline-flex items-center gap-2 mb-4 bg-purple-500/20 px-4 py-2 rounded-full border border-purple-400/30">
+                <Trophy className="w-5 h-5 text-yellow-400" />
+                <span className="text-sm font-bold">SEASON 2 - 2026</span>
               </div>
               
-              {/* Desktop Grid */}
-              <div className="hidden sm:grid sm:grid-cols-3 sm:gap-6">
-                <div className="group relative">
-                  <div className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 rounded-2xl p-6 border border-green-400/30 hover:border-green-400/60 transition-all duration-300 hover:scale-105 hover:shadow-xl">
-                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm animate-pulse">
-                      1
-                    </div>
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                        <Users className="w-8 h-8 text-white" />
-                      </div>
-                      <div className="text-green-400 font-bold text-lg mb-2">Registration</div>
-                      <div className="text-white text-xl font-bold mb-1">March 1-31</div>
-                      <div className="text-green-300 text-sm">Players & Teams</div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="group relative">
-                  <div className="bg-gradient-to-br from-blue-500/20 to-indigo-600/20 rounded-2xl p-6 border border-blue-400/30 hover:border-blue-400/60 transition-all duration-300 hover:scale-105 hover:shadow-xl">
-                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm animate-pulse">
-                      2
-                    </div>
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                        <Target className="w-8 h-8 text-white" />
-                      </div>
-                      <div className="text-blue-400 font-bold text-lg mb-2">Player Auction</div>
-                      <div className="text-white text-xl font-bold mb-1">April 1st Week</div>
-                      <div className="text-blue-300 text-sm">Team Building</div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="group relative">
-                  <div className="bg-gradient-to-br from-red-500/20 to-orange-600/20 rounded-2xl p-6 border border-red-400/30 hover:border-red-400/60 transition-all duration-300 hover:scale-105 hover:shadow-xl">
-                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-sm animate-pulse">
-                      3
-                    </div>
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                        <Trophy className="w-8 h-8 text-white" />
-                      </div>
-                      <div className="text-red-400 font-bold text-lg mb-2">Matches Begin</div>
-                      <div className="text-white text-xl font-bold mb-1">May 1st</div>
-                      <div className="text-red-300 text-sm">Tournament Start</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Mobile Carousel */}
-              <div className="sm:hidden relative">
-                <div className="overflow-hidden">
-                  <div className="flex transition-transform duration-300 ease-in-out" style={{ transform: `translateX(-${timelineSlide * 100}%)` }}>
-                    {/* Card 1 - Registration */}
-                    <div className="w-full flex-shrink-0 px-2">
-                      <div className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 rounded-2xl p-6 border border-green-400/30">
-                        <div className="absolute top-2 right-4 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-xs animate-pulse">
-                          1
-                        </div>
-                        <div className="text-center">
-                          <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                            <Users className="w-8 h-8 text-white" />
-                          </div>
-                          <div className="text-green-400 font-bold text-xl mb-2">Registration Phase</div>
-                          <div className="text-white text-2xl font-bold mb-2">March 1-31</div>
-                          <div className="text-green-300 text-sm">Players & Teams Registration</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Card 2 - Auction */}
-                    <div className="w-full flex-shrink-0 px-2">
-                      <div className="bg-gradient-to-br from-blue-500/20 to-indigo-600/20 rounded-2xl p-6 border border-blue-400/30">
-                        <div className="absolute top-2 right-4 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xs animate-pulse">
-                          2
-                        </div>
-                        <div className="text-center">
-                          <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                            <Target className="w-8 h-8 text-white" />
-                          </div>
-                          <div className="text-blue-400 font-bold text-xl mb-2">Player Auction</div>
-                          <div className="text-white text-2xl font-bold mb-2">April 1st Week</div>
-                          <div className="text-blue-300 text-sm">Team Building & Strategy</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Card 3 - Matches */}
-                    <div className="w-full flex-shrink-0 px-2">
-                      <div className="bg-gradient-to-br from-red-500/20 to-orange-600/20 rounded-2xl p-6 border border-red-400/30">
-                        <div className="absolute top-2 right-4 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-xs animate-pulse">
-                          3
-                        </div>
-                        <div className="text-center">
-                          <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                            <Trophy className="w-8 h-8 text-white" />
-                          </div>
-                          <div className="text-red-400 font-bold text-xl mb-2">Matches Begin</div>
-                          <div className="text-white text-2xl font-bold mb-2">May 1st</div>
-                          <div className="text-red-300 text-sm">Tournament Kicks Off</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Mobile Navigation Arrows */}
-                <button
-                  onClick={() => setTimelineSlide(timelineSlide > 0 ? timelineSlide - 1 : 2)}
-                  className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setTimelineSlide(timelineSlide < 2 ? timelineSlide + 1 : 0)}
-                  className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-                
-                {/* Mobile Dots Indicator */}
-                <div className="flex justify-center mt-4 space-x-2">
-                  {[0, 1, 2].map((index) => (
-                    <button
-                      key={index}
-                      onClick={() => setTimelineSlide(index)}
-                      className={`w-2 h-2 rounded-full transition-colors ${
-                        index === timelineSlide ? 'bg-yellow-400' : 'bg-white/50'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-              
-              {/* Progress Bar */}
-              <div className="mt-6 sm:mt-8">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs sm:text-sm text-gray-300">Registration Opens Soon</span>
-                  <span className="text-xs sm:text-sm text-gray-300">Tournament Begins</span>
-                </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div className="bg-gradient-to-r from-green-400 via-blue-400 to-red-400 h-2 rounded-full w-1/4 animate-pulse"></div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Enhanced CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-2xl mx-auto animate-fade-in-up animation-delay-400">
-              <Link to="/teams" className="group relative bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <span className="relative flex items-center justify-center">
-                  <Users className="w-5 h-5 mr-2" />
-                  Explore Teams
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 leading-tight">
+                <span className="bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
+                  Khajjidoni
                 </span>
-              </Link>
+                <br />
+                <span className="text-white">Premier League</span>
+                <br />
+                <span className="text-green-400 text-3xl sm:text-4xl md:text-5xl">Powered by John Deere</span>
+              </h1>
               
-              {showRegistrationSection && (
-                <Link to="/player-registration" className="group relative bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-orange-500/25 transition-all duration-300 transform hover:scale-105 overflow-hidden animate-pulse">
-                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <span className="relative flex items-center justify-center">
-                    <Trophy className="w-5 h-5 mr-2" />
-                    Register for Season 2
+              <p className="text-lg text-gray-300 mb-6 max-w-lg">
+                The Ultimate Cricket Experience - Join thousands of cricket enthusiasts in the most exciting tournament of 2026
+              </p>
+              
+              {/* Quick Stats */}
+              <div className="grid grid-cols-3 gap-4 mb-8">
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+                  <div className="text-2xl font-bold text-yellow-400">{teams.length}</div>
+                  <div className="text-xs text-gray-400">Teams</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+                  <div className="text-2xl font-bold text-blue-400">{totalMatches}</div>
+                  <div className="text-xs text-gray-400">Matches</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+                  <div className="text-2xl font-bold text-green-400">{playerRegistrations.length}</div>
+                  <div className="text-xs text-gray-400">Players</div>
+                </div>
+              </div>
+              
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                {showRegistrationSection && (
+                  <Link to="/player-registration" className="group relative bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:shadow-orange-500/25 transition-all duration-300 transform hover:scale-105 overflow-hidden text-center">
+                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <span className="relative flex items-center justify-center">
+                      <Trophy className="w-5 h-5 mr-2" />
+                      Register Now
+                    </span>
+                  </Link>
+                )}
+                <Link to="/teams" className="group relative bg-white/10 backdrop-blur-sm text-white px-6 py-3 rounded-lg font-bold border-2 border-white/30 hover:border-white/60 hover:bg-white/20 transition-all duration-300 text-center">
+                  <span className="flex items-center justify-center">
+                    <Users className="w-5 h-5 mr-2" />
+                    Explore Teams
                   </span>
                 </Link>
-              )}
-              
-              <Link to="/stats" className="group relative bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-2xl font-bold text-lg border-2 border-white/30 hover:border-white/60 hover:bg-white/20 transition-all duration-300 transform hover:scale-105">
-                <span className="flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 mr-2" />
-                  View Stats
-                </span>
-              </Link>
+              </div>
+            </div>
+            
+            {/* Right Content - Timeline (Visible on all screens now) */}
+            <div>
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+                <h3 className="text-white font-bold text-lg mb-6 flex items-center">
+                  <Calendar className="w-5 h-5 mr-2 text-yellow-400" />
+                  Season 2 Timeline
+                </h3>
+                
+                <div className="space-y-4">
+                  {/* Timeline Item 1 */}
+                  <div className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm">1</div>
+                      <div className="w-1 h-12 bg-gradient-to-b from-green-500 to-blue-500 mt-2"></div>
+                    </div>
+                    <div className="pb-4">
+                      <div className="text-green-400 font-bold">Registration</div>
+                      <div className="text-white text-sm">March 1-31, 2026</div>
+                      <div className="text-gray-400 text-xs mt-1">Players & Teams</div>
+                    </div>
+                  </div>
+                  
+                  {/* Timeline Item 2 */}
+                  <div className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">2</div>
+                      <div className="w-1 h-12 bg-gradient-to-b from-blue-500 to-red-500 mt-2"></div>
+                    </div>
+                    <div className="pb-4">
+                      <div className="text-blue-400 font-bold">Player Auction</div>
+                      <div className="text-white text-sm">April 1st Week</div>
+                      <div className="text-gray-400 text-xs mt-1">Team Building</div>
+                    </div>
+                  </div>
+                  
+                  {/* Timeline Item 3 */}
+                  <div className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-sm">3</div>
+                    </div>
+                    <div>
+                      <div className="text-red-400 font-bold">Matches Begin</div>
+                      <div className="text-white text-sm">May 1st, 2026</div>
+                      <div className="text-gray-400 text-xs mt-1">Tournament Starts</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -512,6 +367,153 @@ const Home = () => {
           </div>
         </section>
       )}
+
+      {/* Season Sponsor Section - Corporate Design */}
+      <section className="py-16 sm:py-24 bg-white relative overflow-hidden">
+        {/* Subtle background pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-green-400 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-green-300 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Section Header */}
+          <div className="text-center mb-16 sm:mb-20">
+            <div className="inline-block mb-6">
+              <span className="text-sm font-bold text-green-600 uppercase tracking-widest">Official Partner</span>
+            </div>
+            <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 mb-4">
+              Season 2 Sponsor
+            </h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-green-600 to-green-400 mx-auto mb-6"></div>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Proudly partnering with a global leader in innovation and excellence
+            </p>
+          </div>
+
+          {/* Main Sponsor Card */}
+          <div className="bg-gradient-to-br from-gray-50 to-white rounded-3xl border border-gray-200 shadow-xl overflow-hidden mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+              {/* Left - Sponsor Name & Branding */}
+              <div className="bg-gradient-to-br from-green-600 to-green-700 p-8 sm:p-12 lg:p-16 flex flex-col justify-center text-white">
+                <div className="mb-8">
+                  <p className="text-sm font-bold uppercase tracking-widest text-green-100 mb-4">Khajjidoni Premier League</p>
+                  <h3 className="text-5xl sm:text-6xl md:text-7xl font-bold mb-4">John Deere</h3>
+                  <p className="text-xl text-green-100 font-semibold">Official Season 2 Partner</p>
+                </div>
+                <div className="border-t border-green-500 pt-6">
+                  <p className="text-sm text-green-100">Committed to excellence, innovation, and community support</p>
+                </div>
+              </div>
+
+              {/* Right - Company Information */}
+              <div className="p-8 sm:p-12 lg:p-16 flex flex-col justify-center">
+                <div className="space-y-8">
+                  <div>
+                    <h4 className="text-sm font-bold text-green-600 uppercase tracking-widest mb-3">About</h4>
+                    <p className="text-gray-700 text-lg leading-relaxed">
+                      John Deere is a world-renowned leader in agricultural equipment, technology, and innovation. With over 190 years of heritage, the company continues to set industry standards for quality, reliability, and performance.
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-sm font-bold text-green-600 uppercase tracking-widest mb-3">Partnership Vision</h4>
+                    <p className="text-gray-700 text-lg leading-relaxed">
+                      As the official Season 2 sponsor, John Deere brings its core values of excellence, innovation, and community engagement to Khajjidoni Premier League, supporting the growth of cricket and athletic excellence.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Key Highlights Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+              <div className="text-center">
+                <div className="text-5xl font-bold text-green-600 mb-3">190+</div>
+                <p className="text-sm font-bold text-gray-600 uppercase tracking-wide mb-2">Years</p>
+                <p className="text-gray-700">Of Innovation & Excellence</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+              <div className="text-center">
+                <div className="text-5xl font-bold text-green-600 mb-3">180+</div>
+                <p className="text-sm font-bold text-gray-600 uppercase tracking-wide mb-2">Countries</p>
+                <p className="text-gray-700">Global Presence & Impact</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+              <div className="text-center">
+                <div className="text-5xl font-bold text-green-600 mb-3">Millions</div>
+                <p className="text-sm font-bold text-gray-600 uppercase tracking-wide mb-2">Customers</p>
+                <p className="text-gray-700">Trusted Worldwide</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Core Values */}
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-8 sm:p-12 border border-green-200 mb-12">
+            <h4 className="text-2xl font-bold text-gray-900 mb-8 text-center">Why John Deere</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="flex gap-4">
+                <div className="flex-shrink-0">
+                  <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-green-600 text-white font-bold text-lg">✓</div>
+                </div>
+                <div>
+                  <h5 className="text-lg font-bold text-gray-900 mb-2">Innovation & Technology</h5>
+                  <p className="text-gray-700">Pioneering solutions that drive progress and excellence across industries</p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex-shrink-0">
+                  <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-green-600 text-white font-bold text-lg">✓</div>
+                </div>
+                <div>
+                  <h5 className="text-lg font-bold text-gray-900 mb-2">Quality & Reliability</h5>
+                  <p className="text-gray-700">Unwavering commitment to delivering superior products and services</p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex-shrink-0">
+                  <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-green-600 text-white font-bold text-lg">✓</div>
+                </div>
+                <div>
+                  <h5 className="text-lg font-bold text-gray-900 mb-2">Global Leadership</h5>
+                  <p className="text-gray-700">Setting industry standards and leading transformation worldwide</p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex-shrink-0">
+                  <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-green-600 text-white font-bold text-lg">✓</div>
+                </div>
+                <div>
+                  <h5 className="text-lg font-bold text-gray-900 mb-2">Community Commitment</h5>
+                  <p className="text-gray-700">Supporting sports, education, and community development initiatives</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA Section */}
+          <div className="text-center">
+            <a 
+              href="https://www.deere.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-8 sm:px-10 py-4 rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+            >
+              Learn More About John Deere
+              <span>→</span>
+            </a>
+          </div>
+        </div>
+      </section>
 
       {/* Tournament Info Section */}
       <section className="py-12 sm:py-16 bg-white">
@@ -1080,6 +1082,66 @@ const Home = () => {
 
 
 
+
+      {/* Footer with Sponsor Branding */}
+      <footer className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 text-white py-12 border-t-2 border-green-600">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            {/* League Info */}
+            <div>
+              <h3 className="text-xl font-bold mb-4 flex items-center">
+                <Trophy className="w-6 h-6 mr-2 text-yellow-400" />
+                Khajjidoni Premier League
+              </h3>
+              <p className="text-gray-400 text-sm">Season 2 - 2026</p>
+              <div className="flex items-center gap-1 mb-2">
+                <span className="text-green-400 font-semibold text-sm">Powered by John Deere</span>
+              </div>
+              <p className="text-gray-400 text-sm">The Ultimate Cricket Experience</p>
+            </div>
+            
+            {/* Sponsor Section */}
+            <div className="text-center">
+              <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-lg p-4 mb-4">
+                <p className="text-xs text-gray-200 mb-2">SEASON SPONSOR</p>
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-2xl">🌾</span>
+                  <p className="text-lg font-bold">John Deere</p>
+                  <span className="text-2xl">🌾</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-center gap-1 text-gray-400 text-xs">
+                <span>Proudly Powered by John Deere</span>
+              </div>
+            </div>
+            
+            {/* Quick Links */}
+            <div>
+              <h4 className="font-bold mb-4">Quick Links</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li><Link to="/teams" className="hover:text-yellow-400 transition">Teams</Link></li>
+                <li><Link to="/stats" className="hover:text-yellow-400 transition">Statistics</Link></li>
+                <li><Link to="/auction" className="hover:text-yellow-400 transition">Auction</Link></li>
+                <li><Link to="/news" className="hover:text-yellow-400 transition">News</Link></li>
+              </ul>
+            </div>
+          </div>
+          
+          {/* Divider */}
+          <div className="border-t border-gray-700 pt-8">
+            <div className="flex flex-col md:flex-row items-center justify-between">
+              <p className="text-gray-400 text-sm text-center md:text-left mb-4 md:mb-0">
+                © 2026 Khajjidoni Premier League. All rights reserved.
+              </p>
+              <div className="flex items-center gap-2 bg-green-600/20 px-4 py-2 rounded-full border border-green-600/50">
+                <span className="text-lg">🌾</span>
+                <span className="text-sm font-semibold">Powered by John Deere</span>
+                <span className="text-lg">🌾</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
 
     </div>
   );

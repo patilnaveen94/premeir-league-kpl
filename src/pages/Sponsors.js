@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { Award, Building, Trophy, Users, Star, ChevronDown, ExternalLink, Mail, Phone } from 'lucide-react';
+import { Award, Building, Trophy, Users, Star, ChevronDown, ExternalLink, Mail, Phone, ArrowRight } from 'lucide-react';
 import { db } from '../firebase/firebase';
 
 const Sponsors = () => {
@@ -68,7 +68,7 @@ const Sponsors = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading sponsors...</p>
         </div>
       </div>
@@ -76,217 +76,285 @@ const Sponsors = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="min-h-screen bg-white">
+      {/* Hero Section */}
+      <section className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white py-20 sm:py-28 overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-green-400 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-green-300 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              Our Valued Partners
+            <div className="inline-block mb-6">
+              <span className="text-sm font-bold text-green-400 uppercase tracking-widest">Khajjidoni Premier League</span>
+            </div>
+            <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold mb-6 leading-tight">
+              Our Partners
             </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              We are proud to partner with leading organizations that share our commitment to excellence in cricket and community development.
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+              Celebrating the organizations and leaders who support cricket excellence and community development
             </p>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Season Filter */}
-        {seasons.length > 0 && (
-          <div className="mb-12 flex justify-center">
-            <div className="relative">
-              <select
-                value={selectedSeason}
-                onChange={(e) => setSelectedSeason(e.target.value)}
-                className="appearance-none bg-white border border-gray-300 rounded-lg px-6 py-3 pr-10 text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Seasons</option>
-                {seasons.map(season => (
-                  <option key={season} value={season}>{season}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+      {/* Season 2 Title Sponsor - John Deere */}
+      <section className="py-16 sm:py-20 bg-gradient-to-b from-white to-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Section Label */}
+          <div className="text-center mb-12">
+            <span className="text-sm font-bold text-green-600 uppercase tracking-widest">Season 2 Title Sponsor</span>
+          </div>
+
+          {/* Title Sponsor Card */}
+          <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-0">
+              {/* Left - Logo Area */}
+              <div className="bg-gradient-to-br from-green-50 to-green-100 p-8 sm:p-10 flex items-center justify-center min-h-64 sm:min-h-auto">
+                <div className="text-center">
+                  <div className="text-6xl font-bold text-green-600 mb-2">John Deere</div>
+                  <p className="text-sm font-semibold text-green-700">Official Title Sponsor</p>
+                </div>
+              </div>
+
+              {/* Right - Details */}
+              <div className="p-8 sm:p-10 flex flex-col justify-center">
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs font-bold text-green-600 uppercase tracking-widest mb-2">About</p>
+                    <p className="text-gray-700 text-sm leading-relaxed">
+                      Global leader in agricultural equipment and technology with 190+ years of innovation and excellence.
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-bold text-green-600 uppercase tracking-widest mb-2">Partnership</p>
+                    <p className="text-gray-700 text-sm leading-relaxed">
+                      Supporting Khajjidoni Premier League Season 2 with commitment to excellence and community development.
+                    </p>
+                  </div>
+
+                  <div className="pt-2">
+                    <a 
+                      href="https://www.deere.com" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 transform hover:scale-105"
+                    >
+                      Learn More
+                      <ArrowRight className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        )}
+        </div>
+      </section>
 
-        {/* Sponsors Sections */}
-        {sortedGroups.length > 0 ? (
-          <div className="space-y-16">
-            {sortedGroups.map(([type, typeSponsors]) => {
-              const typeInfo = getSponsorTypeInfo(type);
-              const IconComponent = typeInfo.icon;
-              
-              return (
-                <div key={type} className="">
-                  {/* Section Header */}
-                  <div className="mb-8">
-                    <div className="flex items-center mb-4">
-                      <div className="bg-blue-600 rounded-lg p-3 mr-4">
+      {/* All Sponsors Section */}
+      {sortedGroups.length > 0 && (
+        <section className="py-20 sm:py-28 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">All Partners</h2>
+              <div className="w-24 h-1 bg-gradient-to-r from-green-600 to-green-400 mx-auto"></div>
+            </div>
+
+            {/* Season Filter */}
+            {seasons.length > 0 && (
+              <div className="mb-12 flex justify-center">
+                <div className="relative">
+                  <select
+                    value={selectedSeason}
+                    onChange={(e) => setSelectedSeason(e.target.value)}
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-6 py-3 pr-10 text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="">All Seasons</option>
+                    {seasons.map(season => (
+                      <option key={season} value={season}>{season}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+            )}
+
+            {/* Sponsors by Type */}
+            <div className="space-y-16">
+              {sortedGroups.map(([type, typeSponsors]) => {
+                const typeInfo = getSponsorTypeInfo(type);
+                const IconComponent = typeInfo.icon;
+                
+                return (
+                  <div key={type}>
+                    {/* Type Header */}
+                    <div className="mb-8 flex items-center">
+                      <div className="bg-green-600 rounded-lg p-3 mr-4">
                         <IconComponent className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <h2 className="text-2xl font-bold text-gray-900">
-                          {typeInfo.label}s
-                        </h2>
-                        <p className="text-gray-600">
-                          {typeSponsors.length} {typeSponsors.length === 1 ? 'Partner' : 'Partners'}
-                        </p>
+                        <h3 className="text-2xl font-bold text-gray-900">{typeInfo.label}s</h3>
+                        <p className="text-gray-600">{typeSponsors.length} {typeSponsors.length === 1 ? 'Partner' : 'Partners'}</p>
                       </div>
                     </div>
-                  </div>
-                  
-                  {/* Sponsors Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {typeSponsors.map((sponsor) => (
-                      <div 
-                        key={sponsor.id} 
-                        className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-300"
-                      >
-                        {/* Sponsor Logo/Image */}
-                        <div className="h-48 bg-gray-100 flex items-center justify-center">
-                          {sponsor.photoBase64 ? (
-                            <img 
-                              src={sponsor.photoBase64} 
-                              alt={sponsor.name}
-                              className="max-w-full max-h-full object-contain p-4"
-                            />
-                          ) : (
-                            <div className="text-center">
-                              <Building className="w-16 h-16 text-gray-400 mx-auto mb-2" />
-                              <span className="text-gray-500 font-medium">{sponsor.name}</span>
-                            </div>
-                          )}
-                        </div>
-                      
-                        {/* Sponsor Content */}
-                        <div className="p-6">
-                          <div className="flex items-start justify-between mb-4">
-                            <h3 className="text-xl font-semibold text-gray-900 flex-1">
-                              {sponsor.name}
-                            </h3>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${typeInfo.color} ml-3 flex-shrink-0`}>
-                              {typeInfo.label}
-                            </span>
-                          </div>
-                          
-                          {sponsor.description && (
-                            <p className="text-gray-600 mb-4 line-clamp-3">
-                              {sponsor.description}
-                            </p>
-                          )}
-                          
-                          <div className="space-y-3">
-                            {sponsor.season && (
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-gray-500">Season:</span>
-                                <span className="font-medium text-gray-900">{sponsor.season}</span>
-                              </div>
-                            )}
-                            {sponsor.contribution && (
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-gray-500">Contribution:</span>
-                                <span className="font-medium text-gray-900">{sponsor.contribution}</span>
-                              </div>
-                            )}
-                            {sponsor.prizePosition && (
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-gray-500">Prize Position:</span>
-                                <span className="font-medium text-gray-900">{sponsor.prizePosition}</span>
+                    
+                    {/* Sponsors Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                      {typeSponsors.map((sponsor) => (
+                        <div 
+                          key={sponsor.id} 
+                          className="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
+                        >
+                          {/* Logo Area */}
+                          <div className="h-48 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+                            {sponsor.photoBase64 ? (
+                              <img 
+                                src={sponsor.photoBase64} 
+                                alt={sponsor.name}
+                                className="max-w-full max-h-full object-contain p-4"
+                              />
+                            ) : (
+                              <div className="text-center">
+                                <Building className="w-16 h-16 text-gray-400 mx-auto mb-2" />
+                                <span className="text-gray-500 font-medium text-sm">{sponsor.name}</span>
                               </div>
                             )}
                           </div>
-                          
-                          {/* Contact Information */}
-                          {(sponsor.email || sponsor.phone || sponsor.website) && (
-                            <div className="mt-4 pt-4 border-t border-gray-100">
-                              <div className="flex flex-wrap gap-2">
-                                {sponsor.website && (
-                                  <a 
-                                    href={sponsor.website} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm"
-                                  >
-                                    <ExternalLink className="w-4 h-4 mr-1" />
-                                    Website
-                                  </a>
-                                )}
-                                {sponsor.email && (
-                                  <a 
-                                    href={`mailto:${sponsor.email}`}
-                                    className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm"
-                                  >
-                                    <Mail className="w-4 h-4 mr-1" />
-                                    Email
-                                  </a>
-                                )}
-                                {sponsor.phone && (
-                                  <a 
-                                    href={`tel:${sponsor.phone}`}
-                                    className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm"
-                                  >
-                                    <Phone className="w-4 h-4 mr-1" />
-                                    Call
-                                  </a>
-                                )}
-                              </div>
+                        
+                          {/* Content */}
+                          <div className="p-6">
+                            <div className="flex items-start justify-between mb-4">
+                              <h4 className="text-lg font-bold text-gray-900 flex-1">
+                                {sponsor.name}
+                              </h4>
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${typeInfo.color} ml-3 flex-shrink-0`}>
+                                {typeInfo.label}
+                              </span>
                             </div>
-                          )}
+                            
+                            {sponsor.description && (
+                              <p className="text-gray-600 mb-4 text-sm line-clamp-2">
+                                {sponsor.description}
+                              </p>
+                            )}
+                            
+                            <div className="space-y-2 text-sm mb-4">
+                              {sponsor.season && (
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-500">Season:</span>
+                                  <span className="font-medium text-gray-900">{sponsor.season}</span>
+                                </div>
+                              )}
+                              {sponsor.contribution && (
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-500">Contribution:</span>
+                                  <span className="font-medium text-gray-900">{sponsor.contribution}</span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Contact Links */}
+                            {(sponsor.email || sponsor.phone || sponsor.website) && (
+                              <div className="pt-4 border-t border-gray-100">
+                                <div className="flex flex-wrap gap-2">
+                                  {sponsor.website && (
+                                    <a 
+                                      href={sponsor.website} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center text-green-600 hover:text-green-700 text-xs font-medium"
+                                    >
+                                      <ExternalLink className="w-3 h-3 mr-1" />
+                                      Website
+                                    </a>
+                                  )}
+                                  {sponsor.email && (
+                                    <a 
+                                      href={`mailto:${sponsor.email}`}
+                                      className="inline-flex items-center text-green-600 hover:text-green-700 text-xs font-medium"
+                                    >
+                                      <Mail className="w-3 h-3 mr-1" />
+                                      Email
+                                    </a>
+                                  )}
+                                  {sponsor.phone && (
+                                    <a 
+                                      href={`tel:${sponsor.phone}`}
+                                      className="inline-flex items-center text-green-600 hover:text-green-700 text-xs font-medium"
+                                    >
+                                      <Phone className="w-3 h-3 mr-1" />
+                                      Call
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        ) : (
-          <div className="text-center py-16">
-            <Building className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Partners Found</h3>
-            <p className="text-gray-600">
-              {selectedSeason ? `No partners found for ${selectedSeason}` : 'No partners have been added yet.'}
-            </p>
-          </div>
-        )}
+        </section>
+      )}
 
-        {/* Partnership Information */}
-        <div className="mt-20 bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Partnership Opportunities
-            </h2>
-            <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-              Join our growing community of partners and support cricket excellence while gaining valuable brand exposure and community engagement opportunities.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+      {/* Partnership Opportunities */}
+      <section className="py-20 sm:py-28 bg-gradient-to-br from-green-50 to-emerald-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-200 p-12 lg:p-16">
+            <div className="text-center mb-12">
+              <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
+                Partnership Opportunities
+              </h2>
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                Join our growing community of partners and support cricket excellence while gaining valuable brand exposure and community engagement opportunities.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center">
-                <div className="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                  <Trophy className="w-8 h-8 text-blue-600" />
+                <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                  <Trophy className="w-8 h-8 text-green-600" />
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Brand Visibility</h3>
+                <h3 className="font-bold text-gray-900 mb-2 text-lg">Brand Visibility</h3>
                 <p className="text-gray-600 text-sm">Prominent logo placement and brand recognition throughout the tournament</p>
               </div>
+
               <div className="text-center">
                 <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                   <Users className="w-8 h-8 text-green-600" />
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Community Impact</h3>
+                <h3 className="font-bold text-gray-900 mb-2 text-lg">Community Impact</h3>
                 <p className="text-gray-600 text-sm">Support local cricket development and community engagement initiatives</p>
               </div>
+
               <div className="text-center">
-                <div className="bg-purple-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                  <Star className="w-8 h-8 text-purple-600" />
+                <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                  <Star className="w-8 h-8 text-green-600" />
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Networking</h3>
+                <h3 className="font-bold text-gray-900 mb-2 text-lg">Networking</h3>
                 <p className="text-gray-600 text-sm">Connect with other business leaders and expand your professional network</p>
               </div>
             </div>
+
+            <div className="text-center mt-12">
+              <a 
+                href="mailto:info@khajjidoni.com"
+                className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-lg font-bold text-lg transition-all duration-300 transform hover:scale-105"
+              >
+                Get in Touch
+                <ArrowRight className="w-5 h-5" />
+              </a>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 };

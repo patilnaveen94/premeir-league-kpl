@@ -91,6 +91,7 @@ const AdminPanel = () => {
   const [newCarouselImage, setNewCarouselImage] = useState({ title: '', order: 0 });
   const [carouselImageFile, setCarouselImageFile] = useState(null);
   const [registrationSectionVisible, setRegistrationSectionVisible] = useState(true);
+  const [auctionSectionVisible, setAuctionSectionVisible] = useState(true);
   const [showDetailedScoring, setShowDetailedScoring] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [showScoreEntry, setShowScoreEntry] = useState(false);
@@ -1638,9 +1639,11 @@ const AdminPanel = () => {
     try {
       const settingsSnapshot = await getDocs(collection(db, 'settings'));
       const registrationSetting = settingsSnapshot.docs.find(doc => doc.id === 'playerRegistration');
+      const auctionSetting = settingsSnapshot.docs.find(doc => doc.id === 'auctionSection');
       setRegistrationSectionVisible(registrationSetting?.data()?.visible !== false);
+      setAuctionSectionVisible(auctionSetting?.data()?.visible !== false);
     } catch (error) {
-      console.error('Error fetching registration settings:', error);
+      console.error('Error fetching settings:', error);
     }
   };
 
@@ -1660,6 +1663,23 @@ const AdminPanel = () => {
     } catch (error) {
       console.error('Error updating registration settings:', error);
       alert('Error updating registration settings');
+    }
+  };
+
+  const handleToggleAuctionSection = async () => {
+    try {
+      const settingsRef = doc(db, 'settings', 'auctionSection');
+      await setDoc(settingsRef, {
+        visible: !auctionSectionVisible,
+        updatedAt: new Date(),
+        updatedBy: currentAdmin?.userid
+      }, { merge: true });
+      
+      setAuctionSectionVisible(!auctionSectionVisible);
+      alert(`Auction section ${!auctionSectionVisible ? 'enabled' : 'disabled'} successfully!`);
+    } catch (error) {
+      console.error('Error updating auction settings:', error);
+      alert('Error updating auction settings');
     }
   };
 
@@ -4415,6 +4435,46 @@ const AdminPanel = () => {
                         <li>• Shows/hides the "Join the League" section on the home page</li>
                         <li>• Includes tournament details, prize information, and registration button</li>
                         <li>• Useful for controlling registration periods</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Auction Section Control */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Auction Section</h3>
+                        <p className="text-gray-600 text-sm">
+                          Control whether the auction page is accessible to users.
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className={`text-sm font-medium ${
+                          auctionSectionVisible ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {auctionSectionVisible ? 'Visible' : 'Hidden'}
+                        </span>
+                        <button
+                          onClick={handleToggleAuctionSection}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            auctionSectionVisible ? 'bg-green-600' : 'bg-gray-200'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              auctionSectionVisible ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                      <h4 className="font-semibold text-blue-900 mb-2">What this controls:</h4>
+                      <ul className="text-sm text-blue-800 space-y-1">
+                        <li>• Shows/hides the auction page from navigation and direct access</li>
+                        <li>• Includes player auction details and team assignments</li>
+                        <li>• Useful for controlling when the auction is open to public</li>
                       </ul>
                     </div>
                   </div>

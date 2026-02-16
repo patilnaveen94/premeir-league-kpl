@@ -192,16 +192,20 @@ const Contact = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <div className="bg-white rounded-lg shadow-lg p-8 border border-gray-200">
-              <div className="flex items-center space-x-4 mb-6">
-                <div className="w-20 h-20 bg-gradient-to-br from-premier-purple to-premier-pink rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-2xl">NP</span>
+              <div className="flex flex-col items-center mb-6">
+                <div className="w-32 h-32 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden mb-4 border-4 border-premier-purple">
+                  <img 
+                    src="/naveen-patil.jpg" 
+                    alt="Naveen Patil" 
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-                <div>
+                <div className="text-center">
                   <h3 className="text-xl font-semibold text-gray-900">Naveen Patil</h3>
                   <p className="text-premier-purple font-medium text-lg">Lead Developer</p>
                 </div>
               </div>
-              <p className="text-gray-600">
+              <p className="text-gray-600 text-center">
                 Naveen brought the vision to life with his expertise in Web Development. 
                 His dedication to clean code and user experience made this platform possible, 
                 balancing innovation with practicality.
@@ -209,16 +213,20 @@ const Contact = () => {
             </div>
 
             <div className="bg-white rounded-lg shadow-lg p-8 border border-gray-200">
-              <div className="flex items-center space-x-4 mb-6">
-                <div className="w-20 h-20 bg-gradient-to-br from-premier-pink to-premier-purple rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-2xl">LH</span>
+              <div className="flex flex-col items-center mb-6">
+                <div className="w-32 h-32 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden mb-4 border-4 border-premier-pink">
+                  <img 
+                    src="/naveen-patil.jpg" 
+                    alt="Laxman Hunashikatti" 
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-                <div>
+                <div className="text-center">
                   <h3 className="text-xl font-semibold text-gray-900">Laxman Hunashikatti</h3>
                   <p className="text-premier-pink font-medium text-lg">Quality Assurance</p>
                 </div>
               </div>
-              <p className="text-gray-600">
+              <p className="text-gray-600 text-center">
                 Laxman ensured every feature works flawlessly through rigorous testing. 
                 His attention to detail and commitment to quality guarantees a smooth 
                 experience for all league participants.
