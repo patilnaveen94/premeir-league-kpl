@@ -118,8 +118,12 @@ const PlayerRegistration = () => {
   };
 
   const handlePayment = () => {
-    // Use the correct UPI URL format that UPI apps accept
-    const upiUrl = `upi://pay?pa=${paymentConfig.upiId}&am=${paymentConfig.fee}&cu=INR&tn=PlayerRegistration`;
+    // Generate a unique transaction reference
+    const transactionRef = `KPL${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    
+    // Use the correct UPI URL format with all required parameters
+    // Format: upi://pay?pa=UPI_ID&pn=PAYEE_NAME&am=AMOUNT&tn=TRANSACTION_NOTE&tr=TRANSACTION_REF
+    const upiUrl = `upi://pay?pa=${paymentConfig.upiId}&pn=KPL&am=${paymentConfig.fee}&tn=Player%20Registration%20Fee&tr=${transactionRef}`;
     
     // Direct navigation to UPI app
     window.location.href = upiUrl;
