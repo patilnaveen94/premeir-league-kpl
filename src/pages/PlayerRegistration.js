@@ -118,21 +118,11 @@ const PlayerRegistration = () => {
   };
 
   const handlePayment = () => {
-    // Detect mobile device
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // Use the correct UPI URL format that UPI apps accept
+    const upiUrl = `upi://pay?pa=${paymentConfig.upiId}&am=${paymentConfig.fee}&cu=INR&tn=PlayerRegistration`;
     
-    const upiUrl = `upi://pay?pa=${paymentConfig.upiId}&pn=CricketLeague&am=${paymentConfig.fee}&cu=INR&tn=PlayerRegistration`;
-    
-    if (isMobile) {
-      // On mobile, use window.location for better UPI app integration
-      window.location.href = upiUrl;
-    } else {
-      // On desktop, try window.open first, then fallback
-      const opened = window.open(upiUrl, '_self');
-      if (!opened) {
-        window.location.href = upiUrl;
-      }
-    }
+    // Direct navigation to UPI app
+    window.location.href = upiUrl;
     
     // Show payment confirmation after delay
     setTimeout(() => {
