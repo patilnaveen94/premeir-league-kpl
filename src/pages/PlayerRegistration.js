@@ -118,14 +118,25 @@ const PlayerRegistration = () => {
   };
 
   const handlePayment = () => {
-    const upiUrl = `upi://pay?pa=${paymentConfig.upiId}&pn=Cricket League&am=${paymentConfig.fee}&cu=INR&tn=Player Registration Fee`;
+    // Detect mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    // Open UPI app
-    window.open(upiUrl, '_blank');
+    const upiUrl = `upi://pay?pa=${paymentConfig.upiId}&pn=CricketLeague&am=${paymentConfig.fee}&cu=INR&tn=PlayerRegistration`;
     
-    // Show payment completion confirmation after a delay
+    if (isMobile) {
+      // On mobile, use window.location for better UPI app integration
+      window.location.href = upiUrl;
+    } else {
+      // On desktop, try window.open first, then fallback
+      const opened = window.open(upiUrl, '_self');
+      if (!opened) {
+        window.location.href = upiUrl;
+      }
+    }
+    
+    // Show payment confirmation after delay
     setTimeout(() => {
-      const confirmed = window.confirm('Have you completed the payment of ₹100? Click OK if payment is successful.');
+      const confirmed = window.confirm('Have you completed the payment? Click OK if payment is successful.');
       if (confirmed) {
         setPaymentCompleted(true);
       }
