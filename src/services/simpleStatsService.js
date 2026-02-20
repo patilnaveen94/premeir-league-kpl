@@ -10,15 +10,31 @@ class SimpleStatsService {
       // Step 1: Clear all existing stats
       await this.clearAllStats();
       
-      // Step 2: Get all completed matches
-      const matchesSnapshot = await getDocs(collection(db, 'matches'));
+      // Step 2: Get all completed matches and player registrations
+      const [matchesSnapshot, playersSnapshot] = await Promise.all([
+        getDocs(collection(db, 'matches')),
+        getDocs(collection(db, 'playerRegistrations'))
+      ]);
+      
       const matches = matchesSnapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(match => match.status === 'completed' && (match.battingStats || match.bowlingStats));
       
+      // Create player ID to mobile mapping
+      const playersById = {};
+      playersSnapshot.docs.forEach(doc => {
+        const player = doc.data();
+        playersById[doc.id] = {
+          id: doc.id,
+          fullName: player.fullName,
+          mobileNumber: player.mobileNumber,
+          teamId: player.teamId
+        };
+      });
+      
       console.log(`📊 Found ${matches.length} completed matches to process`);
       
-      // Step 3: Process each match once
+      // Step 3: Process each match using mobile number as key
       const playerStats = {};
       
       for (const match of matches) {
@@ -31,10 +47,15 @@ class SimpleStatsService {
               for (const player of teamBatting) {
                 if (!player.playerId || player.playerId === 'extras') continue;
                 
-                if (!playerStats[player.playerId]) {
-                  playerStats[player.playerId] = {
+                // Get registered player data
+                const registeredPlayer = playersById[player.playerId];
+                const mobileKey = registeredPlayer?.mobileNumber || player.playerId;
+                
+                if (!playerStats[mobileKey]) {
+                  playerStats[mobileKey] = {
                     playerId: player.playerId,
-                    name: player.name,
+                    mobileNumber: registeredPlayer?.mobileNumber || null,
+                    name: registeredPlayer?.fullName || player.name,
                     team: teamName,
                     matches: 0,
                     runs: 0,
@@ -48,9 +69,14 @@ class SimpleStatsService {
                     bowlingRuns: 0,
                     overs: 0
                   };
+                } else {
+                  // Always use registered name if available
+                  if (registeredPlayer?.fullName) {
+                    playerStats[mobileKey].name = registeredPlayer.fullName;
+                  }
                 }
                 
-                const stats = playerStats[player.playerId];
+                const stats = playerStats[mobileKey];
                 stats.matches = Math.max(stats.matches, 1);
                 stats.runs += parseInt(player.runs) || 0;
                 stats.balls += parseInt(player.balls) || 0;
@@ -71,10 +97,15 @@ class SimpleStatsService {
               for (const player of teamBowling) {
                 if (!player.playerId) continue;
                 
-                if (!playerStats[player.playerId]) {
-                  playerStats[player.playerId] = {
+                // Get registered player data
+                const registeredPlayer = playersById[player.playerId];
+                const mobileKey = registeredPlayer?.mobileNumber || player.playerId;
+                
+                if (!playerStats[mobileKey]) {
+                  playerStats[mobileKey] = {
                     playerId: player.playerId,
-                    name: player.name,
+                    mobileNumber: registeredPlayer?.mobileNumber || null,
+                    name: registeredPlayer?.fullName || player.name,
                     team: teamName,
                     matches: 0,
                     runs: 0,
@@ -88,9 +119,14 @@ class SimpleStatsService {
                     bowlingRuns: 0,
                     overs: 0
                   };
+                } else {
+                  // Always use registered name if available
+                  if (registeredPlayer?.fullName) {
+                    playerStats[mobileKey].name = registeredPlayer.fullName;
+                  }
                 }
                 
-                const stats = playerStats[player.playerId];
+                const stats = playerStats[mobileKey];
                 stats.matches = Math.max(stats.matches, 1);
                 stats.wickets += parseInt(player.wickets) || 0;
                 stats.bowlingRuns += parseInt(player.runs) || 0;
@@ -101,8 +137,8 @@ class SimpleStatsService {
         }
       }
       
-      // Step 4: Calculate derived stats and save
-      for (const stats of Object.values(playerStats)) {
+      // Step 4: Calculate derived stats and save using mobile number as document ID
+      for (const [mobileKey, stats] of Object.entries(playerStats)) {
         // Calculate batting averages
         const dismissals = stats.innings - stats.notOuts;
         stats.average = dismissals > 0 ? (stats.runs / dismissals).toFixed(2) : stats.runs;
@@ -112,8 +148,9 @@ class SimpleStatsService {
         stats.economy = stats.overs > 0 ? (stats.bowlingRuns / stats.overs).toFixed(2) : 0;
         stats.bestBowling = stats.wickets > 0 ? `${stats.wickets}/${stats.bowlingRuns}` : '0/0';
         
-        // Save to Firebase
-        await setDoc(doc(db, 'playerStats', stats.playerId), stats);
+        // Save to Firebase using mobile number as document ID (or playerId as fallback)
+        const docId = stats.mobileNumber || stats.playerId;
+        await setDoc(doc(db, 'playerStats', docId), stats);
       }
       
       console.log(`✅ Processed ${Object.keys(playerStats).length} players`);

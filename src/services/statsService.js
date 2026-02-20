@@ -94,6 +94,21 @@ class StatsService {
       return;
     }
     
+    // Try to find phone number from player registration
+    let playerPhone = null;
+    try {
+      const playerQuery = query(
+        collection(db, 'playerRegistrations'),
+        where('fullName', '==', name)
+      );
+      const playerSnapshot = await getDocs(playerQuery);
+      if (!playerSnapshot.empty) {
+        playerPhone = playerSnapshot.docs[0].data().phone;
+      }
+    } catch (error) {
+      console.log('Could not find phone for player:', name);
+    }
+    
     // Use name as ID if playerId is not available
     const statId = playerId || name.replace(/\s+/g, '_').toLowerCase();
     const statsRef = doc(db, 'playerStats', statId);
@@ -103,6 +118,7 @@ class StatsService {
       const currentStats = statsDoc.exists() ? statsDoc.data() : {
         playerId: statId,
         name,
+        phone: playerPhone,
         team,
         matches: 0,
         runs: 0,
@@ -129,6 +145,7 @@ class StatsService {
       const updatedStats = {
         ...currentStats,
         name, // Ensure name is always updated
+        phone: playerPhone || currentStats.phone, // Store phone number
         team, // Ensure team is always updated
         matches: (currentStats.matches || 0) + 1,
         runs: (currentStats.runs || 0) + newRuns,
@@ -155,6 +172,21 @@ class StatsService {
   async updatePlayerBowlingStats(playerData, team, matchId, alreadyProcessedForMatch = false) {
     const { playerId, name, overs, runs, wickets } = playerData;
     
+    // Try to find phone number from player registration
+    let playerPhone = null;
+    try {
+      const playerQuery = query(
+        collection(db, 'playerRegistrations'),
+        where('fullName', '==', name)
+      );
+      const playerSnapshot = await getDocs(playerQuery);
+      if (!playerSnapshot.empty) {
+        playerPhone = playerSnapshot.docs[0].data().phone;
+      }
+    } catch (error) {
+      console.log('Could not find phone for player:', name);
+    }
+    
     // Use name as ID if playerId is not available
     const statId = playerId || name.replace(/\s+/g, '_').toLowerCase();
     const statsRef = doc(db, 'playerStats', statId);
@@ -164,6 +196,7 @@ class StatsService {
       const currentStats = statsDoc.exists() ? statsDoc.data() : {
         playerId: statId,
         name,
+        phone: playerPhone,
         team,
         matches: 0,
         runs: 0,
@@ -191,6 +224,7 @@ class StatsService {
         const updatedStats = {
           ...currentStats,
           name, // Ensure name is always updated
+          phone: playerPhone || currentStats.phone, // Store phone number
           team, // Ensure team is always updated
           // Only increment matches if this player wasn't already processed for this match
           matches: alreadyProcessedForMatch ? currentStats.matches : (currentStats.matches || 0) + 1,

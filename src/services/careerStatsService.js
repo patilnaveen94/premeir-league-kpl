@@ -25,25 +25,26 @@ class CareerStatsService {
         }
       });
       
-      // Group stats by player name and aggregate
+      // Group stats by mobile number (primary) or player name (fallback)
       const careerStats = {};
       
       allStats.forEach(stat => {
         const originalName = stat.name;
         if (!originalName) return;
         
-        // Normalize player name to handle variations like "Name (c)"
-        const playerName = normalizePlayerName(originalName);
-        if (!playerName) return;
+        // Try to find phone number from player registration first
+        const playerReg = allPlayers.find(p => 
+          normalizePlayerName(p.fullName) === normalizePlayerName(originalName) || 
+          p.fullName === originalName
+        );
         
-        if (!careerStats[playerName]) {
-          // Try to find phone number from player registration
-          const playerReg = allPlayers.find(p => 
-            normalizePlayerName(p.fullName) === playerName || p.fullName === originalName
-          );
-          
-          careerStats[playerName] = {
-            name: playerName,
+        // Use phone number as primary key, fallback to normalized name
+        const playerKey = playerReg?.phone || normalizePlayerName(originalName);
+        if (!playerKey) return;
+        
+        if (!careerStats[playerKey]) {
+          careerStats[playerKey] = {
+            name: originalName,
             phone: playerReg?.phone || null,
             totalMatches: 0,
             totalRuns: 0,
@@ -58,7 +59,7 @@ class CareerStatsService {
           };
         }
         
-        const career = careerStats[playerName];
+        const career = careerStats[playerKey];
         
         // Aggregate stats
         career.totalMatches += stat.matches || 0;
