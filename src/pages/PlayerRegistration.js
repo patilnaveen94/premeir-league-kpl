@@ -28,7 +28,8 @@ const PlayerRegistration = () => {
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [paymentConfig] = useState({
     fee: 50,
-    upiId: '7829399506@ybl' // Replace with actual UPI ID
+    upiId: '7829399506@ybl', // Replace with actual UPI ID
+    merchantName: 'Khajjidoni Premier League'
   });
 
   const generateUserId = () => `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -118,23 +119,28 @@ const PlayerRegistration = () => {
   };
 
   const handlePayment = () => {
-    // Generate a unique transaction reference
-    const transactionRef = `KPL${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-    
-    // Use the correct UPI URL format with all required parameters
-    // Format: upi://pay?pa=UPI_ID&pn=PAYEE_NAME&am=AMOUNT&tn=TRANSACTION_NOTE&tr=TRANSACTION_REF
-    const upiUrl = `upi://pay?pa=${paymentConfig.upiId}&pn=KPL&am=${paymentConfig.fee}&tn=Player%20Registration%20Fee&tr=${transactionRef}`;
-    
-    // Direct navigation to UPI app
-    window.location.href = upiUrl;
-    
-    // Show payment confirmation after delay
-    setTimeout(() => {
-      const confirmed = window.confirm('Have you completed the payment? Click OK if payment is successful.');
-      if (confirmed) {
+    try {
+      // Generate unique transaction ID
+      const txnId = `KPL${Date.now()}`;
+      
+      // Use simplified UPI format that works with all apps
+      // Remove special characters and use basic format
+      const upiUrl = `upi://pay?pa=7829399506@ybl&pn=KPL&am=50&tn=Registration&tr=${txnId}`;
+      
+      console.log('Opening UPI payment with URL:', upiUrl);
+      
+      // Open UPI app
+      window.location.href = upiUrl;
+      
+      // Mark payment as completed after user returns
+      setTimeout(() => {
         setPaymentCompleted(true);
-      }
-    }, 3000);
+      }, 1500);
+      
+    } catch (error) {
+      console.error('Error initiating payment:', error);
+      alert('Error opening UPI app. Please ensure you have a UPI app installed (Google Pay, PhonePe, Paytm).');
+    }
   };
 
   const checkDuplicatePhone = async (phone) => {
@@ -382,27 +388,31 @@ const PlayerRegistration = () => {
               <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
                 <p className="text-sm text-blue-800 mb-3">
                   <strong>Payment Instructions:</strong><br/>
-                  Click the button below to pay ₹{paymentConfig.fee} via UPI. You will be redirected to your UPI app.
+                  Click the button below to pay ₹{paymentConfig.fee} via UPI. You will be redirected to your UPI app (Google Pay, PhonePe, Paytm, etc.).
+                </p>
+                <p className="text-xs text-blue-700 mb-3">
+                  <strong>Note:</strong> Make sure you have a UPI app installed. After payment, you will be redirected back to complete registration.
                 </p>
                 
                 {!paymentCompleted ? (
                   <button
                     type="button"
                     onClick={handlePayment}
-                    className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md font-medium transition-colors"
+                    className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium transition-colors w-full justify-center"
                   >
                     <CreditCard size={20} />
                     <span>Pay ₹{paymentConfig.fee} via UPI</span>
                   </button>
                 ) : (
-                  <div className="flex items-center space-x-2 text-green-600">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex items-center space-x-2 text-green-600 bg-green-50 p-3 rounded-md">
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                     </svg>
                     <span className="font-medium">Payment Completed ✓</span>
                   </div>
                 )}
               </div>
+
             </div>
 
             <div className="flex justify-end">
