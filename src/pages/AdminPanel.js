@@ -78,12 +78,6 @@ const AdminPanel = () => {
   const [selectedField, setSelectedField] = useState(null);
   const [newField, setNewField] = useState({ name: '', label: '', type: 'text', required: false, validation: '' });
   const [editField, setEditField] = useState({ name: '', label: '', type: 'text', required: false, validation: '' });
-  const [paymentConfig, setPaymentConfig] = useState({
-    fee: 100,
-    instructions: '1. Pay ₹100 registration fee via UPI/Bank Transfer\n2. Take a screenshot of the payment confirmation\n3. Upload the screenshot below',
-    qrCodeBase64: '',
-    showQrCode: false
-  });
   const [showPaymentConfig, setShowPaymentConfig] = useState(false);
   const [draggedField, setDraggedField] = useState(null);
   const [carouselImages, setCarouselImages] = useState([]);
@@ -92,6 +86,12 @@ const AdminPanel = () => {
   const [carouselImageFile, setCarouselImageFile] = useState(null);
   const [registrationSectionVisible, setRegistrationSectionVisible] = useState(true);
   const [auctionSectionVisible, setAuctionSectionVisible] = useState(true);
+  const [paymentConfig, setPaymentConfig] = useState({
+    fee: 50,
+    upiId: 'boism-7829399506@boi',
+    phoneNumber: '7829399506',
+    merchantName: 'Khajjidoni Premier League'
+  });
   const [showDetailedScoring, setShowDetailedScoring] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [showScoreEntry, setShowScoreEntry] = useState(false);
@@ -1549,32 +1549,6 @@ const AdminPanel = () => {
     }
   };
 
-  const handleSavePaymentConfig = async (e) => {
-    e.preventDefault();
-    try {
-      const configSnapshot = await getDocs(collection(db, 'paymentConfig'));
-      if (configSnapshot.empty) {
-        await addDoc(collection(db, 'paymentConfig'), {
-          ...paymentConfig,
-          createdAt: new Date(),
-          createdBy: currentAdmin?.userid
-        });
-      } else {
-        const docId = configSnapshot.docs[0].id;
-        await updateDoc(doc(db, 'paymentConfig', docId), {
-          ...paymentConfig,
-          updatedAt: new Date(),
-          updatedBy: currentAdmin?.userid
-        });
-      }
-      setShowPaymentConfig(false);
-      alert('Payment configuration saved successfully!');
-    } catch (error) {
-      console.error('Error saving payment config:', error);
-      alert('Error saving payment configuration');
-    }
-  };
-
   const fetchCarouselImages = async () => {
     try {
       const carouselSnapshot = await getDocs(collection(db, 'carouselImages'));
@@ -1640,8 +1614,17 @@ const AdminPanel = () => {
       const settingsSnapshot = await getDocs(collection(db, 'settings'));
       const registrationSetting = settingsSnapshot.docs.find(doc => doc.id === 'playerRegistration');
       const auctionSetting = settingsSnapshot.docs.find(doc => doc.id === 'auctionSection');
+      const paymentSetting = settingsSnapshot.docs.find(doc => doc.id === 'paymentConfig');
+      
       setRegistrationSectionVisible(registrationSetting?.data()?.visible !== false);
       setAuctionSectionVisible(auctionSetting?.data()?.visible !== false);
+      
+      if (paymentSetting?.data()) {
+        setPaymentConfig(prev => ({
+          ...prev,
+          ...paymentSetting.data()
+        }));
+      }
     } catch (error) {
       console.error('Error fetching settings:', error);
     }
@@ -1680,6 +1663,25 @@ const AdminPanel = () => {
     } catch (error) {
       console.error('Error updating auction settings:', error);
       alert('Error updating auction settings');
+    }
+  };
+
+  const handleSavePaymentConfig = async () => {
+    try {
+      const settingsRef = doc(db, 'settings', 'paymentConfig');
+      await setDoc(settingsRef, {
+        fee: parseInt(paymentConfig.fee) || 50,
+        upiId: paymentConfig.upiId || 'boism-7829399506@boi',
+        phoneNumber: paymentConfig.phoneNumber || '7829399506',
+        merchantName: paymentConfig.merchantName || 'Khajjidoni Premier League',
+        updatedAt: new Date(),
+        updatedBy: currentAdmin?.userid
+      }, { merge: true });
+      
+      alert('Payment configuration updated successfully!');
+    } catch (error) {
+      console.error('Error updating payment config:', error);
+      alert('Error updating payment configuration');
     }
   };
 
@@ -3327,98 +3329,59 @@ const AdminPanel = () => {
             {/* Payment Settings Tab */}
             {activeTab === 'payment' && (
               <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">Payment Settings</h2>
-                  <button
-                    onClick={() => setShowPaymentConfig(true)}
-                    className="btn-primary flex items-center space-x-2"
-                  >
-                    <Edit size={16} />
-                    <span>Edit Settings</span>
-                  </button>
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Payment Settings</h2>
+                  <p className="text-gray-600">
+                    Payment configuration has been moved to <strong>Website Settings</strong> tab for easier management.
+                  </p>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold mb-4">Current Payment Configuration</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <span className="font-medium">Registration Fee:</span> ₹{paymentConfig.fee}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-blue-900 mb-4">Current Payment Configuration</h3>
+                  <div className="space-y-3 bg-white rounded-lg p-4">
+                    <div className="flex justify-between items-center py-2 border-b">
+                      <span className="font-medium text-gray-700">Registration Fee:</span>
+                      <span className="text-lg font-bold text-green-600">₹{paymentConfig.fee}</span>
                     </div>
-                    <div>
-                      <span className="font-medium">Payment Instructions:</span>
-                      <pre className="mt-2 bg-white p-3 rounded border text-sm whitespace-pre-wrap">{paymentConfig.instructions}</pre>
+                    <div className="flex justify-between items-center py-2 border-b">
+                      <span className="font-medium text-gray-700">UPI ID:</span>
+                      <span className="text-sm font-mono text-gray-900">{paymentConfig.upiId}</span>
                     </div>
-                    <div>
-                      <span className="font-medium">QR Code Scanner:</span> {paymentConfig.showQrCode ? 'Enabled' : 'Disabled'}
+                    <div className="flex justify-between items-center py-2 border-b">
+                      <span className="font-medium text-gray-700">Phone Number:</span>
+                      <span className="text-sm font-mono text-gray-900">{paymentConfig.phoneNumber}</span>
                     </div>
-                    {paymentConfig.qrCodeBase64 && (
+                    <div className="flex justify-between items-center py-2">
+                      <span className="font-medium text-gray-700">Merchant Name:</span>
+                      <span className="text-sm text-gray-900">{paymentConfig.merchantName}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-green-900 mb-3">Payment Options Available to Users:</h3>
+                  <ul className="space-y-2 text-green-800">
+                    <li className="flex items-start space-x-2">
+                      <span className="text-green-600 font-bold">✓</span>
                       <div>
-                        <span className="font-medium">Payment QR Code:</span>
-                        <img src={paymentConfig.qrCodeBase64} alt="Payment QR" className="mt-2 w-32 h-32 border rounded" />
+                        <strong>Pay via UPI App:</strong> Users are redirected to their UPI app with auto-filled payment details
                       </div>
-                    )}
-                  </div>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <div>
+                        <strong>Manual UPI Transfer:</strong> Users can copy the phone number and make manual transfers
+                      </div>
+                    </li>
+                  </ul>
                 </div>
 
-                {showPaymentConfig && (
-                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
-                      <h3 className="text-lg font-semibold mb-4">Edit Payment Settings</h3>
-                      <form onSubmit={handleSavePaymentConfig} className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Registration Fee (₹)</label>
-                          <input
-                            type="number"
-                            value={paymentConfig.fee}
-                            onChange={(e) => setPaymentConfig({...paymentConfig, fee: parseInt(e.target.value)})}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Payment Instructions</label>
-                          <textarea
-                            value={paymentConfig.instructions}
-                            onChange={(e) => setPaymentConfig({...paymentConfig, instructions: e.target.value})}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                            rows="4"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={paymentConfig.showQrCode}
-                              onChange={(e) => setPaymentConfig({...paymentConfig, showQrCode: e.target.checked})}
-                            />
-                            <span>Show QR Code Scanner</span>
-                          </label>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Payment QR Code</label>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={async (e) => {
-                              const file = e.target.files[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onload = () => setPaymentConfig({...paymentConfig, qrCodeBase64: reader.result});
-                                reader.readAsDataURL(file);
-                              }
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                          />
-                        </div>
-                        <div className="flex space-x-2">
-                          <button type="submit" className="btn-primary">Save Settings</button>
-                          <button type="button" onClick={() => setShowPaymentConfig(false)} className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                )}
+                <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-yellow-900 mb-2">To Edit Payment Settings:</h3>
+                  <p className="text-yellow-800">
+                    Go to <strong>Website Settings</strong> tab and scroll down to <strong>Payment Configuration</strong> section to update any payment details.
+                  </p>
+                </div>
               </div>
             )}
 
@@ -4475,6 +4438,90 @@ const AdminPanel = () => {
                         <li>• Shows/hides the auction page from navigation and direct access</li>
                         <li>• Includes player auction details and team assignments</li>
                         <li>• Useful for controlling when the auction is open to public</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Payment Configuration */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Configuration</h3>
+                    <p className="text-gray-600 text-sm mb-4">
+                      Configure payment settings for player registration. These values will be used in the registration form.
+                    </p>
+                    
+                    <div className="space-y-4">
+                      {/* Registration Fee */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Registration Fee (₹)
+                        </label>
+                        <input
+                          type="number"
+                          value={paymentConfig.fee}
+                          onChange={(e) => setPaymentConfig({...paymentConfig, fee: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="50"
+                        />
+                      </div>
+
+                      {/* UPI ID */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          UPI ID (Business UPI)
+                        </label>
+                        <input
+                          type="text"
+                          value={paymentConfig.upiId}
+                          onChange={(e) => setPaymentConfig({...paymentConfig, upiId: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="boism-7829399506@boi"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Use business UPI ID to avoid payment security restrictions</p>
+                      </div>
+
+                      {/* Phone Number for Manual Transfer */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Phone Number (for Manual UPI Transfer)
+                        </label>
+                        <input
+                          type="text"
+                          value={paymentConfig.phoneNumber}
+                          onChange={(e) => setPaymentConfig({...paymentConfig, phoneNumber: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="7829399506"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Users can copy this number for manual UPI transfers</p>
+                      </div>
+
+                      {/* Merchant Name */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Merchant Name
+                        </label>
+                        <input
+                          type="text"
+                          value={paymentConfig.merchantName}
+                          onChange={(e) => setPaymentConfig({...paymentConfig, merchantName: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Khajjidoni Premier League"
+                        />
+                      </div>
+
+                      {/* Save Button */}
+                      <button
+                        onClick={handleSavePaymentConfig}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium transition-colors"
+                      >
+                        Save Payment Configuration
+                      </button>
+                    </div>
+
+                    <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                      <h4 className="font-semibold text-green-900 mb-2">Payment Options Available to Users:</h4>
+                      <ul className="text-sm text-green-800 space-y-1">
+                        <li>✓ <strong>Pay via UPI App:</strong> Redirects to user's UPI app with auto-filled details</li>
+                        <li>✓ <strong>Manual UPI Transfer:</strong> Shows phone number with copy button for manual transfer</li>
                       </ul>
                     </div>
                   </div>

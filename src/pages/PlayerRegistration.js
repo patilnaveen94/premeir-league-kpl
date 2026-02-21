@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
-import { User, Mail, Phone, Calendar, CreditCard } from 'lucide-react';
+import { User, Mail, Phone, Calendar, CreditCard, Copy, Check } from 'lucide-react';
 import { db } from '../firebase/firebase';
 
 const PlayerRegistration = () => {
@@ -26,11 +26,14 @@ const PlayerRegistration = () => {
   const [success, setSuccess] = useState(false);
   const [formFields, setFormFields] = useState([]);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
-  const [paymentConfig] = useState({
+  const [paymentConfig, setPaymentConfig] = useState({
     fee: 50,
-    upiId: 'boism-7829399506@boi', // Business UPI ID
+    upiId: 'boism-7829399506@boi',
+    phoneNumber: '7829399506',
     merchantName: 'Khajjidoni Premier League'
   });
+  const [paymentMethod, setPaymentMethod] = useState('upi'); // 'upi' or 'manual'
+  const [copied, setCopied] = useState(false);
 
   const generateUserId = () => `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const navigate = useNavigate();
@@ -39,6 +42,7 @@ const PlayerRegistration = () => {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     fetchFormFields();
+    fetchPaymentConfig();
   }, []);
 
   const fetchFormFields = async () => {
@@ -58,6 +62,21 @@ const PlayerRegistration = () => {
       setFormData(initialData);
     } catch (error) {
       console.error('Error fetching form fields:', error);
+    }
+  };
+
+  const fetchPaymentConfig = async () => {
+    try {
+      const paymentSnapshot = await getDocs(collection(db, 'settings'));
+      const paymentSetting = paymentSnapshot.docs.find(doc => doc.id === 'paymentConfig');
+      if (paymentSetting?.data()) {
+        setPaymentConfig(prev => ({
+          ...prev,
+          ...paymentSetting.data()
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching payment config:', error);
     }
   };
 
@@ -140,6 +159,12 @@ const PlayerRegistration = () => {
       console.error('Error initiating payment:', error);
       alert('Error opening UPI app. Please ensure you have a UPI app installed.');
     }
+  };
+
+  const handleCopyPhoneNumber = () => {
+    navigator.clipboard.writeText(paymentConfig.phoneNumber);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const checkDuplicatePhone = async (phone) => {
@@ -386,24 +411,102 @@ const PlayerRegistration = () => {
               </label>
               
               <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
-                <p className="text-sm text-blue-800 mb-3">
+                <p className="text-sm text-blue-800 mb-2">
                   <strong>Payment Instructions:</strong><br/>
-                  Click the button below to pay ₹{paymentConfig.fee} via UPI. You will be redirected to your UPI app (Google Pay, PhonePe, Paytm, etc.).
-                </p>
-                <p className="text-xs text-blue-700">
-                  <strong>UPI ID:</strong> {paymentConfig.upiId}
+                  Choose one of the payment methods below to complete your registration fee payment.
                 </p>
               </div>
 
               {!paymentCompleted ? (
-                <button
-                  type="button"
-                  onClick={handlePayment}
-                  className="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium transition-colors"
-                >
-                  <CreditCard size={20} />
-                  <span>Pay ₹{paymentConfig.fee} via UPI</span>
-                </button>
+                <div className="space-y-4">
+                  {/* Option 1: UPI App Payment */}
+                  <div className="border-2 border-blue-300 rounded-lg p-4 bg-blue-50">
+                    <div className="flex items-start space-x-3 mb-3">
+                      <input
+                        type="radio"
+                        id="upi-option"
+                        name="payment-method"
+                        checked={paymentMethod === 'upi'}
+                        onChange={() => setPaymentMethod('upi')}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <label htmlFor="upi-option" className="font-semibold text-gray-900 cursor-pointer">
+                          Pay via UPI App
+                        </label>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Fastest way to pay. You'll be redirected to your UPI app (Google Pay, PhonePe, Paytm, etc.)
+                        </p>
+                      </div>
+                    </div>
+                    {paymentMethod === 'upi' && (
+                      <button
+                        type="button"
+                        onClick={handlePayment}
+                        className="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium transition-colors"
+                      >
+                        <CreditCard size={20} />
+                        <span>Pay ₹{paymentConfig.fee} via UPI</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Option 2: Manual UPI Transfer */}
+                  <div className="border-2 border-gray-300 rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-start space-x-3 mb-3">
+                      <input
+                        type="radio"
+                        id="manual-option"
+                        name="payment-method"
+                        checked={paymentMethod === 'manual'}
+                        onChange={() => setPaymentMethod('manual')}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <label htmlFor="manual-option" className="font-semibold text-gray-900 cursor-pointer">
+                          Manual UPI Transfer
+                        </label>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Transfer the amount manually using your UPI app
+                        </p>
+                      </div>
+                    </div>
+                    {paymentMethod === 'manual' && (
+                      <div className="space-y-3">
+                        <div className="bg-white rounded-md p-3 border border-gray-200">
+                          <p className="text-xs text-gray-600 mb-2">Send ₹{paymentConfig.fee} to this mobile number:</p>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-lg font-bold text-gray-900">{paymentConfig.phoneNumber}</span>
+                            <button
+                              type="button"
+                              onClick={handleCopyPhoneNumber}
+                              className="flex items-center space-x-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                            >
+                              {copied ? (
+                                <>
+                                  <Check size={16} />
+                                  <span>Copied!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy size={16} />
+                                  <span>Copy</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentCompleted(true)}
+                          className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md font-medium transition-colors"
+                        >
+                          I've Completed the Transfer
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               ) : (
                 <div className="flex items-center space-x-2 text-green-600 bg-green-50 p-4 rounded-md border border-green-200">
                   <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -415,8 +518,6 @@ const PlayerRegistration = () => {
                   </div>
                 </div>
               )}
-
-
             </div>
 
             <div className="flex justify-end">
