@@ -28,7 +28,7 @@ const PlayerRegistration = () => {
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [paymentConfig] = useState({
     fee: 50,
-    upiId: '7829399506@ybl', // Replace with actual UPI ID
+    upiId: 'boism-7829399506@boi', // Business UPI ID
     merchantName: 'Khajjidoni Premier League'
   });
 
@@ -123,9 +123,8 @@ const PlayerRegistration = () => {
       // Generate unique transaction ID
       const txnId = `KPL${Date.now()}`;
       
-      // Use simplified UPI format that works with all apps
-      // Remove special characters and use basic format
-      const upiUrl = `upi://pay?pa=7829399506@ybl&pn=KPL&am=50&tn=Registration&tr=${txnId}`;
+      // Use business UPI ID with proper format
+      const upiUrl = `upi://pay?pa=${paymentConfig.upiId}&pn=${encodeURIComponent(paymentConfig.merchantName)}&am=${paymentConfig.fee}&tn=Registration&tr=${txnId}`;
       
       console.log('Opening UPI payment with URL:', upiUrl);
       
@@ -135,11 +134,11 @@ const PlayerRegistration = () => {
       // Mark payment as completed after user returns
       setTimeout(() => {
         setPaymentCompleted(true);
-      }, 1500);
+      }, 2000);
       
     } catch (error) {
       console.error('Error initiating payment:', error);
-      alert('Error opening UPI app. Please ensure you have a UPI app installed (Google Pay, PhonePe, Paytm).');
+      alert('Error opening UPI app. Please ensure you have a UPI app installed.');
     }
   };
 
@@ -385,33 +384,38 @@ const PlayerRegistration = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Registration Fee: ₹{paymentConfig.fee} *
               </label>
+              
               <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
                 <p className="text-sm text-blue-800 mb-3">
                   <strong>Payment Instructions:</strong><br/>
                   Click the button below to pay ₹{paymentConfig.fee} via UPI. You will be redirected to your UPI app (Google Pay, PhonePe, Paytm, etc.).
                 </p>
-                <p className="text-xs text-blue-700 mb-3">
-                  <strong>Note:</strong> Make sure you have a UPI app installed. After payment, you will be redirected back to complete registration.
+                <p className="text-xs text-blue-700">
+                  <strong>UPI ID:</strong> {paymentConfig.upiId}
                 </p>
-                
-                {!paymentCompleted ? (
-                  <button
-                    type="button"
-                    onClick={handlePayment}
-                    className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium transition-colors w-full justify-center"
-                  >
-                    <CreditCard size={20} />
-                    <span>Pay ₹{paymentConfig.fee} via UPI</span>
-                  </button>
-                ) : (
-                  <div className="flex items-center space-x-2 text-green-600 bg-green-50 p-3 rounded-md">
-                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                    <span className="font-medium">Payment Completed ✓</span>
-                  </div>
-                )}
               </div>
+
+              {!paymentCompleted ? (
+                <button
+                  type="button"
+                  onClick={handlePayment}
+                  className="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium transition-colors"
+                >
+                  <CreditCard size={20} />
+                  <span>Pay ₹{paymentConfig.fee} via UPI</span>
+                </button>
+              ) : (
+                <div className="flex items-center space-x-2 text-green-600 bg-green-50 p-4 rounded-md border border-green-200">
+                  <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  <div>
+                    <span className="font-medium">Payment Completed ✓</span>
+                    <p className="text-xs text-green-600">You can now submit your registration</p>
+                  </div>
+                </div>
+              )}
+
 
             </div>
 
