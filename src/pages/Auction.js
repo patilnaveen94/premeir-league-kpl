@@ -483,31 +483,31 @@ const Auction = () => {
 
       {/* Enhanced Player Details Modal with Side-by-Side Layout */}
       {showPlayerModal && selectedPlayer && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-md">
-          <div className="bg-white rounded-3xl w-full max-w-7xl shadow-2xl border border-gray-100 overflow-hidden" style={{ maxHeight: '90vh' }}>
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-2 sm:p-4 backdrop-blur-md">
+          <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-7xl shadow-2xl border border-gray-100 overflow-hidden max-h-[95vh] sm:max-h-[90vh] flex flex-col">
             {/* Close Button */}
             <button
               onClick={() => setShowPlayerModal(false)}
-              className="absolute top-4 right-4 text-gray-600 hover:text-gray-900 bg-white rounded-full p-3 transition-all duration-300 hover:bg-gray-100 z-20 touch-manipulation shadow-lg"
-              style={{ minWidth: '48px', minHeight: '48px' }}
+              className="absolute top-3 sm:top-4 right-3 sm:right-4 text-gray-600 hover:text-gray-900 bg-white rounded-full p-2 sm:p-3 transition-all duration-300 hover:bg-gray-100 z-20 touch-manipulation shadow-lg"
+              style={{ minWidth: '44px', minHeight: '44px' }}
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
 
-            <div className="flex flex-col lg:flex-row h-full">
+            <div className="flex flex-col lg:flex-row h-full overflow-hidden">
               {/* Left Side - Photo Section */}
               <div className={`bg-gradient-to-br ${
                 selectedPlayer.auctionStatus === 'sold' 
                   ? 'from-emerald-500 via-green-500 to-teal-600'
                   : 'from-purple-500 via-pink-500 to-red-500'
-              } p-6 md:p-8 flex flex-col items-center justify-center relative overflow-hidden lg:w-2/5 min-h-[400px] lg:min-h-auto`}>
+              } p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center relative overflow-hidden lg:w-2/5 min-h-[280px] sm:min-h-[350px] md:min-h-[400px] lg:min-h-auto`}>
                 {/* Decorative Elements */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white bg-opacity-10 rounded-full -translate-y-16 translate-x-16"></div>
-                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white bg-opacity-10 rounded-full translate-y-12 -translate-x-12"></div>
+                <div className="absolute top-0 right-0 w-24 sm:w-32 h-24 sm:h-32 bg-white bg-opacity-10 rounded-full -translate-y-12 sm:-translate-y-16 translate-x-12 sm:translate-x-16"></div>
+                <div className="absolute bottom-0 left-0 w-20 sm:w-24 h-20 sm:h-24 bg-white bg-opacity-10 rounded-full translate-y-10 sm:translate-y-12 -translate-x-10 sm:-translate-x-12"></div>
                 
                 <div className="relative z-10 flex flex-col items-center justify-center w-full">
                   {selectedPlayer.photoBase64 ? (
-                    <div className="w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 rounded-full border-6 border-white shadow-2xl overflow-hidden ring-4 ring-white ring-opacity-40 flex-shrink-0 mb-6">
+                    <div className="w-40 h-40 sm:w-56 sm:h-56 md:w-72 md:h-72 lg:w-80 lg:h-80 rounded-full border-4 sm:border-6 border-white shadow-2xl overflow-hidden ring-4 ring-white ring-opacity-40 flex-shrink-0 mb-4">
                       <img
                         src={selectedPlayer.photoBase64}
                         alt={selectedPlayer.fullName}
@@ -515,29 +515,29 @@ const Auction = () => {
                       />
                     </div>
                   ) : (
-                    <div className="w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 bg-white bg-opacity-20 rounded-full flex items-center justify-center border-6 border-white shadow-2xl ring-4 ring-white ring-opacity-40 flex-shrink-0 mb-6">
-                      <span className="text-white font-bold text-8xl md:text-9xl lg:text-[120px]">
+                    <div className="w-40 h-40 sm:w-56 sm:h-56 md:w-72 md:h-72 lg:w-80 lg:h-80 bg-white bg-opacity-20 rounded-full flex items-center justify-center border-4 sm:border-6 border-white shadow-2xl ring-4 ring-white ring-opacity-40 flex-shrink-0 mb-4">
+                      <span className="text-white font-bold text-6xl sm:text-7xl md:text-8xl lg:text-9xl">
                         {getPlayerInitials(selectedPlayer.fullName)}
                       </span>
                     </div>
                   )}
                   
-                  <div className="text-center w-full">
-                    <h2 className="text-2xl md:text-3xl font-bold mb-2 drop-shadow-lg text-white">{selectedPlayer.fullName}</h2>
+                  <div className="text-center w-full px-2">
+                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 drop-shadow-lg text-white line-clamp-2">{selectedPlayer.fullName}</h2>
                     <div className="flex flex-wrap justify-center items-center gap-2 mb-3">
                       {selectedPlayer.position && (
-                        <span className="text-white text-opacity-90 text-sm md:text-base font-medium bg-white bg-opacity-20 px-3 py-1 rounded-full">
+                        <span className="text-white text-opacity-90 text-xs sm:text-sm font-medium bg-white bg-opacity-20 px-2 sm:px-3 py-1 rounded-full">
                           {selectedPlayer.position}
                         </span>
                       )}
                       {selectedPlayer.preferredHand && (
-                        <span className="text-white text-opacity-90 text-sm md:text-base font-medium bg-white bg-opacity-20 px-3 py-1 rounded-full">
+                        <span className="text-white text-opacity-90 text-xs sm:text-sm font-medium bg-white bg-opacity-20 px-2 sm:px-3 py-1 rounded-full">
                           {selectedPlayer.preferredHand}
                         </span>
                       )}
                     </div>
                     <div className="flex flex-wrap justify-center items-center gap-2">
-                      <span className={`inline-block px-3 md:px-4 py-1 md:py-2 rounded-full text-xs md:text-sm font-bold shadow-lg ${
+                      <span className={`inline-block px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg ${
                         selectedPlayer.auctionStatus === 'sold' 
                           ? 'bg-green-600 bg-opacity-90 text-white'
                           : 'bg-gray-600 bg-opacity-90 text-white'
@@ -550,75 +550,75 @@ const Auction = () => {
               </div>
 
               {/* Right Side - Stats Section */}
-              <div className="lg:w-3/5 p-6 md:p-8 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 60px)' }}>
+              <div className="lg:w-3/5 p-4 sm:p-6 md:p-8 overflow-y-auto flex-1">
                 {selectedPlayer.soldTo && (
-                  <div className="mb-6 p-4 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-2xl border-2 border-green-200 shadow-md">
+                  <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-xl sm:rounded-2xl border-2 border-green-200 shadow-md">
                     <div className="flex items-center">
-                      <Trophy className="w-6 h-6 text-green-600 mr-3 flex-shrink-0" />
+                      <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 mr-2 sm:mr-3 flex-shrink-0" />
                       <div>
-                        <p className="text-xs font-bold text-green-800 uppercase tracking-wide">Sold to</p>
-                        <p className="text-lg md:text-xl font-bold text-green-700">{selectedPlayer.soldTo}</p>
+                        <p className="text-xs sm:text-sm font-bold text-green-800 uppercase tracking-wide">Sold to</p>
+                        <p className="text-base sm:text-lg md:text-xl font-bold text-green-700 line-clamp-1">{selectedPlayer.soldTo}</p>
                       </div>
                     </div>
                   </div>
                 )}
 
                 {/* Career Stats Grid - Compact */}
-                <div className="mb-6">
-                  <h4 className="font-bold text-gray-900 text-lg md:text-xl mb-4 flex items-center">
-                    <Target className="w-5 h-5 md:w-6 md:h-6 text-blue-600 mr-2 flex-shrink-0" />
+                <div className="mb-4 sm:mb-6">
+                  <h4 className="font-bold text-gray-900 text-base sm:text-lg md:text-xl mb-3 sm:mb-4 flex items-center">
+                    <Target className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-blue-600 mr-2 flex-shrink-0" />
                     Career Statistics
                   </h4>
                   
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-4 rounded-xl text-white shadow-md">
-                      <div className="text-2xl md:text-3xl font-bold">{selectedPlayer.careerRuns || 0}</div>
-                      <div className="text-blue-100 font-bold text-xs md:text-sm uppercase tracking-wide">Runs</div>
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-3 sm:p-4 rounded-lg sm:rounded-xl text-white shadow-md">
+                      <div className="text-xl sm:text-2xl md:text-3xl font-bold">{selectedPlayer.careerRuns || 0}</div>
+                      <div className="text-blue-100 font-bold text-xs uppercase tracking-wide">Runs</div>
                     </div>
-                    <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl text-white shadow-md">
-                      <div className="text-2xl md:text-3xl font-bold">{selectedPlayer.careerWickets || 0}</div>
-                      <div className="text-red-100 font-bold text-xs md:text-sm uppercase tracking-wide">Wickets</div>
+                    <div className="bg-gradient-to-br from-red-500 to-red-600 p-3 sm:p-4 rounded-lg sm:rounded-xl text-white shadow-md">
+                      <div className="text-xl sm:text-2xl md:text-3xl font-bold">{selectedPlayer.careerWickets || 0}</div>
+                      <div className="text-red-100 font-bold text-xs uppercase tracking-wide">Wickets</div>
                     </div>
-                    <div className="bg-gradient-to-br from-green-500 to-green-600 p-4 rounded-xl text-white shadow-md">
-                      <div className="text-2xl md:text-3xl font-bold">{selectedPlayer.careerMatches || 0}</div>
-                      <div className="text-green-100 font-bold text-xs md:text-sm uppercase tracking-wide">Matches</div>
+                    <div className="bg-gradient-to-br from-green-500 to-green-600 p-3 sm:p-4 rounded-lg sm:rounded-xl text-white shadow-md">
+                      <div className="text-xl sm:text-2xl md:text-3xl font-bold">{selectedPlayer.careerMatches || 0}</div>
+                      <div className="text-green-100 font-bold text-xs uppercase tracking-wide">Matches</div>
                     </div>
-                    <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-4 rounded-xl text-white shadow-md">
-                      <div className="text-2xl md:text-3xl font-bold">{selectedPlayer.careerAverage || '0.00'}</div>
-                      <div className="text-purple-100 font-bold text-xs md:text-sm uppercase tracking-wide">Average</div>
+                    <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-3 sm:p-4 rounded-lg sm:rounded-xl text-white shadow-md">
+                      <div className="text-xl sm:text-2xl md:text-3xl font-bold">{selectedPlayer.careerAverage || '0.00'}</div>
+                      <div className="text-purple-100 font-bold text-xs uppercase tracking-wide">Average</div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-gradient-to-br from-orange-500 to-amber-600 p-4 rounded-xl text-white shadow-md">
-                      <div className="text-xl md:text-2xl font-bold">{selectedPlayer.careerStrikeRate || '0.00'}</div>
-                      <div className="text-orange-100 font-bold text-xs md:text-sm uppercase tracking-wide">Strike Rate</div>
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div className="bg-gradient-to-br from-orange-500 to-amber-600 p-3 sm:p-4 rounded-lg sm:rounded-xl text-white shadow-md">
+                      <div className="text-lg sm:text-xl md:text-2xl font-bold">{selectedPlayer.careerStrikeRate || '0.00'}</div>
+                      <div className="text-orange-100 font-bold text-xs uppercase tracking-wide">Strike Rate</div>
                     </div>
-                    <div className="bg-gradient-to-br from-teal-500 to-cyan-600 p-4 rounded-xl text-white shadow-md">
-                      <div className="text-xl md:text-2xl font-bold">{selectedPlayer.careerHighestScore || 0}</div>
-                      <div className="text-teal-100 font-bold text-xs md:text-sm uppercase tracking-wide">Highest Score</div>
+                    <div className="bg-gradient-to-br from-teal-500 to-cyan-600 p-3 sm:p-4 rounded-lg sm:rounded-xl text-white shadow-md">
+                      <div className="text-lg sm:text-xl md:text-2xl font-bold">{selectedPlayer.careerHighestScore || 0}</div>
+                      <div className="text-teal-100 font-bold text-xs uppercase tracking-wide">Highest Score</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Career Highlights */}
                 {(selectedPlayer.careerBestBowling !== '0/0' || selectedPlayer.seasonsPlayed?.length > 0) && (
-                  <div className="mb-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-200">
-                    <h5 className="font-bold text-indigo-800 text-sm md:text-base mb-3 flex items-center">
-                      <Award className="w-4 h-4 md:w-5 md:h-5 mr-2 flex-shrink-0" />
+                  <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg sm:rounded-xl border border-indigo-200">
+                    <h5 className="font-bold text-indigo-800 text-xs sm:text-sm md:text-base mb-2 sm:mb-3 flex items-center">
+                      <Award className="w-4 h-4 sm:w-5 sm:h-5 mr-2 flex-shrink-0" />
                       Highlights
                     </h5>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
                       {selectedPlayer.careerBestBowling !== '0/0' && (
                         <div className="text-center">
-                          <div className="text-xl md:text-2xl font-bold text-purple-700">{selectedPlayer.careerBestBowling}</div>
-                          <div className="text-xs md:text-sm text-purple-600 font-medium">Best Bowling</div>
+                          <div className="text-lg sm:text-xl md:text-2xl font-bold text-purple-700">{selectedPlayer.careerBestBowling}</div>
+                          <div className="text-xs sm:text-sm text-purple-600 font-medium">Best Bowling</div>
                         </div>
                       )}
                       {selectedPlayer.seasonsPlayed?.length > 0 && (
                         <div className="text-center">
-                          <div className="text-xl md:text-2xl font-bold text-indigo-700">{selectedPlayer.seasonsPlayed.length}</div>
-                          <div className="text-xs md:text-sm text-indigo-600 font-medium">Seasons</div>
+                          <div className="text-lg sm:text-xl md:text-2xl font-bold text-indigo-700">{selectedPlayer.seasonsPlayed.length}</div>
+                          <div className="text-xs sm:text-sm text-indigo-600 font-medium">Seasons</div>
                         </div>
                       )}
                     </div>
@@ -627,15 +627,15 @@ const Auction = () => {
 
                 {/* Admin Actions */}
                 {isAdminLoggedIn && (
-                  <div className="border-t-2 border-gray-200 pt-6">
-                    <h4 className="font-bold text-gray-900 text-lg md:text-xl mb-4 flex items-center">
-                      <Edit className="w-5 h-5 md:w-6 md:h-6 text-orange-600 mr-2 flex-shrink-0" />
+                  <div className="border-t-2 border-gray-200 pt-4 sm:pt-6">
+                    <h4 className="font-bold text-gray-900 text-base sm:text-lg md:text-xl mb-3 sm:mb-4 flex items-center">
+                      <Edit className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-orange-600 mr-2 flex-shrink-0" />
                       Admin Actions
                     </h4>
-                    <div className="bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 rounded-xl p-4 border-2 border-orange-200 shadow-md">
-                      <div className="space-y-3">
+                    <div className="bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 rounded-lg sm:rounded-xl p-3 sm:p-4 border-2 border-orange-200 shadow-md">
+                      <div className="space-y-2 sm:space-y-3">
                         <div>
-                          <label className="block text-xs md:text-sm font-bold text-orange-800 mb-2 uppercase tracking-wide">
+                          <label className="block text-xs sm:text-sm font-bold text-orange-800 mb-2 uppercase tracking-wide">
                             🏆 Assign to Team
                           </label>
                           <select
@@ -644,7 +644,7 @@ const Auction = () => {
                                 handlePlayerAssignment(selectedPlayer.id, e.target.value);
                               }
                             }}
-                            className="w-full px-3 md:px-4 py-2 md:py-3 border-2 border-orange-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white text-sm md:text-base font-semibold shadow-md"
+                            className="w-full px-2 sm:px-3 md:px-4 py-2 md:py-3 border-2 border-orange-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white text-xs sm:text-sm md:text-base font-semibold shadow-md"
                             defaultValue=""
                           >
                             <option value="">Select Team</option>
@@ -657,7 +657,7 @@ const Auction = () => {
                         {selectedPlayer.teamId && (
                           <button
                             onClick={() => handlePlayerAssignment(selectedPlayer.id, null)}
-                            className="w-full bg-gradient-to-r from-red-500 via-red-600 to-red-700 hover:from-red-600 hover:via-red-700 hover:to-red-800 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg font-bold text-sm md:text-base transition-all duration-300 shadow-md hover:shadow-lg"
+                            className="w-full bg-gradient-to-r from-red-500 via-red-600 to-red-700 hover:from-red-600 hover:via-red-700 hover:to-red-800 text-white px-3 sm:px-4 md:px-6 py-2 md:py-3 rounded-lg font-bold text-xs sm:text-sm md:text-base transition-all duration-300 shadow-md hover:shadow-lg"
                           >
                             ❌ Mark as Unsold
                           </button>
@@ -668,10 +668,10 @@ const Auction = () => {
                 )}
 
                 {/* Close Button */}
-                <div className="mt-6 flex justify-center">
+                <div className="mt-4 sm:mt-6 flex justify-center">
                   <button
                     onClick={() => setShowPlayerModal(false)}
-                    className="bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 hover:from-gray-700 hover:via-gray-800 hover:to-gray-900 text-white px-6 md:px-8 py-2 md:py-3 rounded-lg font-bold text-sm md:text-base shadow-md hover:shadow-lg transition-all duration-300"
+                    className="bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 hover:from-gray-700 hover:via-gray-800 hover:to-gray-900 text-white px-4 sm:px-6 md:px-8 py-2 md:py-3 rounded-lg font-bold text-xs sm:text-sm md:text-base shadow-md hover:shadow-lg transition-all duration-300"
                   >
                     Close
                   </button>
