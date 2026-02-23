@@ -60,8 +60,9 @@ const PlayerRegistration = () => {
         initialData[field.name] = '';
       });
       setFormData(initialData);
+      console.log('✅ Form fields loaded:', fieldsData.length, 'fields');
     } catch (error) {
-      console.error('Error fetching form fields:', error);
+      console.error('❌ Error fetching form fields:', error);
     }
   };
 
@@ -74,9 +75,12 @@ const PlayerRegistration = () => {
           ...prev,
           ...paymentSetting.data()
         }));
+        console.log('✅ Payment config loaded:', paymentSetting.data());
+      } else {
+        console.log('⚠️ Payment config not found in settings, using defaults');
       }
     } catch (error) {
-      console.error('Error fetching payment config:', error);
+      console.error('❌ Error fetching payment config:', error);
     }
   };
 
@@ -192,6 +196,34 @@ const PlayerRegistration = () => {
         return;
       }
 
+      // Validate all required fields are filled
+      const missingFields = [];
+      formFields.forEach(field => {
+        if (field.required && !formData[field.name]) {
+          missingFields.push(field.label);
+        }
+      });
+      
+      if (missingFields.length > 0) {
+        setError(`Please fill in all required fields: ${missingFields.join(', ')}`);
+        setLoading(false);
+        return;
+      }
+
+      // Validate phone number is exactly 10 digits
+      if (formData.phone && formData.phone.length !== 10) {
+        setError('Mobile number must be exactly 10 digits.');
+        setLoading(false);
+        return;
+      }
+
+      // Validate emergency phone if present
+      if (formData.emergencyPhone && formData.emergencyPhone.length !== 10) {
+        setError('Emergency contact mobile number must be exactly 10 digits.');
+        setLoading(false);
+        return;
+      }
+
       // Check for duplicate phone number
       const isDuplicate = await checkDuplicatePhone(formData.phone);
       if (isDuplicate) {
@@ -240,13 +272,20 @@ const PlayerRegistration = () => {
         paymentStatus: 'completed',
         paymentCompleted: true,
         userId,
-        userEmail: formData.email,
+        userEmail: formData.email || formData.fullName || 'unknown', // Fallback if email not in form
         status: 'pending',
         createdAt: new Date(),
         approved: false,
         hasExistingStats: !!existingStats,
         linkedStatsName: existingStats?.name || null
       };
+      
+      // Remove any undefined values from payload
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+          delete payload[key];
+        }
+      });
       
       console.log('Registration payload:', payload); // Debug log
       
@@ -259,7 +298,11 @@ const PlayerRegistration = () => {
         navigate('/');
       }, 3000);
     } catch (error) {
-      setError('Failed to submit registration. Please try again.');
+      console.error('❌ Registration submission error:', error);
+      console.error('Error message:', error.message);
+      console.error('Error code:', error.code);
+      console.error('Full error:', error);
+      setError(`Failed to submit registration: ${error.message || 'Unknown error'}`);
     }
     setLoading(false);
   };
@@ -374,6 +417,43 @@ const PlayerRegistration = () => {
                         onChange={handlePhotoChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-cricket-green focus:border-cricket-green"
                       />
+                    );
+                  }
+                  
+                  // Special handling for phone fields
+                  if (field.type === 'tel' || field.name === 'phone' || field.name === 'emergencyPhone') {
+                    return (
+                      <div className="relative">
+                        <input
+                          type="tel"
+                          name={field.name}
+                          required={field.required}
+                          value={formData[field.name] || ''}
+                          onChange={(e) => {
+                            // Only allow digits
+                            const value = e.target.value.replace(/\D/g, '');
+                            // Limit to 10 digits
+                            if (value.length <= 10) {
+                              setFormData({
+                                ...formData,
+                                [field.name]: value
+                              });
+                            }
+                          }}
+                          maxLength="10"
+                          inputMode="numeric"
+                          className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-cricket-green focus:border-cricket-green ${
+                            formData[field.name] && formData[field.name].length !== 10
+                              ? 'border-red-500'
+                              : 'border-gray-300'
+                          }`}
+                          placeholder="Enter 10-digit mobile number"
+                        />
+                        <Phone className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                        {formData[field.name] && formData[field.name].length !== 10 && (
+                          <p className="text-xs text-red-600 mt-1">Mobile number must be exactly 10 digits</p>
+                        )}
+                      </div>
                     );
                   }
                   
