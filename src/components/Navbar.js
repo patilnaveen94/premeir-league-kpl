@@ -47,7 +47,6 @@ const Navbar = () => {
                 </div>
                 <div className="flex flex-col transition-all duration-300 group-hover:translate-x-1">
                   <span className="font-bold text-base sm:text-lg text-gray-900 transition-colors duration-300 group-hover:text-orange-600">Khajjidoni Premier League</span>
-                  <span className="text-xs text-green-600 font-semibold -mt-1 transition-colors duration-300 group-hover:text-green-700">Powered by John Deere</span>
                 </div>
               </Link>
               

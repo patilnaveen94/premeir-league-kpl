@@ -239,22 +239,13 @@ const Auction = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="bg-gradient-to-r from-orange-600 to-red-600 rounded-xl p-4 sm:p-6 mb-6 sm:mb-8 text-white">
-          {/* Sponsor Badge */}
-          <div className="flex justify-center mb-4">
-            <div className="inline-flex items-center gap-2 bg-green-600/80 px-4 py-2 rounded-full border-2 border-yellow-400">
-              <span className="text-lg">🌾</span>
-              <span className="text-sm font-bold text-white">Powered by John Deere</span>
-              <span className="text-lg">🌾</span>
-            </div>
-          </div>
-          
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold flex items-center">
                 <Gavel className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 mr-2 sm:mr-3 md:mr-4" />
                 Player Auction
               </h1>
-              <p className="text-orange-100 mt-1 sm:mt-2 text-sm sm:text-base md:text-lg lg:text-xl">Khajjidoni Premier League - Powered by John Deere</p>
+              <p className="text-orange-100 mt-1 sm:mt-2 text-sm sm:text-base md:text-lg lg:text-xl">Khajjidoni Premier League</p>
             </div>
             <div className="text-right">
               <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold">{filteredPlayers.length}</div>

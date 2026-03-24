@@ -100,60 +100,6 @@ const Sponsors = () => {
         </div>
       </section>
 
-      {/* Season 2 Title Sponsor - John Deere */}
-      <section className="py-16 sm:py-20 bg-gradient-to-b from-white to-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Section Label */}
-          <div className="text-center mb-12">
-            <span className="text-sm font-bold text-green-600 uppercase tracking-widest">Season 2 Title Sponsor</span>
-          </div>
-
-          {/* Title Sponsor Card */}
-          <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-0">
-              {/* Left - Logo Area */}
-              <div className="bg-gradient-to-br from-green-50 to-green-100 p-8 sm:p-10 flex items-center justify-center min-h-64 sm:min-h-auto">
-                <div className="text-center">
-                  <div className="text-6xl font-bold text-green-600 mb-2">John Deere</div>
-                  <p className="text-sm font-semibold text-green-700">Official Title Sponsor</p>
-                </div>
-              </div>
-
-              {/* Right - Details */}
-              <div className="p-8 sm:p-10 flex flex-col justify-center">
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs font-bold text-green-600 uppercase tracking-widest mb-2">About</p>
-                    <p className="text-gray-700 text-sm leading-relaxed">
-                      Global leader in agricultural equipment and technology with 190+ years of innovation and excellence.
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-bold text-green-600 uppercase tracking-widest mb-2">Partnership</p>
-                    <p className="text-gray-700 text-sm leading-relaxed">
-                      Supporting Khajjidoni Premier League Season 2 with commitment to excellence and community development.
-                    </p>
-                  </div>
-
-                  <div className="pt-2">
-                    <a 
-                      href="https://www.deere.com" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 transform hover:scale-105"
-                    >
-                      Learn More
-                      <ArrowRight className="w-4 h-4" />
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* All Sponsors Section */}
       {sortedGroups.length > 0 && (
         <section className="py-20 sm:py-28 bg-white">

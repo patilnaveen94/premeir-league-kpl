@@ -6,7 +6,38 @@ class CareerStatsService {
   // Calculate career stats for all players across all seasons
   async calculateCareerStats() {
     try {
-      console.log('🔄 Calculating career stats across all seasons...');
+      console.log('🔄 Fetching career stats from careerStats collection...');
+      
+      // Fetch career stats from the careerStats collection (accumulated across all seasons)
+      const careerStatsSnapshot = await getDocs(collection(db, 'careerStats'));
+      
+      if (careerStatsSnapshot.empty) {
+        console.log('⚠️ No career stats found in careerStats collection, falling back to playerStats');
+        // Fallback to calculating from playerStats if careerStats is empty
+        return await this.calculateFromPlayerStats();
+      }
+      
+      const careerStats = {};
+      careerStatsSnapshot.docs.forEach(doc => {
+        const stats = doc.data();
+        if (stats.name) {
+          careerStats[doc.id] = stats;
+        }
+      });
+      
+      console.log(`✅ Loaded ${Object.keys(careerStats).length} players from careerStats collection`);
+      return careerStats;
+      
+    } catch (error) {
+      console.error('❌ Error fetching career stats:', error);
+      return {};
+    }
+  }
+
+  // Fallback method to calculate from playerStats if careerStats collection is empty
+  async calculateFromPlayerStats() {
+    try {
+      console.log('🔄 Calculating career stats from playerStats (fallback)...');
       
       // Fetch all player stats from all seasons
       const [statsSnapshot, playersSnapshot] = await Promise.all([
@@ -134,7 +165,7 @@ class CareerStatsService {
       return careerStats;
       
     } catch (error) {
-      console.error('❌ Error calculating career stats:', error);
+      console.error('❌ Error calculating career stats from playerStats:', error);
       return {};
     }
   }
